@@ -1,0 +1,189 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.2.5 Chrome/138.0.7204.251 Electron/37.6.1 Safari/537.36" version="28.2.5">
+  <diagram name="插件加载流程-竖版" id="plugin-loading-flow-vertical">
+    <mxGraphModel dx="1645" dy="1120" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="900" pageHeight="2100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="插件加载流程（Install → Activate → Run）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1F2937;strokeColor=#111827;fontColor=#FFFFFF;fontSize=24;fontStyle=1;spacing=12;arcSize=12;" parent="1" vertex="1">
+          <mxGeometry x="80" y="30" width="812" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="install-bg" value="① 安装 install" style="swimlane;whiteSpace=wrap;html=1;startSize=42;fillColor=#EAF4FF;strokeColor=#4A90E2;fontColor=#174A7C;fontSize=18;fontStyle=1;rounded=1;arcSize=8;" parent="1" vertex="1">
+          <mxGeometry x="80" y="120" width="810" height="430" as="geometry" />
+        </mxCell>
+        <mxCell id="db-registered" value="落库 HarnessPluginEntity&lt;br&gt;状态 REGISTERED" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#E3F2FD;strokeColor=#2F80D1;fontSize=14;fontStyle=1;spacing=8;" parent="install-bg" vertex="1">
+          <mxGeometry x="540" y="353" width="250" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="activate-bg" value="② 激活 activate" style="swimlane;whiteSpace=wrap;html=1;startSize=42;fillColor=#F4EEFF;strokeColor=#8E63CE;fontColor=#4A2A78;fontSize=18;fontStyle=1;rounded=1;arcSize=8;" parent="1" vertex="1">
+          <mxGeometry x="80" y="590" width="812" height="980" as="geometry" />
+        </mxCell>
+        <mxCell id="tool-registry" value="注册到 ToolRegistry&lt;br&gt;并注入 SystemPrompt 能力说明" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8E63CE;fontSize=15;spacing=8;" parent="activate-bg" vertex="1">
+          <mxGeometry x="479" y="905" width="300" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="adapt" value="工具适配为 PluginToolDefinition&lt;br&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;命名：plugin__&amp;lt;pluginId&amp;gt;__&amp;lt;toolName&amp;gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8F4FF;strokeColor=#8E63CE;fontSize=15;fontStyle=1;spacing=8;" parent="activate-bg" vertex="1">
+          <mxGeometry x="120" y="909" width="300" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="e-adapt-registry" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#8E63CE;strokeWidth=2;" parent="activate-bg" source="adapt" target="tool-registry" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="runtime-bg" value="③ 运行与治理 run / disable / uninstall" style="swimlane;whiteSpace=wrap;html=1;startSize=42;fillColor=#ECFDF3;strokeColor=#22A06B;fontColor=#145A3A;fontSize=18;fontStyle=1;rounded=1;arcSize=8;" parent="1" vertex="1">
+          <mxGeometry x="80" y="1610" width="810" height="510" as="geometry" />
+        </mxCell>
+        <mxCell id="src-http" value="HTTP 接口上传 / 安装" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4A90E2;fontSize=15;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="140" y="190" width="270" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="src-preset" value="预置声明&lt;br&gt;harness.plugin.preset.plugins&lt;br&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;启动时 PresetPluginLoader 扫描&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4A90E2;fontSize=15;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="490" y="180" width="270" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="install-case" value="InstallHarnessPluginCase" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D9ECFF;strokeColor=#2F80D1;fontSize=16;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="315" y="300" width="270" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="registry" value="PluginRegistryService.installPlugin()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4A90E2;fontSize=15;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="315" y="390" width="270" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="artifact" value="ArtifactInstallerPort.install()&lt;br&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;制品复制到 harness.plugin.install-root&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4A90E2;fontSize=15;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="315" y="480" width="270" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="activate-case" value="ActivateHarnessPluginCase&lt;br&gt;PluginBridgeService.inspect()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6D8FF;strokeColor=#8E63CE;fontSize=16;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="300" y="650" width="300" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="runtime-type" value="runtimeType" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8E63CE;fontSize=15;fontStyle=1;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="365" y="750" width="170" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="java-manager" value="JavaPluginRuntimeManager.start()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8E63CE;fontSize=15;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="145" y="900" width="270" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="java-loader" value="JavaPluginLoader.load()&lt;br&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;新建隔离 URLClassLoader&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8E63CE;fontSize=15;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="145" y="990" width="270" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="manifest" value="读取 META-INF/plugin.yaml&lt;br&gt;生成 PluginManifest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8E63CE;fontSize=15;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="145" y="1088" width="270" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="entrypoint" value="plugin.yaml 声明&lt;br&gt;entrypoint？" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8E63CE;fontSize=14;fontStyle=1;spacing=7;" parent="1" vertex="1">
+          <mxGeometry x="195" y="1188" width="170" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="load-class" value="加载入口类并实例化" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8E63CE;fontSize=15;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="105" y="1320" width="220" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="service-loader" value="ServiceLoader SPI&lt;br&gt;META-INF/services/...JavaHarnessPlugin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8E63CE;fontSize=14;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="345" y="1320" width="250" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="on-start" value="onStart()&lt;br&gt;并收集 tools()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8E63CE;fontSize=15;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="250" y="1420" width="230" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="node-bridge" value="识别 Node 插件入口&lt;br&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;.codex-plugin/plugin.json&lt;br&gt;package.json / cordis.yml&lt;/font&gt;&lt;br&gt;生成受限 node 运行计划" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8E63CE;fontSize=15;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="520" y="900" width="250" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="bridge-ready" value="bridgeReady？" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8E63CE;fontSize=15;fontStyle=1;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="365" y="1688" width="170" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="active" value="状态 ACTIVE&lt;br&gt;可被 Agent 调用" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#DFF7EA;strokeColor=#22A06B;fontSize=15;fontStyle=1;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="300" y="1815" width="230" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="failed" value="状态 FAILED" style="shape=cylinder3d;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#FFE4E6;strokeColor=#E5484D;fontSize=15;fontStyle=1;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="585" y="1815" width="165" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="agent-call" value="Agent 循环按名称调用&lt;br&gt;ToolRegistry.lookup(plugin__...)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#22A06B;fontSize=15;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="145" y="1925" width="270" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="execute" value="执行插件工具&lt;br&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;Java：进程内直调&lt;br&gt;Node：sidecar JSON-RPC&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#22A06B;fontSize=15;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="145" y="2025" width="270" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="mgmt" value="disable / uninstall" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#22A06B;fontSize=15;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="500" y="1925" width="230" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="stop" value="注销工具 + 移除提示词段落&lt;br&gt;onStop() 并关闭 ClassLoader" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#22A06B;fontSize=15;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="500" y="2025" width="250" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e-src-http-case" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#4A90E2;strokeWidth=2;" parent="1" source="src-http" target="install-case" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-src-preset-case" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#4A90E2;strokeWidth=2;" parent="1" source="src-preset" target="install-case" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-case-registry" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#4A90E2;strokeWidth=2;" parent="1" source="install-case" target="registry" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-registry-artifact" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#4A90E2;strokeWidth=2;" parent="1" source="registry" target="artifact" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-artifact-db" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#4A90E2;strokeWidth=2;" parent="1" source="artifact" target="db-registered" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-db-activate" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#6B7280;strokeWidth=2;" parent="1" source="db-registered" target="activate-case" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-activate-runtime" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#8E63CE;strokeWidth=2;" parent="1" source="activate-case" target="runtime-type" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-runtime-java" value="JAVA_NATIVE" style="endArrow=block;html=1;rounded=0;strokeColor=#8E63CE;strokeWidth=2;fontSize=12;fontStyle=1;" parent="1" source="runtime-type" target="java-manager" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-runtime-node" value="NODE_BRIDGE" style="endArrow=block;html=1;rounded=0;strokeColor=#8E63CE;strokeWidth=2;fontSize=12;fontStyle=1;" parent="1" source="runtime-type" target="node-bridge" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-java-manager-loader" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#8E63CE;strokeWidth=2;" parent="1" source="java-manager" target="java-loader" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-loader-manifest" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#8E63CE;strokeWidth=2;" parent="1" source="java-loader" target="manifest" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-manifest-entrypoint" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#8E63CE;strokeWidth=2;" parent="1" source="manifest" target="entrypoint" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-entrypoint-class" value="是" style="endArrow=block;html=1;rounded=0;strokeColor=#8E63CE;strokeWidth=2;fontSize=12;fontStyle=1;" parent="1" source="entrypoint" target="load-class" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-entrypoint-spi" value="否" style="endArrow=block;html=1;rounded=0;strokeColor=#8E63CE;strokeWidth=2;fontSize=12;fontStyle=1;" parent="1" source="entrypoint" target="service-loader" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-class-start" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#8E63CE;strokeWidth=2;" parent="1" source="load-class" target="on-start" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-spi-start" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#8E63CE;strokeWidth=2;" parent="1" source="service-loader" target="on-start" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-start-adapt" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#8E63CE;strokeWidth=2;" parent="1" source="on-start" target="adapt" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-node-adapt" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#8E63CE;strokeWidth=2;" parent="1" source="node-bridge" target="adapt" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="730" y="1380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-registry-ready" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#8E63CE;strokeWidth=2;" parent="1" source="tool-registry" target="bridge-ready" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-ready-active" value="是" style="endArrow=block;html=1;rounded=0;strokeColor=#22A06B;strokeWidth=2;fontSize=12;fontStyle=1;" parent="1" source="bridge-ready" target="active" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-ready-failed" value="否" style="endArrow=block;html=1;rounded=0;strokeColor=#E5484D;strokeWidth=2;fontSize=12;fontStyle=1;" parent="1" source="bridge-ready" target="failed" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-active-call" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#22A06B;strokeWidth=2;" parent="1" source="active" target="agent-call" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-call-exec" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#22A06B;strokeWidth=2;" parent="1" source="agent-call" target="execute" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-active-mgmt" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#22A06B;strokeWidth=2;" parent="1" source="active" target="mgmt" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-mgmt-stop" value="" style="endArrow=block;html=1;rounded=0;strokeColor=#22A06B;strokeWidth=2;" parent="1" source="mgmt" target="stop" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-failed-reactivate" value="修复后重新 activate" style="endArrow=block;html=1;rounded=1;dashed=1;strokeColor=#E5484D;strokeWidth=2;fontSize=12;fontStyle=1;" parent="1" source="failed" target="activate-case" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="760" y="1850" as="sourcePoint" />
+            <mxPoint x="615" y="680" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="790" y="1850" />
+              <mxPoint x="790" y="680" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

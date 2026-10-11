@@ -1,0 +1,377 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.2.5 Chrome/138.0.7204.251 Electron/37.6.1 Safari/537.36" version="28.2.5" pages="3">
+  <diagram id="overview" name="01-整体架构">
+    <mxGraphModel dx="1937" dy="1120" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="2400" pageHeight="1350" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="ov-title" value="DSH Java 插件如何连接你的应用 " style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=28;fontStyle=1;fontColor=#102A43;" parent="1" vertex="1">
+          <mxGeometry x="50" y="70" width="1500" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-subtitle" value="一句话理解：你的应用负责发起对话，Harness 负责思考和编排，插件负责调用你的业务 API，业务数据仍然在你的系统里。" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontColor=#52606D;" parent="1" vertex="1">
+          <mxGeometry x="40" y="130" width="1900" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-note" value="关键边界：dsh-java 不会自动读取你的数据库；插件才是连接 Agent 与业务系统的桥。" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;fillColor=#FFF4CC;strokeColor=#D6B656;fontColor=#6B4E00;" parent="1" vertex="1">
+          <mxGeometry x="920" y="230" width="560" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-user" value="用户 / 你的应用界面" style="swimlane;html=1;rounded=1;startSize=42;collapsible=0;fontSize=17;fontStyle=1;whiteSpace=wrap;fillColor=#EAF2FF;strokeColor=#4A78A8;fontColor=#173F5F;" parent="1" vertex="1">
+          <mxGeometry x="50" y="230" width="310" height="520" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-user-chat" value="用户输入&#xa;“帮我查询订单状态”" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#9FBAD0;" parent="ov-user" vertex="1">
+          <mxGeometry x="25" y="75" width="260" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-user-ui" value="聊天窗口 / 客服页面&#xa;展示流式回答" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#9FBAD0;" parent="ov-user" vertex="1">
+          <mxGeometry x="25" y="205" width="260" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-user-sse" value="接收 SSE / REST 结果" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#9FBAD0;" parent="ov-user" vertex="1">
+          <mxGeometry x="25" y="335" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-app" value="你的应用" style="swimlane;html=1;rounded=1;startSize=42;collapsible=0;fontSize=17;fontStyle=1;whiteSpace=wrap;fillColor=#E8F5EE;strokeColor=#3C9D6B;fontColor=#1F5137;" parent="1" vertex="1">
+          <mxGeometry x="410" y="230" width="390" height="520" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-app-ui" value="业务前端&#xa;商城 / CRM / 管理后台" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#8FC9A8;" parent="ov-app" vertex="1">
+          <mxGeometry x="25" y="75" width="340" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-app-api" value="你的应用后端&#xa;接收用户消息，调用 Harness API" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#8FC9A8;" parent="ov-app" vertex="1">
+          <mxGeometry x="25" y="180" width="340" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-app-business" value="业务 API&#xa;/api/orders、/api/products、/api/mysql/..." style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#8FC9A8;" parent="ov-app" vertex="1">
+          <mxGeometry x="25" y="310" width="340" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-app-db" value="你的业务数据&#xa;数据库 / 内部服务 / 第三方 API" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#8FC9A8;" parent="ov-app" vertex="1">
+          <mxGeometry x="25" y="430" width="340" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-harness" value="dsh-java" style="swimlane;html=1;rounded=1;startSize=42;collapsible=0;fontSize=17;fontStyle=1;whiteSpace=wrap;fillColor=#FFF4E5;strokeColor=#D99000;fontColor=#704B00;" parent="1" vertex="1">
+          <mxGeometry x="52" y="810" width="500" height="520" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-h-api" value="HTTP API :8090&#xa;POST /api/agent/stream" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#E1B65C;" parent="ov-harness" vertex="1">
+          <mxGeometry x="30" y="75" width="440" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-h-agent" value="Agent / ReAct 循环&#xa;理解问题 → 选择工具 → 回填结果 → 继续回答" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#E1B65C;" parent="ov-harness" vertex="1">
+          <mxGeometry x="30" y="180" width="440" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-h-registry" value="Tool Registry&#xa;plugin__插件ID__工具名" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#E1B65C;" parent="ov-harness" vertex="1">
+          <mxGeometry x="30" y="310" width="440" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-h-plugin" value="Plugin Runtime&#xa;加载 JAR、配置、生命周期、Hook" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#E1B65C;" parent="ov-harness" vertex="1">
+          <mxGeometry x="30" y="420" width="440" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-plugin" value="你的插件 JAR" style="swimlane;html=1;rounded=1;startSize=42;collapsible=0;fontSize=17;fontStyle=1;whiteSpace=wrap;fillColor=#F1EAFE;strokeColor=#8B5CF6;fontColor=#4C1D95;" parent="1" vertex="1">
+          <mxGeometry x="602" y="810" width="360" height="520" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-p-entry" value="MyPlugin&#xa;extends AbstractHarnessPlugin" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#B7A0F4;" parent="ov-plugin" vertex="1">
+          <mxGeometry x="25" y="75" width="310" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-p-tool" value="MyTool&#xa;extends AbstractTool" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#B7A0F4;" parent="ov-plugin" vertex="1">
+          <mxGeometry x="25" y="180" width="310" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-p-client" value="业务客户端&#xa;HttpClient / SDK / JDBC" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#B7A0F4;" parent="ov-plugin" vertex="1">
+          <mxGeometry x="25" y="285" width="310" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-p-meta" value="META-INF/plugin.yaml&#xa;+ ServiceLoader" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#B7A0F4;" parent="ov-plugin" vertex="1">
+          <mxGeometry x="25" y="390" width="310" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="_dvHXS0XlqiD-4wgCy4P-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="ov-data" target="ov-app">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-data" value="业务系统 / 数据" style="swimlane;html=1;rounded=1;startSize=42;collapsible=0;fontSize=17;fontStyle=1;whiteSpace=wrap;fillColor=#FDEBEC;strokeColor=#C85A54;fontColor=#7A2424;" parent="1" vertex="1">
+          <mxGeometry x="1012" y="810" width="400" height="520" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-data-api" value="业务 API&#xa;由你的应用提供&#xa;或由配套服务提供" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#E1A2A0;" parent="ov-data" vertex="1">
+          <mxGeometry x="25" y="100" width="350" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-data-db" value="数据库 / 文件 / 外部服务&#xa;订单、商品、客户、MySQL 数据" style="shape=cylinder;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#E1A2A0;" parent="ov-data" vertex="1">
+          <mxGeometry x="25" y="270" width="350" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-edge1" value="① 用户提问" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#4A78A8;fontColor=#173F5F;endArrow=block;" parent="1" source="ov-user-chat" target="ov-app-ui" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-edge2" value="② 你的后端调用 Harness" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#3C9D6B;fontColor=#1F5137;endArrow=block;" parent="1" source="ov-app-api" target="ov-h-api" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="860" y="455" />
+              <mxPoint x="860" y="780" />
+              <mxPoint x="302" y="780" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ov-edge3" value="③ 请求模型判断下一步" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#D99000;fontColor=#704B00;endArrow=block;" parent="1" source="ov-h-agent" target="ov-h-registry" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-edge4" value="④ 调用 plugin__my-plugin__my_tool" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8B5CF6;fontColor=#4C1D95;endArrow=block;" parent="1" source="ov-h-registry" target="ov-p-tool" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-edge5" value="⑤ 插件请求业务数据" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8B5CF6;fontColor=#4C1D95;endArrow=block;" parent="1" source="ov-p-client" target="ov-data-api" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="782" y="1190" />
+              <mxPoint x="992" y="1190" />
+              <mxPoint x="992" y="960" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ov-edge6" value="⑥ 查询真实数据" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#C85A54;fontColor=#7A2424;endArrow=block;" parent="1" source="ov-data-api" target="ov-data-db" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1432" y="960" />
+              <mxPoint x="1432" y="1135" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ov-edge7" value="⑦ 数据返回" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#C85A54;fontColor=#7A2424;endArrow=block;" parent="1" source="ov-data-api" target="ov-p-client" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1212" y="870" />
+              <mxPoint x="952" y="870" />
+              <mxPoint x="952" y="1133" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ov-edge8" value="⑧ 工具结果回填 Agent" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#8B5CF6;fontColor=#4C1D95;endArrow=block;" parent="1" source="ov-p-tool" target="ov-h-agent" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-edge9" value="⑨ 最终答案通过 SSE 返回" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#3C9D6B;fontColor=#1F5137;endArrow=block;entryX=1;entryY=0.25;entryDx=0;entryDy=0;" parent="1" source="ov-h-api" target="ov-app-api" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="230" y="760" />
+              <mxPoint x="910" y="760" />
+              <mxPoint x="910" y="432" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ov-edge10" value="⑩ 页面展示答案" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#4A78A8;fontColor=#173F5F;endArrow=block;" parent="1" source="ov-app-ui" target="ov-user-ui" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="605" y="200" />
+              <mxPoint x="30" y="200" />
+              <mxPoint x="30" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ov-examples" value="真实案例映射：dsh-java-mysql-plugin → dsh-java-mysql 管理 API → MySQL；商城插件 → 商城业务 API → 商品 / 订单 / 物流数据。" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;align=center;verticalAlign=middle;fillColor=#F7F9FC;strokeColor=#BCCCDC;fontColor=#52606D;" parent="1" vertex="1">
+          <mxGeometry x="920" y="340" width="560" height="60" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sequence" name="02-对话时序">
+    <mxGraphModel dx="2422" dy="1400" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="2400" pageHeight="1450" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sq-title" value="一次对话是怎样跑通的" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=28;fontStyle=1;fontColor=#102A43;" parent="1" vertex="1">
+          <mxGeometry x="50" y="28" width="1300" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-subtitle" value="示例问题：用户在你的应用里说“查询订单状态”。每一步都对应一个真实的请求或返回。" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontColor=#52606D;" parent="1" vertex="1">
+          <mxGeometry x="52" y="80" width="1800" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-user" value="用户 / 前端" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=middle;fillColor=#EAF2FF;strokeColor=#4A78A8;fontColor=#173F5F;" parent="1" vertex="1">
+          <mxGeometry x="50" y="150" width="260" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-app" value="你的应用后端" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=middle;fillColor=#E8F5EE;strokeColor=#3C9D6B;fontColor=#1F5137;" parent="1" vertex="1">
+          <mxGeometry x="370" y="150" width="300" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-harness" value="dsh-java" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=middle;fillColor=#FFF4E5;strokeColor=#D99000;fontColor=#704B00;" parent="1" vertex="1">
+          <mxGeometry x="730" y="150" width="350" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-llm" value="LLM 模型" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=middle;fillColor=#FDEBEC;strokeColor=#C85A54;fontColor=#7A2424;" parent="1" vertex="1">
+          <mxGeometry x="1140" y="150" width="280" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-plugin" value="你的插件 JAR" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=middle;fillColor=#F1EAFE;strokeColor=#8B5CF6;fontColor=#4C1D95;" parent="1" vertex="1">
+          <mxGeometry x="1480" y="150" width="300" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-data" value="业务 API / 数据库" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=middle;fillColor=#FFF4E5;strokeColor=#D99000;fontColor=#704B00;" parent="1" vertex="1">
+          <mxGeometry x="1840" y="150" width="350" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-line1" style="fillColor=none;strokeColor=#B8C4CE;dashed=1;" parent="1" vertex="1">
+          <mxGeometry x="180" y="205" width="1" height="1200" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-line2" style="fillColor=none;strokeColor=#B8C4CE;dashed=1;" parent="1" vertex="1">
+          <mxGeometry x="520" y="205" width="1" height="1200" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-line3" style="fillColor=none;strokeColor=#B8C4CE;dashed=1;" parent="1" vertex="1">
+          <mxGeometry x="905" y="205" width="1" height="1200" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-line4" style="fillColor=none;strokeColor=#B8C4CE;dashed=1;" parent="1" vertex="1">
+          <mxGeometry x="1280" y="205" width="1" height="1200" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-line5" style="fillColor=none;strokeColor=#B8C4CE;dashed=1;" parent="1" vertex="1">
+          <mxGeometry x="1630" y="205" width="1" height="1200" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-line6" style="fillColor=none;strokeColor=#B8C4CE;dashed=1;" parent="1" vertex="1">
+          <mxGeometry x="2015" y="205" width="1" height="1200" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-1" value="1  用户输入：查询订单状态" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#EAF2FF;strokeColor=#4A78A8;" parent="1" vertex="1">
+          <mxGeometry x="65" y="255" width="230" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-2" value="2  POST /api/agent/stream&#xa;把消息发给 Harness" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#E8F5EE;strokeColor=#3C9D6B;" parent="1" vertex="1">
+          <mxGeometry x="390" y="345" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-3" value="3  创建 Agent 回合&#xa;读取可用工具列表" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#FFF4E5;strokeColor=#D99000;" parent="1" vertex="1">
+          <mxGeometry x="775" y="435" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-4" value="4  模型判断：需要调用工具" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#FDEBEC;strokeColor=#C85A54;" parent="1" vertex="1">
+          <mxGeometry x="1165" y="525" width="230" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-5" value="5  返回工具调用&#xa;plugin__my-plugin__query_order" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#FDEBEC;strokeColor=#C85A54;" parent="1" vertex="1">
+          <mxGeometry x="1165" y="615" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-6" value="6  Harness 找到并执行插件 Tool" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#FFF4E5;strokeColor=#D99000;" parent="1" vertex="1">
+          <mxGeometry x="775" y="705" width="260" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-7" value="7  插件调用你的业务 API&#xa;GET /api/orders/{orderId}" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#F1EAFE;strokeColor=#8B5CF6;" parent="1" vertex="1">
+          <mxGeometry x="1500" y="795" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-8" value="8  业务 API 查询数据库 / 服务" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#FFF4E5;strokeColor=#D99000;" parent="1" vertex="1">
+          <mxGeometry x="1885" y="885" width="260" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-9" value="9  返回真实业务数据" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#FFF4E5;strokeColor=#D99000;" parent="1" vertex="1">
+          <mxGeometry x="1500" y="975" width="260" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-10" value="10  Tool 返回 ToolExecutionResult" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#F1EAFE;strokeColor=#8B5CF6;" parent="1" vertex="1">
+          <mxGeometry x="1500" y="1065" width="260" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-11" value="11  Harness 把工具结果回填给模型" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#FFF4E5;strokeColor=#D99000;" parent="1" vertex="1">
+          <mxGeometry x="775" y="1155" width="260" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-12" value="12  模型生成最终回答" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#FDEBEC;strokeColor=#C85A54;" parent="1" vertex="1">
+          <mxGeometry x="1165" y="1245" width="230" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-13" value="13  SSE 流式返回到你的应用，页面展示答案" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#E8F5EE;strokeColor=#3C9D6B;" parent="1" vertex="1">
+          <mxGeometry x="390" y="1335" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-e1" value="发送消息" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#4A78A8;endArrow=block;" parent="1" source="sq-1" target="sq-2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-e2" value="请求模型" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#3C9D6B;endArrow=block;" parent="1" source="sq-2" target="sq-3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-e3" value="工具定义 + 用户问题" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#D99000;endArrow=block;" parent="1" source="sq-3" target="sq-4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-e4" value="tool call" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#C85A54;endArrow=block;" parent="1" source="sq-4" target="sq-5" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-e5" value="执行工具" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#C85A54;endArrow=block;" parent="1" source="sq-5" target="sq-6" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-e6" value="HTTP / SDK / JDBC" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8B5CF6;endArrow=block;" parent="1" source="sq-6" target="sq-7" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-e7" value="查询数据" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8B5CF6;endArrow=block;" parent="1" source="sq-7" target="sq-8" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-e8" value="返回结果" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#D99000;endArrow=block;" parent="1" source="sq-8" target="sq-9" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-e9" value="Tool result" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#8B5CF6;endArrow=block;" parent="1" source="sq-9" target="sq-10" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-e10" value="回填上下文" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#8B5CF6;endArrow=block;" parent="1" source="sq-10" target="sq-11" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-e11" value="最终回答" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#D99000;endArrow=block;" parent="1" source="sq-11" target="sq-12" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sq-e12" value="SSE / stream" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#3C9D6B;endArrow=block;" parent="1" source="sq-12" target="sq-13" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="lifecycle" name="03-插件开发与安装">
+    <mxGraphModel dx="1473" dy="840" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1250" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="lc-title" value="从写插件到被 Agent 使用" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=28;fontStyle=1;fontColor=#102A43;" parent="1" vertex="1">
+          <mxGeometry x="50" y="28" width="1500" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-subtitle" value="开发阶段产出一个 JAR；运行阶段由 Harness 加载 JAR，并把工具注册给 Agent。" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontColor=#52606D;" parent="1" vertex="1">
+          <mxGeometry x="52" y="80" width="1800" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-dev" value="① 开发者 / 你的工程" style="swimlane;html=1;rounded=1;startSize=42;collapsible=0;fontSize=17;fontStyle=1;whiteSpace=wrap;fillColor=#EAF2FF;strokeColor=#4A78A8;fontColor=#173F5F;" parent="1" vertex="1">
+          <mxGeometry x="50" y="190" width="500" height="610" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-pom" value="pom.xml&#xa;依赖 dsh-java-types" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#9FBAD0;" parent="lc-dev" vertex="1">
+          <mxGeometry x="30" y="75" width="440" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-code" value="MyPlugin + MyTool&#xa;实现业务能力" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#9FBAD0;" parent="lc-dev" vertex="1">
+          <mxGeometry x="30" y="185" width="440" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-meta" value="META-INF/plugin.yaml&#xa;+ ServiceLoader 文件" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#9FBAD0;" parent="lc-dev" vertex="1">
+          <mxGeometry x="30" y="295" width="440" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-build" value="mvn clean package&#xa;产出 my-plugin.jar" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#9FBAD0;" parent="lc-dev" vertex="1">
+          <mxGeometry x="30" y="405" width="440" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-harness" value="② dsh-java" style="swimlane;html=1;rounded=1;startSize=42;collapsible=0;fontSize=17;fontStyle=1;whiteSpace=wrap;fillColor=#FFF4E5;strokeColor=#D99000;fontColor=#704B00;" parent="1" vertex="1">
+          <mxGeometry x="700" y="190" width="600" height="610" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-install" value="POST /api/harness/plugins/install&#xa;读取 plugin.yaml，复制 / 加载 JAR" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#E1B65C;" parent="lc-harness" vertex="1">
+          <mxGeometry x="35" y="75" width="530" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-loader" value="Plugin Runtime&#xa;ClassLoader 隔离加载入口类" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#E1B65C;" parent="lc-harness" vertex="1">
+          <mxGeometry x="35" y="190" width="530" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-register" value="注册工具、提示词、Hook&#xa;生成 plugin__插件ID__工具名" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#E1B65C;" parent="lc-harness" vertex="1">
+          <mxGeometry x="35" y="300" width="530" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-active" value="activate / run&#xa;插件进入 ACTIVE，可被 Agent 调用" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#E1B65C;" parent="lc-harness" vertex="1">
+          <mxGeometry x="35" y="410" width="530" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-runtime" value="③ 运行时" style="swimlane;html=1;rounded=1;startSize=42;collapsible=0;fontSize=17;fontStyle=1;whiteSpace=wrap;fillColor=#F1EAFE;strokeColor=#8B5CF6;fontColor=#4C1D95;" parent="1" vertex="1">
+          <mxGeometry x="1450" y="190" width="620" height="610" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-question" value="用户提问&#xa;你的应用调用 /api/agent/stream" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#B7A0F4;" parent="lc-runtime" vertex="1">
+          <mxGeometry x="35" y="75" width="550" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-call" value="模型选择工具&#xa;Harness 执行插件 Tool" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#B7A0F4;" parent="lc-runtime" vertex="1">
+          <mxGeometry x="35" y="190" width="550" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-business" value="插件通过 HTTP / SDK / JDBC&#xa;拿到你的业务数据并返回结果" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#B7A0F4;" parent="lc-runtime" vertex="1">
+          <mxGeometry x="35" y="300" width="550" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-answer" value="Harness 继续生成答案&#xa;SSE 返回你的应用页面" style="rounded=1;whiteSpace=wrap;html=1;fontSize=15;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#B7A0F4;" parent="lc-runtime" vertex="1">
+          <mxGeometry x="35" y="410" width="550" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-e1" value="提交 JAR" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#4A78A8;endArrow=block;" parent="1" source="lc-build" target="lc-install" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="620" y="633" />
+              <mxPoint x="620" y="305" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lc-e2" value="加载" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#D99000;endArrow=block;" parent="1" source="lc-install" target="lc-loader" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-e3" value="注册" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#D99000;endArrow=block;" parent="1" source="lc-loader" target="lc-register" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-e4" value="启动" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#D99000;endArrow=block;" parent="1" source="lc-register" target="lc-active" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-e5" value="开发完成后，Agent 进入运行链路" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8B5CF6;endArrow=block;" parent="1" source="lc-active" target="lc-question" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1360" y="638" />
+              <mxPoint x="1360" y="303" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lc-e6" value="tool call" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8B5CF6;endArrow=block;" parent="1" source="lc-question" target="lc-call" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-e7" value="业务 API / 数据库" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8B5CF6;endArrow=block;" parent="1" source="lc-call" target="lc-business" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-e8" value="ToolExecutionResult" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#8B5CF6;endArrow=block;" parent="1" source="lc-business" target="lc-answer" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lc-tip" value="小白记忆法：插件不是数据库本身，插件是一个“会说 Agent 语言的业务适配器”。它接收工具参数，调用你的业务接口，再把真实结果交还给 Harness。" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=middle;fillColor=#FFF4CC;strokeColor=#D6B656;fontColor=#6B4E00;" parent="1" vertex="1">
+          <mxGeometry x="300" y="900" width="1500" height="75" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

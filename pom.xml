@@ -1,0 +1,184 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>net.linlan.dsh</groupId>
+    <artifactId>dsh-java</artifactId>
+    <version>0.2.0</version>
+    <packaging>pom</packaging>
+
+    <name>dsh-java</name>
+    <description>
+        DSH JAVA 智能底座
+    </description>
+    <url>https://github.com/linlannet/dsh-java</url>
+
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <scm>
+        <url>https://github.com/linlannet/dsh-java</url>
+        <connection>scm:git:git://github.com/linlannet/dsh-java.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/linlannet/dsh-java.git</developerConnection>
+    </scm>
+
+    <developers>
+        <developer>
+            <id>linlan</id>
+            <name>linlan info</name>
+            <email>linlannet@163.com</email>
+            <organization>Linlan Corporation</organization>
+            <url>https://github.com/linlannet</url>
+            <roles>
+                <role>Member</role>
+            </roles>
+            <timezone>Asia/Beijing</timezone>
+        </developer>
+    </developers>
+
+    <modules>
+        <module>dsh-java-app</module>
+        <module>dsh-java-trigger</module>
+        <module>dsh-java-api</module>
+        <module>dsh-java-case</module>
+        <module>dsh-java-types</module>
+        <module>dsh-java-domain</module>
+        <module>dsh-java-infrastructure</module>
+        <module>plugins/sample-tools-plugin</module>
+        <module>plugins/dsh-plugin-archetype</module>
+    </modules>
+
+    <properties>
+        <java.version>17</java.version>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <spring-boot.version>3.5.16</spring-boot.version>
+        <mybatis-spring-boot.version>3.0.5</mybatis-spring-boot.version>
+        <maven.source.version>3.3.0</maven.source.version>
+        <maven.javadoc.version>3.3.1</maven.javadoc.version>
+        <maven.gpg.version>3.2.8</maven.gpg.version>
+        <maven.sonatype.version>0.10.0</maven.sonatype.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.13.0</version>
+                    <configuration>
+                        <parameters>true</parameters>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>${spring-boot.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.2.5</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <!-- 版本管理插件：统一升级/回退全工程（含子模块）版本号 -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>versions-maven-plugin</artifactId>
+                <version>2.16.2</version>
+                <configuration>
+                    <!-- 各模块版本与父工程保持一致 -->
+                    <processAllModules>true</processAllModules>
+                    <!-- 不产生 pom.xml.versionsBackup 备份文件 -->
+                    <generateBackupPoms>false</generateBackupPoms>
+                </configuration>
+            </plugin>
+            <!-- 源码包 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>${maven.source.version}</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals><goal>jar-no-fork</goal></goals>
+                        <phase>package</phase>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Javadoc 包 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>${maven.javadoc.version}</version>
+                <configuration>
+                    <charset>UTF-8</charset>
+                    <encoding>UTF-8</encoding>
+                    <docencoding>UTF-8</docencoding>
+                    <additionalJOption>-Xdoclint:none</additionalJOption>
+                    <failOnError>false</failOnError>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals><goal>jar</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- GPG 签名 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>${maven.gpg.version}</version>
+                <executions>
+                    <execution>
+                        <id>sign-all-artifacts</id>
+                        <phase>verify</phase>
+                        <goals><goal>sign</goal></goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <keyname>linlannet</keyname>
+                    <gpgArguments>
+                        <arg>--pinentry-mode</arg>
+                        <arg>loopback</arg>
+                    </gpgArguments>
+                </configuration>
+            </plugin>
+            <!-- 发布到 Maven Central (https://central.sonatype.org/) -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>${maven.sonatype.version}</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <autoPublish>true</autoPublish>
+                    <centralSnapshotsUrl>https://central.sonatype.com/repository/maven-snapshots/</centralSnapshotsUrl>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

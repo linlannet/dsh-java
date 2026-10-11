@@ -1,0 +1,6 @@
+id: ${pluginId}
+name: ${pluginName}
+version: ${version}
+author: ${pluginAuthor}
+description: ${pluginDescription}
+entrypoint: ${package}.${pluginClass}

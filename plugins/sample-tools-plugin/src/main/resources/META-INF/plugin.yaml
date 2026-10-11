@@ -1,0 +1,6 @@
+id: sample-tools
+name: Sample Tools Plugin
+version: 1.0.0
+author: Harness Team
+description: 示例插件，提供天气查询(weather_query)和文件摘要(file_summary)工具。
+entrypoint: cn.walioffice.plugin.sample.SampleToolsPlugin

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>net.linlan.dsh</groupId>
+        <artifactId>dsh-java</artifactId>
+        <version>0.2.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>dsh-java-types</artifactId>
+    <packaging>jar</packaging>
+
+    <name>dsh-java-types</name>
+    <description>
+        插件开发契约包：SPI 接口、抽象基类、工具/内容值对象。外部插件工程只需依赖此包即可开发。
+    </description>
+    <url>https://github.com/linlannet/dsh-java</url>
+
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <scm>
+        <url>https://github.com/linlannet/dsh-java/tree/main/dsh-java-types</url>
+        <connection>scm:git:git://github.com/linlannet/dsh-java.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/linlannet/dsh-java.git</developerConnection>
+    </scm>
+
+    <developers>
+        <developer>
+            <id>linlan</id>
+            <name>linlan info</name>
+            <email>linlannet@163.com</email>
+            <organization>Linlan Corporation</organization>
+            <url>https://github.com/linlannet</url>
+            <roles>
+                <role>Member</role>
+            </roles>
+            <timezone>Asia/Beijing</timezone>
+        </developer>
+    </developers>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

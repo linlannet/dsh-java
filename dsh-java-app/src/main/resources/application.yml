@@ -1,0 +1,40 @@
+server:
+  port: 8090
+
+logging:
+  level:
+    net.linlan.dsh: info
+
+spring:
+  application:
+    name: dsh-java
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/dsh_java?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: lldba
+    password: DB_Lldba_2023!
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+    hikari:
+      initialization-fail-timeout: 0
+      connection-timeout: 3000
+      validation-timeout: 2000
+      minimum-idle: 1
+      maximum-pool-size: 10
+      keepalive-time: 30000
+      max-lifetime: 600000
+      leak-detection-threshold: 30000
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+  config:
+    import:
+      - optional:classpath:harness.yml
+      - optional:file:./harness.yml
+      - optional:classpath:harness-extensions.yml
+      - optional:file:./harness-extensions.yml
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+    default-fetch-size: 100
+    default-statement-timeout: 30

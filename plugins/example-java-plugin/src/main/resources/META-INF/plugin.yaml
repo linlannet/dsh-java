@@ -1,0 +1,6 @@
+id: example-java-plugin
+name: Example Java Plugin
+version: 1.0.0
+author: Harness Team
+description: A sample plugin with echo and calculator tools.
+entrypoint: com.example.plugin.ExampleJavaPlugin

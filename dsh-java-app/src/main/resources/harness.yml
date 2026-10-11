@@ -1,0 +1,104 @@
+harness:
+  llm:
+    deepseek:
+      base-url: ${LLM_BASE_URL:${DEEPSEEK_BASE_URL:http://127.0.0.1:28080/v1}}
+      api-key: ${LLM_API_KEY:${DEEPSEEK_API_KEY:}}
+      max-tokens: 8192
+      context-window: 128000
+      default-model: ${LLM_DEFAULT_MODEL:${DEEPSEEK_DEFAULT_MODEL:Deepseek-V4.1-Flash}}
+
+  approval:
+    required-profiles:
+      - web
+    required-tools:
+      - shell_execute
+      - fs_write
+      - plugin.run
+      - subprocess.spawn
+    runtime-timeout-ms: 600000
+
+  sandbox:
+    default-mode: WORKSPACE_WRITE
+    shell-enabled: true
+    fs-enabled: true
+
+  agent:
+    default-cwd: ${HARNESS_AGENT_CWD:${user.dir}}
+    compaction:
+      pressure-threshold-tokens: 100000
+      min-messages-to-compact: 6
+
+  auth:
+    api-keys: []
+
+  goal:
+    default-max-rounds: 256
+
+  web:
+    search-api-base: ${HARNESS_SEARCH_API_BASE:}
+    search-api-key: ${HARNESS_SEARCH_API_KEY:}
+
+  storage:
+    root: ${HARNESS_STORAGE_ROOT:${user.home}/.dsh/storage}
+
+  terminal:
+    default-cwd: ${HARNESS_TERMINAL_CWD:${user.dir}}
+
+  workspace:
+    root: ./workspaces
+
+  acp:
+    command: ${HARNESS_ACP_COMMAND:}
+
+  subagent:
+    acp:
+      command: ${HARNESS_ACP_SUBAGENT_COMMAND:}
+    codex:
+      command: ${HARNESS_CODEX_COMMAND:codex}
+    claude-code:
+      command: ${HARNESS_CLAUDE_COMMAND:claude}
+
+  extensions:
+    skills:
+      enabled: true
+      project-enabled: true
+      home: ${HARNESS_SKILL_HOME:}
+      bundled-dir: ${HARNESS_BUNDLED_SKILLS:}
+      roots:
+        - ./skills
+
+    mcp:
+      enabled: true
+      servers:
+        - name: baidu-ai-search
+          transport: sse
+          url: http://appbuilder.baidu.com/v2/ai_search/mcp/sse?api_key=${BAIDU_APPBUILDER_API_KEY:}
+      # - name: filesystem
+      #   transport: stdio
+      #   command: npx
+      #   args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+      #   env: {}
+      #   cwd: ""
+      # - name: remote-tools
+      #   transport: streamable-http
+      #   url: http://127.0.0.1:3000/mcp
+      #   headers: {}
+
+    plugins:
+      install-root: ./plugins
+      node-bridge-enabled: true
+      preset:
+        - plugin-id: dsh-demo-plugin
+          display-name: DSH Demo Plugin
+          plugin-version: 1.0.0
+          runtime-type: DSH_NODE_BRIDGE
+          source-path: ./plugins/dsh-demo-plugin
+          entrypoint: index.js
+          auto-start: true
+        - plugin-id: sample-tools
+          display-name: Sample Tools Plugin
+          plugin-version: 1.0.0
+          runtime-type: JAVA_NATIVE
+          source-path: ./plugins/sample-tools-plugin-1.0.0.jar
+          entrypoint: sample-tools-plugin-1.0.0.jar
+          auto-start: true

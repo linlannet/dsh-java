@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="BwEomSu5ckqs68FaPnpnnJ">
+<head data-page-node-id="oalohPWebQIL7RpplcFaFk">
+<meta charset="UTF-8" data-page-node-id="vywPkkLHGdXbm2Kr85fq7V">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="1LtwyaMkCq7ZM7bBvkGgUO">
+<title>dsh-java domain/case 优化分析报告</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg2:#f7f6f3; --bg3:#eeedea;
+    --tx:#2c2c2a; --tx2:#5f5e5a; --tx3:#888780;
+    --bd:#d3d1c7; --bd2:#b4b2a9;
+    --good:#085041; --goodbg:#e1f5ee;
+    --mid:#633806; --midbg:#faeeda;
+    --bad:#791f1f; --badbg:#fcebeb;
+    --ac:#0C447C; --acbg:#e6f1fb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:0;background:var(--bg3);font-family:-apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:var(--tx);line-height:1.65;font-size:15px}
+  .wrap{max-width:920px;margin:0 auto;padding:32px 28px 80px;background:var(--bg);box-shadow:0 0 0 1px var(--bd)}
+  h1{font-size:22px;font-weight:600;margin:0 0 4px;line-height:1.4}
+  .sub{color:var(--tx2);font-size:13px;margin-bottom:28px}
+  h2{font-size:18px;font-weight:600;margin:36px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--bd);color:var(--ac)}
+  h3{font-size:15px;font-weight:600;margin:24px 0 8px;color:var(--tx)}
+  h4{font-size:14px;font-weight:600;margin:18px 0 6px;color:var(--tx2)}
+  p{margin:8px 0}
+  code{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:13px;background:var(--bg2);padding:1px 5px;border-radius:4px;color:var(--ac)}
+  pre{background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:14px 16px;overflow-x:auto;font-size:13px;line-height:1.5;margin:10px 0}
+  pre code{background:none;padding:0;color:var(--tx)}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px}
+  th,td{border:1px solid var(--bd);padding:8px 10px;text-align:left;vertical-align:top}
+  thead th{background:var(--bg2);font-weight:600;font-size:13px}
+  tbody th{background:var(--bg2);font-weight:600;width:130px;white-space:nowrap}
+  .pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:500}
+  .good{background:var(--goodbg);color:var(--good)}
+  .mid{background:var(--midbg);color:var(--mid)}
+  .bad{background:var(--badbg);color:var(--bad)}
+  .nm{font-size:12px;color:var(--tx3);margin-top:2px}
+  .card{border:1px solid var(--bd);border-radius:10px;padding:16px 18px;margin:14px 0;background:var(--bg)}
+  .card.keep{border-left:4px solid var(--good);background:#f6fbf8}
+  .card.fix{border-left:4px solid var(--bad);background:#fff7f7}
+  .card.warn{border-left:4px solid var(--mid);background:#fffdf7}
+  .tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:4px;margin-right:6px;vertical-align:middle}
+  .t-keep{background:var(--goodbg);color:var(--good)}
+  .t-fix{background:var(--badbg);color:var(--bad)}
+  .t-warn{background:var(--midbg);color:var(--mid)}
+  .t-p0{background:var(--bad);color:#fff}
+  .t-p1{background:var(--mid);color:#fff}
+  .t-p2{background:var(--tx3);color:#fff}
+  ul,ol{margin:6px 0;padding-left:22px}
+  li{margin:4px 0}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0 0;font-size:12px;color:var(--tx2)}
+  .ref{font-size:12px;color:var(--tx3);font-style:italic}
+  .toc{background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:14px 20px;margin:0 0 24px}
+  .toc ol{margin:0}
+  .toc a{color:var(--ac);text-decoration:none}
+  .toc a:hover{text-decoration:underline}
+  .quote{border-left:3px solid var(--bd2);padding:2px 0 2px 14px;color:var(--tx2);margin:10px 0;font-style:italic}
+  .foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--bd);font-size:12px;color:var(--tx3)}
+</style>
+</head>
+<body data-page-node-id="ZkPG3MqzTez1eQnGAGj0s2">
+<div class="wrap" data-page-node-id="OevhOEAXVTyXQuZL8eJSAk">
+
+<h1 data-page-node-id="TX3OUwrxpHQ9Y2ONG2WJbI">dsh-java domain / case 层优化分析报告</h1>
+<div class="sub" data-page-node-id="SK1QKBfEpY6LfSgRdhrLm5">对照项目：group-buy-market · ai-mcp-gateway　|　生成时间：2026-09-06</div>
+
+<div class="toc" data-page-node-id="gIBPoTFdTDQcJ6PIxtdWel">
+<strong data-page-node-id="iIugDoJmra8G1OSIeS3tfK">目录</strong>
+<ol data-page-node-id="eOf7M2mNC7PbbXCygwaKyU">
+  <li data-page-node-id="GGUFLXvnYPHheFqJDBC8nY"><a href="#s1" data-page-node-id="lHocdVbaORDmYlcOI0cDNN">三项目 domain/case 设计速览</a></li>
+  <li data-page-node-id="Pg1S1SCvKWAWNEirGes3dI"><a href="#s2" data-page-node-id="kNSMmjEtHj6E9fcjG6tAbM">dsh-java 已具备的优势（应保持）</a></li>
+  <li data-page-node-id="stK3Wd8cKtKYbbQi5XzFTT"><a href="#s3" data-page-node-id="2oHPnrWyGW5YRFKDrZHKHY">dsh-java 优化建议（按优先级）</a></li>
+  <li data-page-node-id="zHRShCmzZ00eaBVMC4hsW9"><a href="#s4" data-page-node-id="Pw7q6vfn34dJVOdTY2v5eN">可向两个参考项目借鉴的具体做法</a></li>
+  <li data-page-node-id="WUt3AZnvvxIry1pbQc3dxl"><a href="#s5" data-page-node-id="59UG0Jmq273OBZ4OMduS16">落地优先级与小结</a></li>
+</ol>
+</div>
+
+<h2 id="s1" data-page-node-id="vjMNYI0bqcaUKDbLV5DDvR">一、三项目 domain/case 设计速览</h2>
+
+<p data-page-node-id="WOuj6IbqzAoe4NFBumTZWN">先给结论性判断：<strong data-page-node-id="aieA3F4UvwHpvyVXtNCnMB">dsh-java 在"六边形纯度"和"模型充血度"上是三者里最好的</strong>，但在"事务边界"上是三者里最差的。两个参考项目正好提供了"策略树 + 责任链 + Map 策略"这套编排范式的成熟样本，以及"领域事件端口化"的可借鉴写法。</p>
+
+<table data-page-node-id="qUo1lOfnM9PUZ6j0yzjqOG">
+<thead data-page-node-id="BaNE2q6JceRQSya9ycUWyN"><tr data-page-node-id="LhNOXTujjhov6UE9nWBlks"><th data-page-node-id="2DFf11obxNGpvggXeX46MT">设计维度</th><th data-page-node-id="BxgfEjl3TnjrcrxnnjawPU">group-buy-market</th><th data-page-node-id="NOr4WLB2WlaW6i3fvdyIEU">ai-mcp-gateway</th><th data-page-node-id="0EgXEOn5cP2AoemmUBilVy">dsh-java</th></tr></thead>
+<tbody data-page-node-id="mYE6O31dvP57PcpSLoQcGy">
+<tr data-page-node-id="ptbB2Jox1p1FbM4f0LQSs2">
+  <th data-page-node-id="yY4sjOWnGEf6mm7J5lv1rW">domain 纯净度</th>
+  <td data-page-node-id="bUQtoFjMGsJ9uYLWQ6rsDs"><span class="pill bad" data-page-node-id="2SlZ4d5eapm0CRo5goAg92">被污染</span><div class="nm" data-page-node-id="yHwspHfw3RccRwTEdYipOh">@Service/@Resource/@Bean 直接进 domain</div></td>
+  <td data-page-node-id="CAcgidRjTFVlfELWIAydzH"><span class="pill bad" data-page-node-id="0Ng2jQ6CgfI0lWamX1dRdj">被污染</span><div class="nm" data-page-node-id="wj8Ls2Tn4dKigbMaO2gJdF">Spring 注解 + Spring AI 类型直耦</div></td>
+  <td data-page-node-id="zsTHUj2yvInXSatpi3drYx"><span class="pill good" data-page-node-id="VX4yf1VVgjLrhCiDF3lpua">零依赖</span><div class="nm" data-page-node-id="XMPWNKEE1pBJ8f8h3ehNnV">domain 仅依赖 types，零 Spring 注解</div></td>
+</tr>
+<tr data-page-node-id="4d5AU2n59Vo7C6Zsk0hUmm">
+  <th data-page-node-id="MS2wyXVEH8xnMkywlVHVXy">聚合根 / 充血</th>
+  <td data-page-node-id="8ZUPppTfSATE5APHSeKW3Q"><span class="pill bad" data-page-node-id="W7SoP6ocNAOjiupHe88DBD">贫血</span><div class="nm" data-page-node-id="xkqAMrEEbUB8DlyVoaMgwb">@Data 篮子，规则全外置</div></td>
+  <td data-page-node-id="WMmCn1F7dfB1izY244mhD6"><span class="pill bad" data-page-node-id="FN9ykkDVnpiwvCxiRVQGYx">名存实亡</span><div class="nm" data-page-node-id="cQ6w482E406eO1Bbea09gC">aggregate/ 只有 package-info</div></td>
+  <td data-page-node-id="VpEth7gkBOReJhQfgBhsFj"><span class="pill good" data-page-node-id="I8Gyo9yyCBCvKeLe9GNDMu">充血</span><div class="nm" data-page-node-id="WetCd0yFaLnPhAsPhinEDW">ReactLoopAgent / Aggregate 带行为 + 状态机</div></td>
+</tr>
+<tr data-page-node-id="LXtKbu5yReKCYfKzIDEvfz">
+  <th data-page-node-id="zL8Smc6yoLCuU8Xv1zIyxE">领域事件</th>
+  <td data-page-node-id="6So6gvkbiUj9mIm2q5GvQP"><span class="pill bad" data-page-node-id="ewZawm2VpJ9TverulO4XGH">缺失</span><div class="nm" data-page-node-id="OGZhcddYOHo8mgJhOx3E70">仅 MQ + 定时补偿</div></td>
+  <td data-page-node-id="IuK0xLjgRKRGEfZamGAI6n"><span class="pill good" data-page-node-id="Hi0XmDZtiEVsZmbtpdDBFS">端口化</span><div class="nm" data-page-node-id="JohlqiaNH6yDV95GAOhlHm">ISessionPort + Redisson pub/sub</div></td>
+  <td data-page-node-id="EU61lnqqQvvw4qRd54glir"><span class="pill mid" data-page-node-id="0g7UFPrXdvX40qG5BsleRf">有设施未接通</span><div class="nm" data-page-node-id="podNENE1p1ApzqALuCx1S6">ISessionEventStore 双适配器，但 AgentEventListener = no-op</div></td>
+</tr>
+<tr data-page-node-id="t0bW9Td4VJSUhAx2Mc4JPS">
+  <th data-page-node-id="qQ3KhxHgn2OXY4YdU1XsZk">case 层独立性</th>
+  <td data-page-node-id="I6SVqDTcospAX7Ldn0GTIx"><span class="pill bad" data-page-node-id="pIEdmMLWn1kBzA0B7ZKcte">无独立模块</span><div class="nm" data-page-node-id="Q0tBAj94qCRYzk27VBVT3o">domain service 充当用例</div></td>
+  <td data-page-node-id="yXr4QSTSQeUCuBjsAPtOjB"><span class="pill good" data-page-node-id="9bpVPjn54AGhPpAIO4zYmB">独立模块</span><div class="nm" data-page-node-id="RPu6efsiEN2gdovY5RKOIC">cn.bugstack.ai.cases</div></td>
+  <td data-page-node-id="9rKyGjPljQDCjiCgtYqdYW"><span class="pill good" data-page-node-id="toEfZ5LrWKu4olJX6c4MEJ">独立模块</span><div class="nm" data-page-node-id="gUHP0l3AAa46n2XJUCQyhj">但 API DTO 泄漏进 case</div></td>
+</tr>
+<tr data-page-node-id="XbsPQAi1RF9Obm0BQQC8eO">
+  <th data-page-node-id="BMae6GUqBxmpFiDT17Ai0q">CQRS</th>
+  <td data-page-node-id="ZqEgP77F1kmIsuP5qKiO97"><span class="pill mid" data-page-node-id="9dF7won3N8VSmX4Mg5T2Fu">逻辑分边</span><div class="nm" data-page-node-id="Xyt9GvBPtiUJuolZHpBMEa">读走策略树 / 写走责任链</div></td>
+  <td data-page-node-id="mMAuVazoZ9jpYWPbT07NLL"><span class="pill bad" data-page-node-id="fBHcckDUs7tZCxb97inozd">无</span><div class="nm" data-page-node-id="LwAjDFVdfRHthqMzWtUrCR">command/query 混在同一 service</div></td>
+  <td data-page-node-id="D1pSVsetwswMmDOmXbfnIh"><span class="pill mid" data-page-node-id="zJGdlMbCoM10FUb2lzfWuU">api 层有 / case 层无</span><div class="nm" data-page-node-id="q94cAT7PWSnEJfvKYM5FZy">api 拆 command/query 包，case 层未拆</div></td>
+</tr>
+<tr data-page-node-id="Zb3b5dJebB1OjB6qLPJGkK">
+  <th data-page-node-id="nAOJUuzMydjCNaYNPh6nUj">策略树 / 责任链</th>
+  <td data-page-node-id="UIAWp61zeen0TEyLsp6Y5F"><span class="pill good" data-page-node-id="9EDYBNaK4qN2yArBCedh83">丰富</span><div class="nm" data-page-node-id="BmLe4r8FDKYU4TIkSjXHAV">策略树 + 责任链 + Map 策略（xfg-wrench）</div></td>
+  <td data-page-node-id="uHQ2flnVj7BCDSXwBS1w4Q"><span class="pill good" data-page-node-id="wn3bKgEKtebmfH99nV1ccq">清晰</span><div class="nm" data-page-node-id="xUEYBAZPW7f3WWJq3RahHb">Root→Session→Handler 策略树</div></td>
+  <td data-page-node-id="0qbXzQnBTdlJ1R587w0iYK"><span class="pill good" data-page-node-id="g054rLmUyH4PjMzN86Q8LN">深入</span><div class="nm" data-page-node-id="kTiTcuCoXR4BKopVdWiYBG">基类下沉 domain/shared，case 节点继承</div></td>
+</tr>
+<tr data-page-node-id="elvWqlDzND9gdCN6TNVfWB">
+  <th data-page-node-id="jAmUI5FEAVWM4hcCHdsOW6">事务边界</th>
+  <td data-page-node-id="5a1AF4U5abFsJBhjEhZGHX"><span class="pill mid" data-page-node-id="mcblWIVJmuAKAzdIR3whJy">仅在仓储</span><div class="nm" data-page-node-id="8ExaDPHpned9IkiGhQDGuq">@Transactional 在 infra repository 5 处</div></td>
+  <td data-page-node-id="OlT6a3iVFll2CdcwcjUg5L"><span class="pill mid" data-page-node-id="ihH0BC6tPD94j8FKl1chxm">不一致</span><div class="nm" data-page-node-id="VYNrkYBLtzBc9ABuaXg4Xn">仅 ProtocolRepository 2 处</div></td>
+  <td data-page-node-id="6dBNxWNNaT1K2B8zCwA76c"><span class="pill bad" data-page-node-id="gnLeS4WttLntCpHjWxNuIO">全工程零处</span><div class="nm" data-page-node-id="RwME6SK3yEM9fLtBp4zFZZ">EnqueueNode 多步写库无事务包裹</div></td>
+</tr>
+<tr data-page-node-id="hR9awJOju1zhT57UvaKG4r">
+  <th data-page-node-id="tnAHSizno6hwCHQ4BI75jH">装配方式</th>
+  <td data-page-node-id="rcpwDMS8MjKE6fu1TCpQaI"><span class="pill mid" data-page-node-id="QIQDfjvJTly6VviQ8F3bAv">纯扫描</span><div class="nm" data-page-node-id="kABYgo02CuUnAFnxGMp7JS">@Component 全量扫描</div></td>
+  <td data-page-node-id="k42dPKYOpxUSCTLWHLXaX5"><span class="pill mid" data-page-node-id="WYffylkYanBxmPkWoznu2h">混合</span><div class="nm" data-page-node-id="lLaCXEE07ao1Mhx3ilRu3b">扫描 + infra 客户端 @Bean</div></td>
+  <td data-page-node-id="9oEIDQmijSg4wREwkTwYQK"><span class="pill good" data-page-node-id="qQ2zUZ8Q0lu4SffMB7gc52">手工 wire</span><div class="nm" data-page-node-id="K0EUsw1TUa9uXI0HsI9ozQ">HarnessApplicationConfig 60+ @Bean 构造注入</div></td>
+</tr>
+</tbody>
+</table>
+
+<div class="legend" data-page-node-id="dhy8dhwuKfJQFeCoPhBbi8">
+  <span data-page-node-id="F8SLQ1FNK7GbgAO9FzJjI1"><span class="pill good" data-page-node-id="zqTqm57FJdvVrJ7wkF94AC">绿</span> = 该维度表现好</span>
+  <span data-page-node-id="ERYjGMtL3ogzXDnvn9eF02"><span class="pill mid" data-page-node-id="PmmQftFxzqWsuiSnMFbWNB">黄</span> = 部分到位 / 有隐患</span>
+  <span data-page-node-id="sfVRuP3iGHvqsKxa0Lc4HW"><span class="pill bad" data-page-node-id="uwdro7sBqeepTdBtiT7WEo">红</span> = 明显缺口</span>
+</div>
+
+<div class="quote" data-page-node-id="EBVja3NdJSVyJKPW6mNo0x">
+一句话总评：dsh-java 的 domain 内核是三者里最"DDD 正统"的（纯净、充血、事件溯源设施齐全、手工 wire 可测），但它的工程化短板（零事务、事件空转、线程池无界、O(n²) 重建）也恰好集中在 domain 内部——"骨架最正、落地未焊牢"。
+</div>
+
+<h2 id="s2" data-page-node-id="3D5eH82spGaN9hiQdkyLXw">二、dsh-java 已具备的优势（应保持）</h2>
+
+<p data-page-node-id="Xvy0N6yy4yiY24VjP9atWY">这些是对照后发现 dsh-java <strong data-page-node-id="0QEUCCr8jtEVcGAy92a3o2">已经领先</strong>于两个参考项目的地方，优化时不要破坏它们。</p>
+
+<div class="card keep" data-page-node-id="00RjHv4vsZ6dL2bDI3gOad">
+<span class="tag t-keep" data-page-node-id="9tcMrIT8P4bGrCsKdTSXoo">保持</span><strong data-page-node-id="g3e5RxoASOG3xDjfpUfjIO">1. domain 零 Spring 注解，真正的纯净六边形内核</strong>
+<p data-page-node-id="mWyAZvXCHfid53QOdu0DED">实测 <code data-page-node-id="A5yEhb1zFxg1kjTFmbCkfX">dsh-java-domain/</code> 下对 <code data-page-node-id="MJcAU56bEJj2GrzOl2RXxB">import org.springframework|jakarta.annotation</code> 零命中。所有 <code data-page-node-id="fa3A0hsI2GL9Jjf8mALXqq">@Service/@Resource/@Bean</code> 都在外围（infrastructure 的 <code data-page-node-id="sGhIRF84tPSMa9FFE7QDtn">HarnessApplicationConfig</code> + case/trigger 的组件扫描）。两个参考项目都做不到这点——它们的 domain 直接 <code data-page-node-id="L0N482XUlTHHwGsjdHUg71">@Service</code> 满天飞，无法脱离 Spring 跑纯单测。</p>
+<p class="ref" data-page-node-id="kODAs0UMHDR9WyE8SR8QVi">佐证：domain/agent/service/ReactLoopAgent.java、domain/session/registry/model/aggregate/HarnessSessionAggregate.java 均为纯 POJO</p>
+</div>
+
+<div class="card keep" data-page-node-id="jUqrJvYUWHVxkJHKV0Wzlo">
+<span class="tag t-keep" data-page-node-id="tsCsw4zHKkVWD4gNrDSCUL">保持</span><strong data-page-node-id="lSjzMNzfQsY0Ac9T7ThAjN">2. 充血模型 + 真实聚合根</strong>
+<p data-page-node-id="NCPeV5KcuBmMTovqujB3ho"><code data-page-node-id="WuhSrhzLlX9p03tQ6P9oBO">ReactLoopAgent</code> 是带生命周期行为（<code data-page-node-id="SYgvpiXzVTU8x7s491oeJv">kick/turn/step/cancel</code>）+ <code data-page-node-id="irT7ESLv520Xnn86GM3FEZ">Phase</code> 状态机的富实体；<code data-page-node-id="ClxflC8Gpy1lkIyPmFUtSN">HarnessSessionAggregate</code> 的 <code data-page-node-id="xM2RTCcJmieVVFaRYBwHpd">prepare()/changeStatus()</code> 带 <code data-page-node-id="05D3wiUKwF5HlseAHy4Jvm">Objects.requireNonNull</code> 守卫。两个参考项目的聚合根都是 <code data-page-node-id="zR5rKS1UM33Zx04HvUFH5O">@Data</code> 贫血篮子（ai-mcp-gateway 甚至 aggregate 包只有 package-info）。</p>
+</div>
+
+<div class="card keep" data-page-node-id="1Wkw6Iq2i6uasPbfDKP0ed">
+<span class="tag t-keep" data-page-node-id="vDfDMFK9OLNxiG6HZAW3gA">保持</span><strong data-page-node-id="1UvHHkHI6yNdgCYmKdmmdD">3. 事件溯源设施（ISessionEventStore 双适配器）</strong>
+<p data-page-node-id="hUiLIY4ehqwYDHieBHDA71">domain 有 <code data-page-node-id="pXxUFFRKA8Bk7Ol0FVkZVB">SessionEvent/SessionLog/SessionRebuilderService/SurfaceProjector</code> 完整事件溯源模型，端口 <code data-page-node-id="ob9TbU0pfAFFrJgIuGB2pk">ISessionEventStore</code> 有 JDBC + JSONL 两个适配器。这比 ai-mcp-gateway 的 <code data-page-node-id="94pVEjy77R5lAL1bjWD4kE">ISessionPort</code>（只是 Redisson pub/sub）更"DDD 原教旨"。<strong data-page-node-id="eRHxGrz6MtUVKRYJztQAzm">问题只在于它没被接通</strong>（见下文 P1）。</p>
+</div>
+
+<div class="card keep" data-page-node-id="mjbs0jCP9cN4MKvYAhWxEp">
+<span class="tag t-keep" data-page-node-id="mWurxUZTKEbvZ42Odw7C27">保持</span><strong data-page-node-id="26JXFAG0poqLykQtkSemLW">4. 仓储端口以聚合根为参数，PO 映射下沉</strong>
+<p data-page-node-id="2F5CYd5h628vGAVYSpWBxz"><code data-page-node-id="oHg1JA5pM5W9vpggGJBEte">IHarnessSessionRepository.save(HarnessSessionAggregate)</code> 直接吃聚合根，<code data-page-node-id="QZZG9JXij9safy2eoLHSDa">infrastructure/.../HarnessSessionRepository</code> 才做 <code data-page-node-id="SWuy4CUaLDMlaDGdz0LZG0">聚合 ↔ HarnessSessionPO</code> 转换。领域层看不到 SQL/MyBatis，标准六边形。</p>
+</div>
+
+<div class="card keep" data-page-node-id="g1Fful0HhjsHkKcuXVwbKS">
+<span class="tag t-keep" data-page-node-id="HL65lfJWhCUQ0irAmH5iw8">保持</span><strong data-page-node-id="k1wMusCBAx0SV9FsGLzKuH">5. 手工 @Bean 构造注入装配 domain 服务</strong>
+<p data-page-node-id="cTxE2VUlJYFh79ARwAXvdc"><code data-page-node-id="hDQGYiF6pgzYfknachA2xd">HarnessApplicationConfig</code> 用 60+ 个 <code data-page-node-id="LyWWii3aO2WOWCq84eCIsc">@Bean</code> 方法做构造函数注入，domain 服务可脱离容器 <code data-page-node-id="td9PHhF0vmUlRx1ChpzoVJ">new</code> 出来做纯单测。两个参考项目做不到（它们 <code data-page-node-id="b0AoCgsBPg4or8I9IgMmA9">@Resource</code> 字段注入必须起 Spring 上下文）。</p>
+</div>
+
+<h2 id="s3" data-page-node-id="BOpIvxokJU98CZRegJ87DY">三、dsh-java 优化建议（按优先级）</h2>
+
+<h3 data-page-node-id="zGrK2LnbpvCABiQyJedSNb"><span class="tag t-p0" data-page-node-id="aAvHUdYtVpMhaRsXMsf2NS">P0</span> 零事务边界 —— 最严重的架构缺口</h3>
+
+<div class="card fix" data-page-node-id="0AhXP4Ioz5eHPukGYhv7RV">
+<p data-page-node-id="VoHLOUTSwSCB98eTkX47Ng"><strong data-page-node-id="53bIFzyAWt376Y5gCIuVIo">现状</strong>：全工程 <code data-page-node-id="kgSDgYAw4JjySrA38AtD3g">grep -r "@Transactional"</code> <strong data-page-node-id="ExFdsWE6pKNORT7XMBeRNx">零命中</strong>（case/domain/infrastructure 都没有）。</p>
+<p data-page-node-id="cQU9rqoTyuVDyikR5Kt16u"><strong data-page-node-id="PkAN9PnwPR48KrPW1S8anF">后果实例</strong>：<code data-page-node-id="j88Qtxa0gHtLgt1nAMXv4N">EnqueueNode.doApply()</code> 依次调用 <code data-page-node-id="lNRCtl60lVRn9LGqA07qWP">openQueuedSession → createQueuedTask → recordTaskSubmission → executeSession</code>，<strong data-page-node-id="u8YHswsgVlcmjiTcw1IUMY">多步写库无任何事务包裹</strong>，任一步失败会留下"会话已建但任务未入队"等脏状态。审批落库、插件绑定、模型设置等写路径同理。</p>
+<p data-page-node-id="BBd298ECVoF28GyAEPHtGB"><strong data-page-node-id="fRzI3dvOYcruN6O8vDV8yH">三者对比</strong>：</p>
+<ul data-page-node-id="JBPxtueZBRs2LdSPIBJdTY">
+  <li data-page-node-id="3CZJszYRj7wnRPd22CGTWE">group-buy-market：infra repository 有 5 处 <code data-page-node-id="3nSfg6YmvjMxgvY7GDWIr2">@Transactional(timeout=500)</code>，至少单聚合操作原子</li>
+  <li data-page-node-id="9wYn3pX3GCPOoHXoCFx7sJ">ai-mcp-gateway：infra ProtocolRepository 有 2 处 <code data-page-node-id="hvEM0iYz24YHq90lsnr4rn">@Transactional(rollbackFor=Exception.class)</code>，虽不一致但有</li>
+  <li data-page-node-id="6PXVb6amuO6E3amO59ZS3z">dsh-java：<strong data-page-node-id="EMYYzBS2Y522SQU5BY3DMX">零</strong></li>
+</ul>
+<p data-page-node-id="yRw35PWDWPDZUacm7ym6iD"><strong data-page-node-id="AHW4lOW3jQUimgqc0CJpSY">建议</strong>（分层施治）：</p>
+<ol data-page-node-id="0390c0oUN3VsmdPPzJdIRO">
+  <li data-page-node-id="IwPCbF9sY9yKwvdLy4zBVv"><strong data-page-node-id="hq18PJVxsu4Pt2tIjxLoVK">case 层关键写用例</strong>加 <code data-page-node-id="9tMaNNIWyWjIYrMQoPK9ul">@Transactional</code>，包裹跨多仓储的写组合（如 SubmitHarnessTaskCaseImpl.execute、审批 approve 落库）。这是两个参考项目<strong data-page-node-id="byggPWJ0LhCJdkDBrrjc3R">都没做到但应该做到</strong>的一层——它们的短板恰好印证了"用例层无事务 = 跨聚合一致性裸奔"。</li>
+  <li data-page-node-id="2ELlBVjR2Rf02Hxaylad6N"><strong data-page-node-id="kXY0GwcGjxIhysBfIQeZdu">infrastructure 仓储实现</strong>的关键写方法补 <code data-page-node-id="ELIcFLjtMfiInLGR9CC057">@Transactional</code>，保证单聚合内多 DAO 操作原子（对照 group-buy-market 做法）。</li>
+  <li data-page-node-id="gWjEkepWAvrCNP4zGOl4uh">注意：涉及 Agent 长循环（<code data-page-node-id="mHMesD3tqmzxwWouAkEoEX">executeSession</code>）的不能用大事务包住整个 turn（会持有 DB 连接数小时），要拆成"短事务 + 事件补偿"。</li>
+</ol>
+<p class="ref" data-page-node-id="n3aQRV4cXKp4vzIMOOhbA6">影响文件：cases/task/submit/node/EnqueueNode.java、cases/agent/AgentUseCase.java、infrastructure/adapter/repository/*</p>
+</div>
+
+<h3 data-page-node-id="wKMbNE8GWgBXUwP0C4upbf"><span class="tag t-p1" data-page-node-id="h91uEEYNtlOWqRqG0FOZ2r">P1</span> AgentEventListener 空转 —— 事件能力没接通</h3>
+
+<div class="card warn" data-page-node-id="AwbcQHTz5JeyWtK1yS6U6F">
+<p data-page-node-id="eNFcpvudDCyFxCtxSDCkcg"><strong data-page-node-id="SESKcr3EbfGENddYKAv7Dg">现状</strong>：<code data-page-node-id="6xKhzj2o9TTKI2czBDDkLD">ReactLoopAgent</code> 构造函数第 10 参 <code data-page-node-id="ky6NDKyBLO8PhsDb2s7ukN">AgentEventListener events</code>，在 <code data-page-node-id="7fHegowSBO4t6x2UH2rTPw">AgentFactory.create()</code> 里被传 <code data-page-node-id="ptCAmQ4d1Gs80y99PkWM3E">null</code> → 回退为 <code data-page-node-id="t7MDrgS6JWwt61VeCHSKsx">NoopAgentEventListener</code>。全仓库除 Noop 外<code data-page-node-id="nkrignJNuzhSmF6xiCFPqA">implements AgentEventListener</code> 零实现。</p>
+<p data-page-node-id="K07wxry8kgD3Cb4qT8ore9"><strong data-page-node-id="oCGdNpPev44ALGbvaWgrFc">荒谬点</strong>：domain 已经有完整的事件溯源设施（<code data-page-node-id="MXh8oE1JgbS7BUCytFlefZ">ISessionEventStore</code> 双适配器），但 Agent 内部事件（工具调用、turn 开始结束、取消等）<strong data-page-node-id="7nt2XLTPpxfD5M1CdiTsTL">根本没有桥接到这个设施</strong>。</p>
+<p data-page-node-id="XHw9sI6Tv8ZNxZNFE6DLsS"><strong data-page-node-id="03y20ykcGSlLzBe4H3XUqI">对照 ai-mcp-gateway</strong>：它的 <code data-page-node-id="dHO0v8HDRPEvhKKlp8dylY">ISessionPort.publishSessionSyncEvent/subscribeSessionSyncEvent</code> 是真正接通的——Redisson 发布订阅在跑，<code data-page-node-id="GfCkvFqRVi2D87QubQLFbB">SessionManagementService.cleanupExpiredSessions()</code> 用"本节点静默删除 + 广播 REMOVE 事件"做多实例会话一致性。dsh-java 有更高级的设施却没通电。</p>
+<p data-page-node-id="KjSBMve41aFOevt0qO3GFR"><strong data-page-node-id="jAGFpd42X1VyZqw1NcoxX2">建议</strong>：</p>
+<ol data-page-node-id="BeHMCscBshAga8qUiXDvV7">
+  <li data-page-node-id="MRMrou4BsHzdPbeaoZM3YT">实现一个真正的 <code data-page-node-id="UmoBk8vCGG0t04ALmIedMI">SessionEventAgentListener implements AgentEventListener</code>，在 <code data-page-node-id="EOSWtKBkXnOHENfCHpdBde">emit/serial/waterfall</code> 里把 Agent 内部事件桥接到 <code data-page-node-id="lnW7ruIh6LxXIfs8otv4Sq">ISessionEventStore.append()</code>，让事件溯源真正运转。</li>
+  <li data-page-node-id="uqxglEtNOQu3AtyLjbrOJU">在 <code data-page-node-id="grpmWPKv5uYvdasT55RHRD">AgentFactory.create()</code> 里把它作为第 10 参传入，而不是传 null。</li>
+  <li data-page-node-id="OHU61KD5yFWRptNWiYx63K">这样 SessionLog 的投影（<code data-page-node-id="5HhGIttENK2bNQIKpVYW7e">SurfaceProjector</code>）和回放（<code data-page-node-id="nlaDj4x6VyRXWoabdulYuX">SessionRebuilderService</code>）才有真实数据可消费。</li>
+</ol>
+<p class="ref" data-page-node-id="U8xCo9uvgmGay2w0gvugoW">影响文件：infrastructure/adapter/agent/AgentFactory.java(:231)、domain/agent/service/AgentEventListener.java、domain/session/event/adapter/repository/ISessionEventStore.java</p>
+</div>
+
+<h3 data-page-node-id="fDiKf4YKNjJhszfSMzaED9"><span class="tag t-p1" data-page-node-id="cSpL4vf0RmBrKj3Fkp6s6V">P1</span> API DTO 泄漏进 case 层 —— 边界渗漏</h3>
+
+<div class="card fix" data-page-node-id="N9P8mOd6xyBX2cQNdFJpg1">
+<p data-page-node-id="h3hvU3ifZrDXkuI2yRkZyr"><strong data-page-node-id="11kweUdwHBEXoXvZFldmHm">现状</strong>：case 模块依赖 api 模块，用例方法签名直接吃 api 的 DTO。例如 <code data-page-node-id="0F2S1a5A2q4obGsl5BpyBj">AgentUseCase.sendMessage(AgentMessageRequest)</code>、<code data-page-node-id="AmGcIgJoIoT4mYC3XXukdi">SubmitHarnessTaskCaseImpl.execute(SubmitTaskRequest)</code>，都 <code data-page-node-id="5Ry3o07MzKerT1jCocAjJq">import net.linlan...api.dto.*</code>。</p>
+<p data-page-node-id="cHxBp8iRvxcIh0ST6KeyTf"><strong data-page-node-id="J0JsKu2kLV6niN84PDEl9z">问题</strong>：严格六边形里，用例层应有自己的 Command/Query 对象，由 trigger（controller）层做 <code data-page-node-id="sfO4lvhKnY0ADNETFW37yH">RequestDTO → CaseCommand</code> 映射。现在 case 和 api 的 DTO 强耦合，改 api 协议会直接动 case 逻辑，且 case 难以独立测试。</p>
+<p data-page-node-id="xLChfQyTGr00EtunY3kQjD"><strong data-page-node-id="Sp3VJDGrBNjzBBBP95pLsv">对照</strong>：两个参考项目虽也有各自问题，但 ai-mcp-gateway 的 case 层是自持对象（<code data-page-node-id="UjH4FzJb39hVehFt0cRani">HandleMessageCommandEntity</code> 在 domain，不依赖 trigger DTO）；group-buy-market 的 controller 直接调 domain service，是另一种"没分层"的简单。</p>
+<p data-page-node-id="fv6vP9WDekskngnE1D0vxd"><strong data-page-node-id="Fc7kzisf2RORnk1MKkmcVa">建议</strong>：</p>
+<ol data-page-node-id="5jJbGgenGG1uOPrWOsRLQ7">
+  <li data-page-node-id="fFpMRsKnNGU6REUudiqUKT">在 case 模块定义 <code data-page-node-id="H1HfPFXcyP0ji638esEaGJ">SendMessageCommand</code>、<code data-page-node-id="B4K2O4q5jXPCpdemkcuUPG">SubmitTaskCommand</code> 等用例输入对象（纯 POJO）。</li>
+  <li data-page-node-id="C3v9V3IDiCrQ9n8GgH1yDw">trigger/controller 层做 <code data-page-node-id="7PFKCZVoPxhqw2MQKL95PK">AgentMessageRequest → SendMessageCommand</code> 的映射（加一个 mapper）。</li>
+  <li data-page-node-id="2hKoKR6fiSGEZ0PiY04F9z">case 模块 pom 去掉对 api 的依赖，恢复 <code data-page-node-id="kEd6M3kh1qjZvQ3mWJJqgq">case → {api, domain}</code> 中 api 的关系——或至少让 case 不再直接 import api.dto。</li>
+</ol>
+<p class="ref" data-page-node-id="GcXrinrFf0WGEiAGgZuaJl">影响文件：cases/agent/AgentUseCase.java、cases/task/SubmitHarnessTaskCaseImpl.java、api/service/*</p>
+</div>
+
+<h3 data-page-node-id="jvdXynjKYziqiPM3V9OeGX"><span class="tag t-p2" data-page-node-id="CCtfSo4Opbru15sufCe1UB">P2</span> 策略树基类 AbstractStrategyRouter 下沉 domain/shared —— 编排原语泄漏</h3>
+
+<div class="card warn" data-page-node-id="LR0u66dpFHOQJM4EX6KIqB">
+<p data-page-node-id="Oazhb5BlBFarYYewEhzuv1"><strong data-page-node-id="pukJA5CBvdzJxeXald4ZDg">现状</strong>：<code data-page-node-id="BB5W6esc1AhKC0pONAeb6o">AbstractStrategyRouter</code>（<code data-page-node-id="dYpldkr6aSnA8lA4V7DgmN">doApply + getNext</code> 责任链基类）放在 <code data-page-node-id="Cm79rrY0L6fMyLY2Re5AH9">domain/shared/strategy/</code>，case 层的节点继承它。</p>
+<p data-page-node-id="Qbwt8EUiaZNg6RB2kVQWHS"><strong data-page-node-id="BZi8VDj4JYtYRAvZpDIRXG">这是 dsh-java 独有的激进选择</strong>：把"流程编排原语"作为领域共享设施。两个参考项目把策略树/责任链放在<strong data-page-node-id="AVtOA7KmKGebFmLfOFPV6w">应用层或外部框架</strong>（xfg-wrench 在 types/infra）。</p>
+<p data-page-node-id="BX0qia67txB8BC3lfUTodH"><strong data-page-node-id="d2BbSBBSC1RXtt9eaPcG8P">双刃剑</strong>：</p>
+<ul data-page-node-id="kKHtaoKlvejUDoWLHkqomY">
+  <li data-page-node-id="dHbReoiuIHoD5b84cuATLz">优点：编排能力可跨 case 复用，节点链装配统一。</li>
+  <li data-page-node-id="o6gpprYVjDF4FMSWRMeBjv">缺点：domain 承载了"应用层关注点"（编排），违背"domain 只管业务规则不变量"的纯粹性；case 强依赖 domain 基类，演进时改动面大。</li>
+</ul>
+<p data-page-node-id="xslJB6KaCc9vI3KCiJRDDv"><strong data-page-node-id="OKrxkHXuixOrTX3Sg27wpM">建议</strong>（二选一，看团队取向）：</p>
+<ul data-page-node-id="mDV7bBiTWQBJBdF8YJxfi4">
+  <li data-page-node-id="ewFXI5qlcPpMKU6IeKTGTe"><strong data-page-node-id="0NpkqktyBBOU18RqklrlID">保守派</strong>：把 <code data-page-node-id="mDvEYHvTpCmpv1TT2M0cRQ">AbstractStrategyRouter</code> 上移到 case 模块的 <code data-page-node-id="q55CJ6SOog13CowHoxJ58g">shared/</code> 包，domain 不再承载编排原语。参照两个项目的做法。</li>
+  <li data-page-node-id="js1ZCwM2b9sgkm4VYGAcCT"><strong data-page-node-id="OKiEB1Qk96uWtQOid4uEwW">激进派（保持现状但补文档）</strong>：如果团队认可"编排即领域语言"，则保留在 domain/shared，但要在 package-info 里写明设计意图，避免后人误以为是"应该上移的泄漏"。</li>
+</ul>
+<p class="ref" data-page-node-id="TxOdMh5F6MUiIRBFpW9exH">影响文件：domain/shared/strategy/AbstractStrategyRouter.java、cases/agent/node/*、cases/task/submit/node/*</p>
+</div>
+
+<h3 data-page-node-id="sq70Rg7N3tTWsaqQBbPnH0"><span class="tag t-p2" data-page-node-id="UH8ko8UlQV1GqAEJHBLbsU">P2</span> case 层无 CQRS 物理分离 —— 不如 api 层清晰</h3>
+
+<div class="card warn" data-page-node-id="AnhZgxr23RVZMaPNoMG9ud">
+<p data-page-node-id="JKs7ziNUcymKABIzG0ECOF"><strong data-page-node-id="DY0O8Ww2AGVzjwGWCp1XsL">现状</strong>：api 层已经做了 <code data-page-node-id="d0D1CdgCt3dTjiwvt0of0W">command/</code> 和 <code data-page-node-id="QMYTHhsl7snRPUNQjoiqBT">query/</code> 包物理分离（<code data-page-node-id="x2Jf4nwqiSz7SgIdRY360Q">api/service/command/*</code>、<code data-page-node-id="1SFxTQJJDBuPe9cDICAP4o">api/service/query/*</code>），但 case 层没有——只有 <code data-page-node-id="VCVBmjd5ylkBsmHAAe8dWi">cases/session/query/</code> 一个局部子包，其余混在一起。用例接口命名上区分（<code data-page-node-id="b17bakASCxwDnG21iOqo2D">ISessionQueryCase</code> vs <code data-page-node-id="edVoX8Jji2URQ2ea6ACY58">ISubmitHarnessTaskCase</code>），但物理结构未对齐。</p>
+<p data-page-node-id="qgizMxFiJv7j3jyGH628GG"><strong data-page-node-id="khkHbLahMnZQddOWAHBumN">对照</strong>：group-buy-market 是"逻辑 CQRS"（读走策略树、写走责任链），ai-mcp-gateway 完全没做。dsh-java 的 api 层已经做得比它们都好，但 case 层没跟上。</p>
+<p data-page-node-id="SkNR4syePNv9jjnSU143q9"><strong data-page-node-id="f8VPWguzieWxzsmTLQcq94">建议</strong>：如果要走 CQRS 路线，case 层也按 <code data-page-node-id="HX64iAsrtsyn88aNgP6gNZ">command/</code>、<code data-page-node-id="0kAsBKrBTas4dbJqpUJDZp">query/</code> 包组织。查询用例可以走轻量读模型（不重建完整 SessionLog，只投影必要字段），缓解下面的 O(n²) 问题。</p>
+</div>
+
+<h3 data-page-node-id="DWBhpM7d285KFVWTj0lMip"><span class="tag t-p2" data-page-node-id="EwXV2XpmrQk6Gul53475eV">P2</span> deriveMessages 全量重建 O(n²) —— 性能短板</h3>
+
+<div class="card fix" data-page-node-id="xqVAmSi9dBGC67J4FG0sB0">
+<p data-page-node-id="PpTxt9XUR4yTUDbBi9zHFL"><strong data-page-node-id="tEv5thbcHtysVYHAGvZpOp">现状</strong>：<code data-page-node-id="IvObgGFoABOqGIN46KcZji">SessionLog.deriveMessages()</code> 注释明确写着 "rebuild from scratch each time"，每次 step 调用都全量重建消息列表 → 长会话累计 O(n²)。token 预算用 <code data-page-node-id="JNxlmu6bEfyRHr1QG17HyK">length/4</code> 粗估。</p>
+<p data-page-node-id="1T01fW5O0kcLWuCWBGGhvh"><strong data-page-node-id="O9WERLfdEkYbiuyYeQU4DG">对照</strong>：两个参考项目没有这种"每步全量重建"的问题——group-buy-market 是请求即响应、无长会话；ai-mcp-gateway 的会话状态靠 Redis 直接存取，不做事件回放重建。</p>
+<p data-page-node-id="1tuPxlGat9ZVMpJRDXOI4x"><strong data-page-node-id="kLme7xEN8L2avRtrl7ZHls">建议</strong>：</p>
+<ul data-page-node-id="XAY46Lcyx7eIoVmFIsajED">
+  <li data-page-node-id="eRJqns3RX1AMu7uFF0zO5Y">增量投影：在 <code data-page-node-id="jBmMV6Lx4D54iYXrlioyEz">SurfaceProjector</code> 里维护增量消息视图，<code data-page-node-id="6JZoISUcnKFY6p8baDkYhJ">deriveMessages</code> 只追加而非全量重建。</li>
+  <li data-page-node-id="1Xg410PPz0Mq7TvH7ejGkj">引入 checkpoint：每隔 N 个事件持久化一次快照消息视图，重建时从最近快照开始。</li>
+  <li data-page-node-id="1wZNPrbrFOTWd1n1Ccobw2">查询路径（CQRS 读模型）直接读快照，不走全量回放。</li>
+</ul>
+<p class="ref" data-page-node-id="Pd0j4q5uJV4rwTcJgRT9MI">影响文件：domain/session/event/model/SessionLog.java(:187)、domain/session/event/service/SessionRebuilderService.java</p>
+</div>
+
+<h3 data-page-node-id="GyNWS7tn8rCCZALpuVjcDa"><span class="tag t-p2" data-page-node-id="RtALMWaIDj9gveWtw13BUH">P2</span> 线程池无界 + .join() 阻塞请求线程</h3>
+
+<div class="card warn" data-page-node-id="WCPTnTt9RgDL9kfp4UXDez">
+<p data-page-node-id="gN8mX49lHiuXxhRiGCqiez"><strong data-page-node-id="Ifg2MMr1p6YeekfZHCWt6g">现状</strong>：<code data-page-node-id="4KjasdYa1LqcS8jFCmX2cX">ReactLoopAgent.kick()</code> 与 <code data-page-node-id="IDit0krVPFG6ZaXtymqmF0">JobRegistryService</code> 都用 <code data-page-node-id="QB9VG6EGk2wb4iIVUIEJSk">Executors.newCachedThreadPool()</code>（无界队列上限 <code data-page-node-id="fzE0VCuisT751qK5f8rGan">Integer.MAX_VALUE</code>）；<code data-page-node-id="nBLgaehPrdGhW9NCy4n7gu">ForkInProcessProvider</code>、<code data-page-node-id="OomSZBY6zt2BBuhjBxj77j">SpawnInProcessProvider</code>、<code data-page-node-id="AtdQXJz2DPAlucywf8mvrX">ToolCallExecutor</code> 用 <code data-page-node-id="wyXCnoyu4dyote4q6tJC6R">.join()</code> 阻塞请求线程。</p>
+<p data-page-node-id="WVnovlcZ8iZU5HMaaUNaYc"><strong data-page-node-id="joHeB6DYNibQQoo23hB3Xm">建议</strong>：换成有界 <code data-page-node-id="bFA4DlV18lzw7nR5lZRcPS">ThreadPoolExecutor</code>（明确 core/max/queue capacity + 拒绝策略）；<code data-page-node-id="bMykjBMDLD5Z1mBny68MD9">.join()</code> 处加超时（<code data-page-node-id="d1WJeI4as4ULEtnWdGvjHP">orTimeout</code>）避免请求线程被无限挂住。这是工程健壮性，两个参考项目也没做好（它们线程池配置在 app/config 里但没限流边界），属于通用短板。</p>
+<p class="ref" data-page-node-id="frtPK4rTr9rJ84TZ8b7BFU">影响文件：domain/agent/service/ReactLoopAgent.java(:278)、infrastructure/.../JobRegistryService.java(:25)、infrastructure/.../ToolCallExecutor.java</p>
+</div>
+
+<h3 data-page-node-id="xhQ6XSZCZdojVEQxq9c2CT"><span class="tag t-p2" data-page-node-id="eHo4oJT3UkXXL2LGEOHtjD">P2</span> shell_execute 黑名单无真沙箱</h3>
+
+<div class="card warn" data-page-node-id="LFnJKLbFBzhKTMlVscBgwB">
+<p data-page-node-id="g55gvXPkQ9YYrCk1TyIX7g"><strong data-page-node-id="0PxPZUCA4FAAd2XFuhEYyh">现状</strong>：有 <code data-page-node-id="4nmn6wuqPvVlFL6nlXoeGe">DangerousCommandGuard</code> 命令黑名单（命中返回 <code data-page-node-id="cDz2etYUtEKvfgI4pZx4NW">[sandbox] COMMAND_BLOCKED</code>），但<strong data-page-node-id="C2FqzKyYI85y6eRbvse5hD">无 OS 级隔离</strong>（chroot/容器/资源限制）；执行经 <code data-page-node-id="UWXcEnbPCWABSeAeQVohpF">IShellExecutor → ProcessBuilder</code>。</p>
+<p data-page-node-id="g35baEMBFXgOsf06rFuRCI"><strong data-page-node-id="sxda6ja7B4PRrsIsDOER9q">建议</strong>：对照 ai-mcp-gateway 的思路（它有 StubE2B* 沙箱抽象但也是 stub），把 <code data-page-node-id="7Wt0VDbxeiCgCaEVU8UQ2c">IE2BFsPort/IE2BSubprocessPort</code> 从 Stub 实现补成真实现，或在本地用 Linux namespace/cgroup 做轻量沙箱。提交期审批只是第一道闸，执行期应有真隔离。</p>
+</div>
+
+<h2 id="s4" data-page-node-id="K9bQQHHawHjmTi325dElcF">四、可向两个参考项目借鉴的具体做法</h2>
+
+<h3 data-page-node-id="fif42eFzra8Ampv4uvujFr">来自 group-buy-market</h3>
+
+<div class="card" data-page-node-id="8RcBVZZHye6KGn9ylAuBHl">
+<p data-page-node-id="jQR6oQx8alGtemTvJmoIu3"><strong data-page-node-id="DxJZyuiaZT3HbxQDbuCWis">1. Map&lt;String, Service&gt; 策略选择 —— 零 if-else 路由</strong></p>
+<p data-page-node-id="BfKOYnHnBTXNARw2gkkBGz">它的折扣计算用 <code data-page-node-id="ZygUuBGbAG26a2SQHyLCo7">@Resource Map&lt;String, IDiscountCalculateService&gt;</code> 按 Bean 名注入，<code data-page-node-id="9Fbdvuj4zdiALs6TRUsYSB">marketPlan</code> 字段取 Bean：</p>
+<pre data-page-node-id="0n4M3cfF9UExwxBRrkN45K"><code data-page-node-id="omzVFjUGfLuPqwtatKNddH">@Resource private Map&lt;String, IDiscountCalculateService&gt; discountCalculateServiceMap;
+IDiscountCalculateService svc = discountCalculateServiceMap.get(groupBuyDiscount.getMarketPlan());</code></pre>
+<p data-page-node-id="h2w9K6gFKFazBYNCYlHOUT">dsh-java 的 <code data-page-node-id="u1ArckgYbcRBBKQYmKJ1Fv">AgentIntentNode.classify()</code> 是纯正则规则（CHAT/CODE_QUESTION/TASK_EXECUTION/CLARIFICATION），如果意图类型会增长，可借鉴这种 Map 注入式策略路由替代正则硬编码。</p>
+</div>
+
+<div class="card" data-page-node-id="wCwGG0Mn0k26L9baGN2WNn">
+<p data-page-node-id="b7davLl8ieloj6FM0M2oja"><strong data-page-node-id="GLjbgiBfR6SJeMr3N2bCdD">2. 责任链用 @Bean 在 Factory 类显式装配</strong></p>
+<p data-page-node-id="yoX0OWuxKluiTGshw5lTTN">它的 <code data-page-node-id="bqeMGQ1kozrdvxueh8OVCz">TradeSettlementRuleFilterFactory</code> 用 <code data-page-node-id="oBbMuY0uDNMyG4CV4MMa8q">@Bean</code> 把 <code data-page-node-id="n7yZW9w3CIKPBuIfk0PIar">SCRuleFilter → OutTradeNoRuleFilter → SettableRuleFilter → EndRuleFilter</code> 串成链，链的顺序一目了然。dsh-java 的节点链靠 <code data-page-node-id="JFChRrgPQcxSJpMImgKHFV">@Autowired @Qualifier("下一节点名")</code> 散在各个节点里，链路顺序要逐个文件翻才能拼出来——可以考虑在 Factory 类集中声明链顺序，提升可读性。</p>
+</div>
+
+<h3 data-page-node-id="CqoomcCS9lgfPQvYVACUgK">来自 ai-mcp-gateway</h3>
+
+<div class="card" data-page-node-id="8c9XsA0GPaCydohLyaZv9d">
+<p data-page-node-id="b0YkGutTF90DVlYdbG6w79"><strong data-page-node-id="XsrnFS4FMDYI8s5IuJzFQR">3. 领域事件端口化（ISessionPort 模式）</strong></p>
+<p data-page-node-id="Xp0Jkai8PMA55HD4hp2icx">它的 <code data-page-node-id="TLTuUsq3Di2xaf9tlW9nu2">ISessionPort</code> 把 <code data-page-node-id="e9MTP2RZxUefYutmBRvuZG">publishSessionSyncEvent/subscribeSessionSyncEvent</code> 契约留在 domain，Redisson pub/sub 交给 infra。dsh-java 已有 <code data-page-node-id="TCAWwmmBxX0VXsjPw6KK4E">ISessionEventStore</code>（更强），但<strong data-page-node-id="SAbatePARvAL8Oq9JQOB0x">缺一个"运行期事件广播"端口</strong>——Agent 事件目前只在内存里 no-op。可以再加一个 <code data-page-node-id="GFfoDynAHaIhG0fFhixRif">IAgentEventBusPort</code>（类似 ISessionPort），把"Agent 发生了什么"的实时广播能力端口化，infra 用 Redis/MQ 实现，支持多实例 Agent 协同。</p>
+</div>
+
+<div class="card" data-page-node-id="8t7UibVWWLFDmcQLA0gG4z">
+<p data-page-node-id="x18EgdtqmtoYfxXfO8gINA"><strong data-page-node-id="nXf8sBmJqap4FLcvtz9YTb">4. 富值对象用 sealed interface + record 做类型安全模型</strong></p>
+<p data-page-node-id="DxDeD5DOWZ9NDBbGi2KwRk">它的 <code data-page-node-id="IzQeholgD5YXW5WVyK9Kwt">McpSchemaVO</code> 用 <code data-page-node-id="f3AAHojReOV0TWb9nvB6Uk">sealed interface JSONRPCMessage permits JSONRPCRequest, JSONRPCNotification, JSONRPCResponse</code> + record，把 JSON-RPC 协议做成类型安全模型。dsh-java 的 <code data-page-node-id="RlD3KSaPP7h2BDEZLvLhVA">ContentBlock</code>、<code data-page-node-id="fQtBXZZxGJxVz15ztfxPZ3">StreamChunk</code> 已经是 sealed 接口（这点做得好），可继续推广这种模式到更多协议模型。</p>
+</div>
+
+<div class="card" data-page-node-id="Ygyy2gBFJECoS1QveDFaZj">
+<p data-page-node-id="rsU7hCHap8eVGx0lTn9MCo"><strong data-page-node-id="TIKe4hzvIuQLMhCNBA5SA7">5. 分布式会话治理（nodeId 归属 + 静默删除 + 事件广播）</strong></p>
+<p data-page-node-id="gnIvhgNNU0eXrdNecGBocr">ai-mcp-gateway 的 <code data-page-node-id="NqXotJbCJb9NJg20r5X2eg">SessionManagementService</code> 用 nodeId 归属会话、静默删除 + REMOVE 事件广播做多实例一致性。dsh-java 目前是单实例 Agent Harness，如果将来要多实例，这套治理模型可直接借鉴。</p>
+</div>
+
+<h2 id="s5" data-page-node-id="zljGMLu9cjB8AY0lvwGseO">五、落地优先级与小结</h2>
+
+<table data-page-node-id="NuxoFgvvkLZGSwJMFWQjPP">
+<thead data-page-node-id="No7TzsZzu80d6EBGxJe16o"><tr data-page-node-id="4ST63ky4m8ErwohI0yMT1d"><th data-page-node-id="qsXSNnhtlLGOhssbedbkWe">优先级</th><th data-page-node-id="8pWJpgzMj78k1gYVPmCwBA">事项</th><th data-page-node-id="DSenkeEpBmFwxSLA6r0VE1">工作量</th><th data-page-node-id="04Y2nLYnYf12mpvmE1HyBi">风险</th><th data-page-node-id="5BImFlxPrHuMcKTsHnAoC3">对照参考项目</th></tr></thead>
+<tbody data-page-node-id="SzjRvuz9q561Pr5j9KFP0k">
+<tr data-page-node-id="N27KfwSmsfjBe5LVVoAxok"><td data-page-node-id="YKG8waqB9UgLvDdHivvlmv"><span class="tag t-p0" data-page-node-id="sPW4zZCXHczidNYQfyvzU6">P0</span></td><td data-page-node-id="s3ouj0sDW8l1uBr2jKdeDu">补事务边界（case 层写用例 + infra 仓储关键写方法）</td><td data-page-node-id="NCjzV8OASxNcjfbhtEkZsA">中</td><td data-page-node-id="w7qFz2pAQDiYRVuYhsG6MN">低</td><td data-page-node-id="InADQCm6nCmihWBpYuxLfR">两个项目都有，dsh 最差</td></tr>
+<tr data-page-node-id="NGwhrFb2OKY6lMCdTWurCj"><td data-page-node-id="dFo5TsUxyh4ufxbt63owgM"><span class="tag t-p1" data-page-node-id="HKgnJbFr1rejnleUxEjrZi">P1</span></td><td data-page-node-id="CPlCWCHvZFMDFpxbrNAmFx">接通 AgentEventListener → ISessionEventStore</td><td data-page-node-id="2fp0ZFxQNCKRHTmxYZTOZt">中</td><td data-page-node-id="5aV84kq1Fo1hDVFKLrqX84">中（影响 SessionLog 投影）</td><td data-page-node-id="s8hr1VwvAzdPbnGy3mgbUF">对照 ai-mcp-gateway ISessionPort 已接通</td></tr>
+<tr data-page-node-id="UzZ7kf3Nc7jedj7FRmwNsy"><td data-page-node-id="QDMTAavLdJROGDryQLmPz8"><span class="tag t-p1" data-page-node-id="fBNm3vZzDGSyqTBjCyFTlB">P1</span></td><td data-page-node-id="YBGrACuwIDf8lRehYN6N5B">case 层引入 Command/Query 对象，去掉对 api DTO 的直接依赖</td><td data-page-node-id="mjfMlzL1jfI0YlAd7NRhCh">中</td><td data-page-node-id="94rfxWJ6iHns6YZZ6nCQfr">低</td><td data-page-node-id="NQyM7wkzpYP8wlbo3nte3v">ai-mcp-gateway case 自持对象</td></tr>
+<tr data-page-node-id="bDA0pyAv2TBlDI6hbYbFQ4"><td data-page-node-id="1GRZsYCUASsqhCMLptEI2K"><span class="tag t-p2" data-page-node-id="nwVvc3W2hgoreWt7pUxyJs">P2</span></td><td data-page-node-id="5JFGV8PS0ursSquZxFtkJJ">deriveMessages 增量化 + checkpoint</td><td data-page-node-id="8BP73nXIOvySQ5wyLZFvuk">大</td><td data-page-node-id="AOA3SFvFjgM4yDOQC8P3At">中</td><td data-page-node-id="evdUG9H2CyNPb5QiR04gH6">两项目无此问题（无长会话回放）</td></tr>
+<tr data-page-node-id="mE3BJSTaf4Pq8w2tsC6K5T"><td data-page-node-id="8kbtOfHr8BYvGT4OULF16m"><span class="tag t-p2" data-page-node-id="pxlL3SC3eqfvZd7Rl5JVVo">P2</span></td><td data-page-node-id="GhY8GDpAyOvyj1cPynxOed">线程池有界化 + .join() 加超时</td><td data-page-node-id="PLGxiEci1ASqcQZ6B03DfL">小</td><td data-page-node-id="SCZ1oz0yNh8EgEXoFVeNJ3">低</td><td data-page-node-id="qKxGZU5kb1akfiHa13yj1k">通用短板</td></tr>
+<tr data-page-node-id="vP8kkv166YnXGGikOHgLXh"><td data-page-node-id="iCf7kW83x3xKCR7H4m1Dra"><span class="tag t-p2" data-page-node-id="WlEOheK2hBDdqJzgVO7pjO">P2</span></td><td data-page-node-id="aCJ9KNUIzi0u3jursYEZeD">AbstractStrategyRouter 归位（domain/shared → case/shared 或补文档）</td><td data-page-node-id="Dq7bBNT88mjk8wTdF7cedm">小</td><td data-page-node-id="lgqJ7aJmz2KbE6a92niQEg">低</td><td data-page-node-id="ajxMZ6sN3ekbvDle3DG38F">两项目放应用层/框架</td></tr>
+<tr data-page-node-id="tRq7bPMFde2y5lIe2VITwk"><td data-page-node-id="7wadmCYAC02kZ684tHbvJN"><span class="tag t-p2" data-page-node-id="fnCnNXMoIFsSTBITLN45B1">P2</span></td><td data-page-node-id="9VEbEX8ImPzrQilGq3sBes">case 层 CQRS 包结构对齐 api 层</td><td data-page-node-id="5AWO7kFoj1H96u6h4VufpO">小</td><td data-page-node-id="FAqf9Iii95d6DKMPlROUNw">低</td><td data-page-node-id="OYAcvqfnfKzvtIQSCx9gQE">dsh 的 api 层已做，case 没跟上</td></tr>
+<tr data-page-node-id="gRvtMolzZqHdKxnJc2RGon"><td data-page-node-id="XFVd3BQMct6vxJJZIDyBen"><span class="tag t-p2" data-page-node-id="Cxrf52iHg03qlYgLQ3ecrq">P2</span></td><td data-page-node-id="vMGHiIL4yCZZRkl8BQBfdW">shell_execute 真 OS 级沙箱</td><td data-page-node-id="B6HQn1MS6nam1dMFzQllSA">大</td><td data-page-node-id="yB86y0aC04QXvgwiIfm5FE">中</td><td data-page-node-id="Aw1yGJCcqrpSQQbBMaNbZe">ai-mcp-gateway 也是 stub</td></tr>
+</tbody>
+</table>
+
+<div class="card keep" data-page-node-id="whOhe3kOeBs71BDHdaaDDh">
+<p data-page-node-id="HQ44zvDLzwajSzAvEvOKZF"><strong data-page-node-id="LCoAzocX1U3jAnWqX8XZjG">总结</strong>：dsh-java 的 domain 内核设计是三者中最正统的——纯净、充血、事件溯源设施齐全、手工 wire 可测。<strong data-page-node-id="i1IB9KmrIg8DrsrvOTISiw">它不需要学两个参考项目的 domain 设计</strong>（那两个的 domain 反而更脏、更贫血）。它真正要补的是：</p>
+<ol data-page-node-id="X4Vw2RbZMsGnM9g9xsi38l">
+  <li data-page-node-id="dxIBxJHY1crzqiildOEub5"><strong data-page-node-id="qF4CIIxtBT83EUe4R27UMR">工程化焊点</strong>（P0 事务、P1 事件接通、P2 线程池/沙箱）——这些是把"骨架最正"兑现成"落地最稳"的关键；</li>
+  <li data-page-node-id="UHmah6vpDDr1qfQda9dOp2"><strong data-page-node-id="ybY8ni94FHDp1M526Abydv">边界纪律</strong>（P1 DTO 泄漏、P2 编排基类归位、P2 CQRS 对齐）——这些是保持 domain 纯净度的长期功课；</li>
+  <li data-page-node-id="MaN4fQXQJ3iA4s0EouDB7D"><strong data-page-node-id="BKDidKTFChuEJxeHzEg2Aj">性能</strong>（P2 deriveMessages O(n²)）——长会话场景的刚需。</li>
+</ol>
+<p data-page-node-id="9dGlfobfWBDEsbk21XV0Vb">两个参考项目能借鉴的主要是<strong data-page-node-id="vjTomHI4LrZxY8CKz77hsH">编排范式的可读性</strong>（Factory 显式声明链顺序、Map 策略路由）和<strong data-page-node-id="MveDhzd2PlT4XYqu3ltYfo">运行期事件广播端口</strong>（ISessionPort 模式补 dsh 缺的那层实时事件总线）。</p>
+</div>
+
+<div class="foot" data-page-node-id="mo23enZZmT76LaJq1MLJt4">
+报告基于对三个项目源码的 very thorough 级核查（2026-09-06）。dsh-java 根包实为 <code data-page-node-id="2tawVAtFIJArYmcxPePhl1">net.linlan.dsh</code>（非 working memory 中的 <code data-page-node-id="U7eM0FFMcYySeJTXJyxJnI">cn.walioffice</code>，记忆已过期）；提交链实为 5 节点（SubmissionRoot→ProfileResolution→ToolResolution→PermissionCheck→Enqueue），非 3 节点。
+</div>
+
+</div>
+</body>
+</html>

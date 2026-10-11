@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/dsh-java;MODE=MySQL;CASE_INSENSITIVE_IDENTIFIERS=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8

@@ -1,0 +1,154 @@
+<mxfile host="Electron" agent="Codex" version="28.2.5">
+  <diagram id="dsh-v0.1.2" name="v0.1.2 总体架构">
+    <mxGraphModel dx="1600" dy="900" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1160" pageHeight="1420" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="DeepSeek Harness Java v0.1.2" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=30;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+          <mxGeometry x="70" y="30" width="1100" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="从“可运行 Agent Harness”到“可扩展、可治理、可演示”的 Agent 运行时平台" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=15;fontColor=#6B7280;" parent="1" vertex="1">
+          <mxGeometry x="70" y="76" width="1100" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="clients" value="接入层" style="swimlane;html=1;rounded=1;arcSize=6;startSize=32;collapsible=0;fontSize=15;fontStyle=1;whiteSpace=wrap;fillColor=#F8FAFC;strokeColor=#64748B;" parent="1" vertex="1">
+          <mxGeometry x="70" y="130" width="760" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="browser" value="浏览器 Web 控制台&#xa;原生 JS + SSE" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#9FE1CB;strokeColor=#5DCAA5;fontColor=#085041;" parent="clients" vertex="1">
+          <mxGeometry x="28" y="48" width="200" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="rest" value="REST / SSE&#xa;curl / 第三方系统" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#9FE1CB;strokeColor=#5DCAA5;fontColor=#085041;" parent="clients" vertex="1">
+          <mxGeometry x="278" y="48" width="200" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="console" value="工作区 / 会话 / 插件&#xa;模型 / 审批 / 终端" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#FFFFFF;strokeColor=#94A3B8;fontColor=#374151;dashed=1;" parent="clients" vertex="1">
+          <mxGeometry x="528" y="48" width="204" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="access" value="接入与应用编排" style="swimlane;html=1;rounded=1;arcSize=6;startSize=32;collapsible=0;fontSize=15;fontStyle=1;whiteSpace=wrap;fillColor=#F8FAFC;strokeColor=#64748B;" parent="1" vertex="1">
+          <mxGeometry x="70" y="300" width="760" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="trigger" value="Trigger&#xa;API Key 拦截&#xa;19 个 REST Controller" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#B5D4F4;strokeColor=#85B7EB;fontColor=#0C447C;" parent="access" vertex="1">
+          <mxGeometry x="28" y="60" width="210" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="api" value="API Facade + DTO&#xa;Command / Query 协议隔离" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#B5D4F4;strokeColor=#85B7EB;fontColor=#0C447C;" parent="access" vertex="1">
+          <mxGeometry x="278" y="60" width="210" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="case" value="Case Pipeline&#xa;factory + node 用例编排" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#B5D4F4;strokeColor=#85B7EB;fontColor=#0C447C;" parent="access" vertex="1">
+          <mxGeometry x="528" y="60" width="204" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="app-note" value="Command 与 Query 分离；外部协议不直接侵入领域；复杂跨域流程统一走流水线节点。" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#FFFFFF;strokeColor=#94A3B8;fontColor=#374151;dashed=1;" parent="access" vertex="1">
+          <mxGeometry x="28" y="165" width="704" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="domain" value="领域运行时 Domain" style="swimlane;html=1;rounded=1;arcSize=6;startSize=32;collapsible=0;fontSize=15;fontStyle=1;whiteSpace=wrap;fillColor=#F8FAFC;strokeColor=#64748B;" parent="1" vertex="1">
+          <mxGeometry x="70" y="580" width="760" height="420" as="geometry" />
+        </mxCell>
+        <mxCell id="agent" value="Agent Runtime&#xa;AgentRunFactory&#xa;ReactLoopAgent" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;fillColor=#EF9F27;strokeColor=#BA7517;fontColor=#412402;" parent="domain" vertex="1">
+          <mxGeometry x="28" y="56" width="220" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="session" value="Session Event Log&#xa;事件溯源 / 回放 / 审计" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#FAC775;strokeColor=#EF9F27;fontColor=#633806;" parent="domain" vertex="1">
+          <mxGeometry x="278" y="56" width="210" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="tool" value="Tool / Hook / Sandbox&#xa;权限矩阵 / 运行期审批" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#D4537E;strokeColor=#993556;fontColor=#FFFFFF;" parent="domain" vertex="1">
+          <mxGeometry x="518" y="56" width="214" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="plugin" value="Plugin Lifecycle&#xa;Java SPI / Node Bridge / MCP" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;fillColor=#EF9F27;strokeColor=#BA7517;fontColor=#412402;" parent="domain" vertex="1">
+          <mxGeometry x="28" y="170" width="220" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="task" value="Task / Approval / Jobs&#xa;计划 / 待办 / 工作流" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#FAC775;strokeColor=#EF9F27;fontColor=#633806;" parent="domain" vertex="1">
+          <mxGeometry x="278" y="170" width="210" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="model" value="LLM / Runtime / Credentials&#xa;模型设置 / Profile / 目录" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#D4537E;strokeColor=#993556;fontColor=#FFFFFF;" parent="domain" vertex="1">
+          <mxGeometry x="518" y="170" width="214" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="domain-note" value="Domain 只声明端口和业务规则；工具执行、事件落库、插件加载、模型调用都通过可替换适配器完成。" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#FFFFFF;strokeColor=#94A3B8;fontColor=#374151;dashed=1;" parent="domain" vertex="1">
+          <mxGeometry x="28" y="290" width="704" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="agent-tools" value="Agent 能力：ask_user_question / plan mode / todo / subagent / context compaction" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#FFFFFF;strokeColor=#94A3B8;fontColor=#374151;dashed=1;" parent="domain" vertex="1">
+          <mxGeometry x="28" y="350" width="704" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="infra" value="Infrastructure / Plugins / 外部适配" style="swimlane;html=1;rounded=1;arcSize=6;startSize=32;collapsible=0;fontSize=15;fontStyle=1;whiteSpace=wrap;fillColor=#F8FAFC;strokeColor=#64748B;" parent="1" vertex="1">
+          <mxGeometry x="70" y="1040" width="760" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="db" value="MySQL / H2&#xa;状态与事件持久化" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fontSize=12;fillColor=#F4C0D1;strokeColor=#ED93B1;fontColor=#72243E;" parent="infra" vertex="1">
+          <mxGeometry x="28" y="54" width="180" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="llm" value="OpenAI Compatible LLM&#xa;DeepSeek Adapter" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fontSize=12;fillColor=#F4C0D1;strokeColor=#ED93B1;fontColor=#72243E;" parent="infra" vertex="1">
+          <mxGeometry x="238" y="54" width="180" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="exec" value="Shell / FS / Web / Node&#xa;本地执行与 sidecar 通信" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#F4C0D1;strokeColor=#ED93B1;fontColor=#72243E;" parent="infra" vertex="1">
+          <mxGeometry x="448" y="54" width="130" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="mcp" value="MCP Server&#xa;stdio 工具适配" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#F4C0D1;strokeColor=#ED93B1;fontColor=#72243E;" parent="infra" vertex="1">
+          <mxGeometry x="608" y="54" width="124" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="plugin-loader" value="Java URLClassLoader 插件隔离加载；插件依赖 Types SPI，不感知宿主内部实现。" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#FFFFFF;strokeColor=#94A3B8;fontColor=#374151;dashed=1;" parent="infra" vertex="1">
+          <mxGeometry x="28" y="158" width="704" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="highlights" value="v0.1.2 迭代重点" style="swimlane;html=1;rounded=1;arcSize=6;startSize=32;collapsible=0;fontSize=15;fontStyle=1;whiteSpace=wrap;fillColor=#F9FAFB;strokeColor=#D1D5DB;" parent="1" vertex="1">
+          <mxGeometry x="860" y="130" width="310" height="1150" as="geometry" />
+        </mxCell>
+        <mxCell id="h1" value="Agent Runtime&#xa;生命周期、SSE、取消、压缩" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#EF9F27;strokeColor=#BA7517;fontColor=#412402;" parent="highlights" vertex="1">
+          <mxGeometry x="24" y="52" width="262" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="h2" value="插件体系&#xa;Java SPI / Node Bridge / MCP" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#EF9F27;strokeColor=#BA7517;fontColor=#412402;" parent="highlights" vertex="1">
+          <mxGeometry x="24" y="130" width="262" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="h3" value="治理安全&#xa;Hook / 权限矩阵 / 人工审批" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#D4537E;strokeColor=#993556;fontColor=#FFFFFF;" parent="highlights" vertex="1">
+          <mxGeometry x="24" y="208" width="262" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="h4" value="Web 控制台&#xa;Markdown / 工具卡片 / 审批" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#9FE1CB;strokeColor=#5DCAA5;fontColor=#085041;" parent="highlights" vertex="1">
+          <mxGeometry x="24" y="286" width="262" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="h5" value="架构升级&#xa;DDD / CQRS / Case Pipeline" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#B5D4F4;strokeColor=#85B7EB;fontColor=#0C447C;" parent="highlights" vertex="1">
+          <mxGeometry x="24" y="364" width="262" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="h6" value="部署体验&#xa;MySQL / H2 / Docker Compose" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#9FE1CB;strokeColor=#5DCAA5;fontColor=#085041;" parent="highlights" vertex="1">
+          <mxGeometry x="24" y="442" width="262" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="h-note" value="升级提示：包根迁移到 net.linlan；旧插件和外部 API 调用方需要按 v0.1.2 重新验证。" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=12;fillColor=#FFFFFF;strokeColor=#94A3B8;fontColor=#374151;dashed=1;" parent="highlights" vertex="1">
+          <mxGeometry x="24" y="524" width="262" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="flow" value="v0.1.2 主链路：Web / API → Case Pipeline → AgentRunFactory → ReactLoopAgent → Tool / Hook / Approval → Event / SSE → Console" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#111827;strokeColor=#111827;fontColor=#FFFFFF;" parent="1" vertex="1">
+          <mxGeometry x="70" y="1310" width="1100" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#475569;endArrow=block;endFill=1;" parent="1" source="browser" target="trigger" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#475569;endArrow=block;endFill=1;" parent="1" source="rest" target="trigger" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#475569;endArrow=block;endFill=1;" parent="1" source="trigger" target="api" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#475569;endArrow=block;endFill=1;" parent="1" source="api" target="case" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#475569;endArrow=block;endFill=1;" parent="1" source="case" target="agent" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=1.5;dashed=1;strokeColor=#94A3B8;endArrow=block;endFill=1;" parent="1" source="agent" target="tool" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=1.5;dashed=1;strokeColor=#94A3B8;endArrow=block;endFill=1;" parent="1" source="tool" target="session" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=1.5;dashed=1;strokeColor=#94A3B8;endArrow=block;endFill=1;" parent="1" source="agent" target="plugin" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=1.5;dashed=1;strokeColor=#94A3B8;endArrow=block;endFill=1;" parent="1" source="plugin" target="task" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=1.5;dashed=1;strokeColor=#94A3B8;endArrow=block;endFill=1;" parent="1" source="plugin" target="db" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=1.5;dashed=1;strokeColor=#94A3B8;endArrow=block;endFill=1;" parent="1" source="model" target="llm" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=1.5;dashed=1;strokeColor=#94A3B8;endArrow=block;endFill=1;" parent="1" source="tool" target="exec" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=1.5;dashed=1;strokeColor=#94A3B8;endArrow=block;endFill=1;" parent="1" source="plugin" target="mcp" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

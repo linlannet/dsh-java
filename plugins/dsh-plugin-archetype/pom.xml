@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>net.linlan.dsh</groupId>
+    <artifactId>dsh-plugin-archetype</artifactId>
+    <version>0.2.0</version>
+    <packaging>maven-archetype</packaging>
+
+    <name>dsh-plugin-archetype</name>
+    <description>
+        Maven archetype：一键生成 Java 插件工程骨架。
+    </description>
+    <url>https://github.com/linlannet/dsh-java/tree/main/plugins/dsh-plugin-archetype</url>
+
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <scm>
+        <url>https://github.com/linlannet/dsh-java/tree/main/plugins/dsh-plugin-archetype</url>
+        <connection>scm:git:git://github.com/linlannet/dsh-java.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/linlannet/dsh-java.git</developerConnection>
+    </scm>
+
+    <developers>
+        <developer>
+            <id>linlan</id>
+            <name>linlan info</name>
+            <email>linlannet@163.com</email>
+            <organization>Linlan Corporation</organization>
+            <url>https://github.com/linlaninfo</url>
+            <roles>
+                <role>Member</role>
+            </roles>
+            <timezone>Asia/Beijing</timezone>
+        </developer>
+    </developers>
+
+    <build>
+        <extensions>
+            <extension>
+                <groupId>org.apache.maven.archetype</groupId>
+                <artifactId>archetype-packaging</artifactId>
+                <version>3.3.0</version>
+            </extension>
+        </extensions>
+    </build>
+</project>

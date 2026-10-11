@@ -1,0 +1,9 @@
+.git
+.idea
+target
+logs
+data
+*.iml
+.codex-runlogs
+workspaces
+node_modules

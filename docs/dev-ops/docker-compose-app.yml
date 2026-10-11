@@ -1,0 +1,41 @@
+# docker-compose -f docker-compose-app.yml up -d
+# 镜像名需修改为你自身系统的仓库名；使用项目根目录 Dockerfile 构建推送：
+#   docker build -t registry.cn-hangzhou.aliyuncs.net/linlan/dsh-java:1.0 .
+#   docker push registry.cn-hangzhou.aliyuncs.net/linlan/dsh-java:1.0
+version: '3.8'
+services:
+  dsh-java:
+    image: registry.cn-hangzhou.aliyuncs.net/linlan-studio/dsh-java:0.1.1
+    container_name: dsh-java
+    restart: on-failure
+    ports:
+      - "8090:8090"
+    environment:
+      - TZ=PRC
+      - SERVER_PORT=8090
+      # LLM 网关配置（对应 harness.llm.deepseek.*，默认指向本机 127.0.0.1:28080 需覆盖）
+      - LLM_API_KEY=${LLM_API_KEY:-${DEEPSEEK_API_KEY:-sk-local}}
+      - HARNESS_LLM_DEEPSEEK_BASE_URL=https://apis.itedus.cn/v1
+      - HARNESS_LLM_DEEPSEEK_DEFAULT_MODEL=Deepseek-V4.0-Pro
+      # 数据卷说明：standalone(H2) 库文件写入 ./data，插件/工作区/.dsh 需持久化
+      # 如需切换 MySQL profile（默认 profile），放开 command 覆盖并追加数据源配置：
+      # command: ["java", "-jar", "app.jar", "--spring.profiles.active=mysql"]
+      # - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/dsh_java?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      # - SPRING_DATASOURCE_USERNAME=root
+      # - SPRING_DATASOURCE_PASSWORD=123456
+    volumes:
+      - ./data:/app/data
+      - ./plugins:/app/plugins
+      - ./.dsh:/root/.dsh
+      - ./workspaces:/app/workspaces
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - my-network
+
+networks:
+  my-network:
+    driver: bridge
