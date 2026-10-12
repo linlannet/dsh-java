@@ -23,7 +23,9 @@ public enum ChannelProtocol {
     /** Anthropic Messages 协议 */
     ANTHROPIC("anthropic"),
     /** Ollama 原生协议 */
-    OLLAMA("ollama");
+    OLLAMA("ollama"),
+    /** Pi-AI 协议（OpenAI 兼容变体） */
+    PI_AI("pi-ai");
 
     private final String code;
 

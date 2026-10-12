@@ -6,7 +6,7 @@
     <parent>
         <groupId>net.linlan.dsh</groupId>
         <artifactId>dsh-java</artifactId>
-        <version>0.2.0</version>
+        <version>0.2.1</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -59,7 +59,7 @@
         <dependency>
             <groupId>net.linlan.dsh</groupId>
             <artifactId>sample-tools-plugin</artifactId>
-            <version>0.2.0</version>
+            <version>0.2.1</version>
         </dependency>
 
         <dependency>
@@ -84,6 +84,11 @@
                         <goals>
                             <goal>repackage</goal>
                         </goals>
+
+                        <configuration>
+                            <classifier>exec</classifier>
+                            <attach>false</attach>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

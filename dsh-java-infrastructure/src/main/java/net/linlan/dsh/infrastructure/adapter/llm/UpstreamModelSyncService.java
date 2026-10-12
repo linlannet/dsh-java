@@ -61,7 +61,7 @@ public class UpstreamModelSyncService {
         return switch (resolved) {
             case OLLAMA -> fetch(baseUrl, apiKey, resolved, this::resolveOllamaTagsUri, this::parseOllamaTags);
             case ANTHROPIC -> fetch(baseUrl, apiKey, resolved, OpenAiCompatibleUriResolver::resolveModelsUri, this::parseOpenAiModels);
-            case OPENAI -> fetch(baseUrl, apiKey, resolved, OpenAiCompatibleUriResolver::resolveModelsUri, this::parseOpenAiModels);
+            case OPENAI, PI_AI -> fetch(baseUrl, apiKey, resolved, OpenAiCompatibleUriResolver::resolveModelsUri, this::parseOpenAiModels);
         };
     }
 

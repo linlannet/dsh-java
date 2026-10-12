@@ -43,7 +43,10 @@ if [[ "${SKIP_BUILD}" != true ]]; then
   (cd "${ROOT_DIR}" && mvn clean package -DskipTests)
 fi
 
-APP_JAR="$(find "${ROOT_DIR}/dsh-java-app/target" -maxdepth 1 -type f -name 'dsh-java-app-*.jar' ! -name '*sources.jar' ! -name '*javadoc.jar' | sort | tail -1)"
+APP_JAR="$(find "${ROOT_DIR}/dsh-java-app/target" -maxdepth 1 -type f -name 'dsh-java-app-*-exec.jar' | sort | tail -1)"
+if [[ -z "${APP_JAR}" ]]; then
+  APP_JAR="$(find "${ROOT_DIR}/dsh-java-app/target" -maxdepth 1 -type f -name 'dsh-java-app-*.jar' ! -name '*-exec.jar' ! -name '*sources.jar' ! -name '*javadoc.jar' | sort | tail -1)"
+fi
 PLUGIN_JAR="${ROOT_DIR}/plugins/sample-tools-plugin-1.0.0.jar"
 
 if [[ -z "${APP_JAR}" ]]; then

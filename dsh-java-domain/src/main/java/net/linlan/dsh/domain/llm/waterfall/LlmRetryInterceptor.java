@@ -4,7 +4,11 @@ import net.linlan.dsh.domain.core.waterfall.WaterfallExpert;
 import net.linlan.dsh.domain.core.waterfall.model.valobj.WaterfallEvent;
 import net.linlan.dsh.domain.core.waterfall.model.valobj.WaterfallOutcome;
 import net.linlan.dsh.domain.llm.model.valobj.StreamChunk;
+import net.linlan.dsh.domain.llm.retry.model.valobj.LlmRetryPolicy;
+import net.linlan.dsh.domain.llm.retry.service.RetryableErrorClassifier;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Flow;
 import java.util.function.Supplier;
 
@@ -16,9 +20,21 @@ import java.util.function.Supplier;
 public final class LlmRetryInterceptor implements WaterfallExpert<LlmStreamHandoff> {
 
     private final int maxRetries;
+    private final LlmRetryPolicy retryPolicy;
+    private final RetryableErrorClassifier classifier;
 
     public LlmRetryInterceptor(int maxRetries) {
+        this(maxRetries, null, null);
+    }
+
+    public LlmRetryInterceptor(LlmRetryPolicy retryPolicy, RetryableErrorClassifier classifier) {
+        this(retryPolicy.maxAttempts(), retryPolicy, classifier);
+    }
+
+    private LlmRetryInterceptor(int maxRetries, LlmRetryPolicy retryPolicy, RetryableErrorClassifier classifier) {
         this.maxRetries = maxRetries;
+        this.retryPolicy = retryPolicy;
+        this.classifier = classifier;
     }
 
     @Override
@@ -35,7 +51,7 @@ public final class LlmRetryInterceptor implements WaterfallExpert<LlmStreamHando
     public WaterfallOutcome<LlmStreamHandoff> handle(WaterfallEvent<LlmStreamHandoff> event, LlmStreamHandoff current) {
         var originalSupplier = current.streamSupplier();
         Supplier<Flow.Publisher<StreamChunk>> retrySupplier =
-                () -> new RetryPublisher(originalSupplier, maxRetries);
+                () -> new RetryPublisher(originalSupplier, maxRetries, retryPolicy, classifier);
         return WaterfallOutcome.continueWith(current.withStreamSupplier(retrySupplier));
     }
 
@@ -44,10 +60,16 @@ public final class LlmRetryInterceptor implements WaterfallExpert<LlmStreamHando
     static final class RetryPublisher implements Flow.Publisher<StreamChunk> {
         private final Supplier<Flow.Publisher<StreamChunk>> supplier;
         private final int maxRetries;
+        private final LlmRetryPolicy retryPolicy;
+        private final RetryableErrorClassifier classifier;
+        private final List<String> retrySummary = new ArrayList<>();
 
-        RetryPublisher(Supplier<Flow.Publisher<StreamChunk>> supplier, int maxRetries) {
+        RetryPublisher(Supplier<Flow.Publisher<StreamChunk>> supplier, int maxRetries,
+                       LlmRetryPolicy retryPolicy, RetryableErrorClassifier classifier) {
             this.supplier = supplier;
             this.maxRetries = maxRetries;
+            this.retryPolicy = retryPolicy;
+            this.classifier = classifier;
         }
 
         @Override
@@ -101,7 +123,13 @@ public final class LlmRetryInterceptor implements WaterfallExpert<LlmStreamHando
                     @Override
                     public void onError(Throwable t) {
                         if (cancelled) return;
-                        if (attempts <= maxRetries) {
+                        boolean shouldRetry = attempts <= maxRetries;
+                        if (shouldRetry && retryPolicy != null && classifier != null) {
+                            String code = classifier.classify(t);
+                            shouldRetry = retryPolicy.shouldRetry(code, attempts);
+                            retrySummary.add("attempt=" + attempts + " code=" + code);
+                        }
+                        if (shouldRetry) {
                             current = null;
                             attempt();
                         } else {

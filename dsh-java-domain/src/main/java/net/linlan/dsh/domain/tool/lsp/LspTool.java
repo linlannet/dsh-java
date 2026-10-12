@@ -142,4 +142,46 @@ public class LspTool implements ToolDefinition {
 
     @Override
     public boolean isConcurrencySafe(Object args) { return true; }
+
+    /**
+     * 处理query Definition。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param file file参数。
+     * @param line line参数。
+     * @param col col参数。
+     * @return 方法执行结果。
+     */
+    public List<LspLocation> queryDefinition(String file, int line, int col) {
+        String content = fsService.read(file, 1, -1);
+        Optional<LspQueryResult> result = lspService.query(LspQueryType.DEFINITION, file, content, line, col);
+        return result.map(LspQueryResult::locations).orElse(List.of());
+    }
+
+    /**
+     * 处理query References。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param file file参数。
+     * @param line line参数。
+     * @param col col参数。
+     * @return 方法执行结果。
+     */
+    public List<LspLocation> queryReferences(String file, int line, int col) {
+        String content = fsService.read(file, 1, -1);
+        Optional<LspQueryResult> result = lspService.query(LspQueryType.REFERENCES, file, content, line, col);
+        return result.map(LspQueryResult::locations).orElse(List.of());
+    }
+
+    /**
+     * 处理query Diagnostics。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param file file参数。
+     * @return 方法执行结果。
+     */
+    public List<String> queryDiagnostics(String file) {
+        String content = fsService.read(file, 1, -1);
+        Optional<LspQueryResult> result = lspService.query(LspQueryType.HOVER, file, content, 0, 0);
+        return result.flatMap(LspQueryResult::hoverText)
+                .map(text -> List.of(text.split("\n")))
+                .orElse(List.of());
+    }
 }

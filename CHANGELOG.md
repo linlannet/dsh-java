@@ -2,6 +2,41 @@
 
 > 各版本详情见 `docs/md/release-vX.Y.Z-development-notes.md`；以下按 7 个模块记录包级功能更新。
 
+## 版本号：0.2.1
+- 更新日期：2026-10-11
+- 详情：docs/md/release-v0.2.1-development-notes.md
+
+- **dsh-java-app**：新增 checkpoint 与 workspace 表迁移
+  - fat jar 改用 exec 分类器并跳过上传
+- **dsh-java-trigger**：本版本无变更
+- **dsh-java-api**：本版本无变更
+- **dsh-java-case**：本版本无变更
+- **dsh-java-domain**：
+  - 新增 LLM 重试策略与错误分类
+  - 新增上下文注入链与 Slash 命令
+  - 新增压缩：命令、结果裁剪、图片卸载
+  - 新增重复调用提醒与按工具超时
+  - 新增 Codex Hook 协议桥接
+  - 新增会话检查点与快照策略
+  - 新增会话全文检索契约
+  - 新增 OTel 遥测导出链路
+  - 新增统计、标题、大纲三类投影
+  - 新增 MCP Resource 发现能力
+  - 新增 Glob、Grep 与定时等工具
+  - 新增网页搜索与 Typert、PTC 沙箱
+  - 新增 LSP stdio 与 Profile Bundle
+- **dsh-java-infrastructure**：
+  - 新增 PiAi 协议模型适配器
+  - 新增 Lucene 会话全文索引
+  - 新增 OTLP HTTP 遥测导出器
+    - 按 `dsh.otel.enabled=true` 条件装配，端点由 `dsh.otel.exporter.otlp-endpoint` 配置（默认 `http://127.0.0.1:4318/v1/traces`）
+    - 修复导出器无默认构造器导致 Spring 上下文启动失败的问题
+  - 新增检查点与工作区 JDBC 仓储
+  - 新增 Exa 与 Perplexity 搜索适配
+  - 新增 Typert 生成器与 MCP stdio 资源
+- **dsh-java-types**：本版本无变更
+- **备注**：全量 pom 发布元数据对齐 GitHub 仓库，POM 版本统一为 0.2.1
+
 ## 版本号：0.2.0
 - 更新日期：2026-10-11
 - 详情：docs/md/release-v0.2.0-development-notes.md

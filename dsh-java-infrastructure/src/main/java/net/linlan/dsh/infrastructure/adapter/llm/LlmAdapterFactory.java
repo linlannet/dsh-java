@@ -8,6 +8,7 @@ import net.linlan.dsh.domain.llm.adapter.LlmAdapter;
 import net.linlan.dsh.infrastructure.adapter.llm.anthropic.AnthropicAdapter;
 import net.linlan.dsh.infrastructure.adapter.llm.deepseek.DeepSeekAdapterOptions;
 import net.linlan.dsh.infrastructure.adapter.llm.openai.OpenAiCompatibleAdapter;
+import net.linlan.dsh.infrastructure.adapter.llm.piai.PiAiAdapter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.springframework.stereotype.Component;
@@ -65,6 +66,13 @@ public class LlmAdapterFactory {
         ChannelProtocol resolved = ChannelProtocol.fromCode(protocol);
         return switch (resolved) {
             case ANTHROPIC -> new AnthropicAdapter(provider, objectMapper);
+            case PI_AI -> {
+                var options = new DeepSeekAdapterOptions(
+                        defaultBaseUrlOf(provider), defaultApiKeyOf(provider),
+                        8_192, 128_000, DeepSeekAdapterOptionsDefaults.STREAM_IDLE_TIMEOUT_MS,
+                        List.of(), null);
+                yield new PiAiAdapter(options, objectMapper);
+            }
             case OPENAI, OLLAMA -> {
                 // Ollama 原生 /v1 端点兼容 OpenAI 协议；模型列表走 /api/tags 由发现服务分派
                 var options = new DeepSeekAdapterOptions(

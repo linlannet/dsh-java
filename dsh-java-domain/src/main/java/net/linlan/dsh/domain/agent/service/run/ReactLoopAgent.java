@@ -32,6 +32,7 @@ import net.linlan.dsh.domain.session.event.service.SessionEventFactory;
 import net.linlan.dsh.domain.tool.adapter.ToolRegistry;
 import net.linlan.dsh.domain.tool.service.ToolCallExecutor;
 import net.linlan.dsh.domain.core.scope.service.ScopeEventDispatcher;
+import net.linlan.dsh.domain.session.checkpoint.service.CheckpointStrategy;
 import net.linlan.dsh.domain.core.scope.model.valobj.ScopeKey;
 import net.linlan.dsh.domain.core.scope.model.valobj.ScopedEvent;
 import java.util.ArrayList;
@@ -96,6 +97,7 @@ public class ReactLoopAgent implements AgentRun {
 
     // ── Scope 事件分发（可选，由 dsh.scope.enabled=true 注入） ──
     private volatile ScopeEventDispatcher scopeEventDispatcher;
+    private volatile CheckpointStrategy checkpointStrategy;
 
     /**
      * 创建一个独立可驱动的 ReAct Agent。
@@ -256,6 +258,10 @@ public class ReactLoopAgent implements AgentRun {
      */
     public void setScopeEventDispatcher(ScopeEventDispatcher dispatcher) {
         this.scopeEventDispatcher = dispatcher;
+    }
+
+    public void setCheckpointStrategy(CheckpointStrategy strategy) {
+        this.checkpointStrategy = strategy;
     }
 
     @Override
@@ -598,6 +604,11 @@ public class ReactLoopAgent implements AgentRun {
                         Map.of("provider", options.provider(), "model", options.model()));
             }
 
+            // 检查点：LLM 请求前写入上下文快照
+            if (checkpointStrategy != null) {
+                try { checkpointStrategy.beforeModelRequest(session); } catch (RuntimeException ignored) {}
+            }
+
             // 4. 流式调用 LLM —— 直接订阅适配器发布器
             BlockAssembler assembler = new BlockAssembler();
             List<SessionEvent> chunkEvents = new ArrayList<>();
@@ -788,6 +799,15 @@ public class ReactLoopAgent implements AgentRun {
                 }
             }
             log.info("[step] 🔧 Agent={} Turn#{} Step#{} 开始执行工具调用...", id, turn, step);
+            // 检查点：工具副作用前写入可回滚快照
+            if (checkpointStrategy != null) {
+                for (ToolCallBlock tc : toolCalls) {
+                    try {
+                        checkpointStrategy.beforeToolSideEffect(session,
+                                SessionEventFactory.toolCall(turn, step, "checkpoint", tc.name(), "{}"));
+                    } catch (RuntimeException ignored) {}
+                }
+            }
             toolExecutor.execute(turn, step, toolCalls, running.abort(), null);
             log.info("[step] 🔧 Agent={} Turn#{} Step#{} 工具调用执行完成，耗时={}ms，续步推理",
                     id, turn, step, System.currentTimeMillis() - stepStart);

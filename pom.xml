@@ -5,7 +5,7 @@
 
     <groupId>net.linlan.dsh</groupId>
     <artifactId>dsh-java</artifactId>
-    <version>0.2.0</version>
+    <version>0.2.1</version>
     <packaging>pom</packaging>
 
     <name>dsh-java</name>
@@ -64,6 +64,7 @@
         <maven.javadoc.version>3.3.1</maven.javadoc.version>
         <maven.gpg.version>3.2.8</maven.gpg.version>
         <maven.sonatype.version>0.10.0</maven.sonatype.version>
+        <lucene.version>9.11.1</lucene.version>
     </properties>
 
     <dependencyManagement>

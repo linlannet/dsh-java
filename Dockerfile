@@ -19,6 +19,6 @@ RUN mvn package -DskipTests -q
 
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
-COPY --from=build /src/dsh-java-app/target/*.jar app.jar
+COPY --from=build /src/dsh-java-app/target/dsh-java-app-*-exec.jar app.jar
 EXPOSE 8090
 ENTRYPOINT ["java", "-jar", "app.jar", "--spring.profiles.active=standalone"]

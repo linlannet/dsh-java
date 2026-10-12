@@ -1262,6 +1262,7 @@ git config user.name linlaninfo
 git config user.email linlannet@163.com
 git config --global --list
 git config --list
+git remote set-url origin git@github-linlannet:linlannet/dsh-java.git
 ```
 4. 新建 Pull Request
 5. 创建和提交tag
@@ -1276,7 +1277,7 @@ git push origin --tags
 git tag -d 1.0.0
 
 本地编译：mvn clean install
-发布到github：mvn clean deploy
+发布中央库：mvn clean deploy
 
 ```
 6. 其他
