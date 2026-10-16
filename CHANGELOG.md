@@ -3,7 +3,7 @@
 > 各版本详情见 `docs/md/release-vX.Y.Z-development-notes.md`；以下按 7 个模块记录包级功能更新。
 
 ## 版本号：0.2.1
-- 更新日期：2026-10-11
+- 更新日期：2026-10-12 - 2026-10-16
 - 详情：docs/spec/0.2.1/release-v0.2.1-development-notes.md
 
 - **dsh-java-app**：
