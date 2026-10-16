@@ -1,11 +1,11 @@
 # docker-compose -f docker-compose-app.yml up -d
 # 镜像名需修改为你自身系统的仓库名；使用项目根目录 Dockerfile 构建推送：
-#   docker build -t registry.cn-hangzhou.aliyuncs.net/linlan/dsh-java:1.0 .
-#   docker push registry.cn-hangzhou.aliyuncs.net/linlan/dsh-java:1.0
+#   docker build -t registry.cn-hangzhou.aliyuncs.net/linlan/dsh-java:0.2.1 .
+#   docker push registry.cn-hangzhou.aliyuncs.net/linlan/dsh-java:0.2.1
 version: '3.8'
 services:
   dsh-java:
-    image: registry.cn-hangzhou.aliyuncs.net/linlan-studio/dsh-java:0.1.1
+    image: registry.cn-hangzhou.aliyuncs.net/linlan-studio/dsh-java:0.2.1
     container_name: dsh-java
     restart: on-failure
     ports:

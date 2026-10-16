@@ -42,10 +42,22 @@ public class JdbcCheckpointRepository implements ICheckpointRepository {
             ORDER BY id DESC LIMIT 1
             """;
 
+    private static final String SELECT_LATEST_BY_REASON_SQL = """
+            SELECT session_id, step_index, reason, context_snapshot_json, created_at
+            FROM checkpoint WHERE session_id = ? AND reason = ?
+            ORDER BY id DESC LIMIT 1
+            """;
+
     private static final String SELECT_ALL_SQL = """
             SELECT session_id, step_index, reason, context_snapshot_json, created_at
             FROM checkpoint WHERE session_id = ?
             ORDER BY id ASC
+            """;
+
+    private static final String SELECT_AT_STEP_SQL = """
+            SELECT session_id, step_index, reason, context_snapshot_json, created_at
+            FROM checkpoint WHERE session_id = ? AND step_index = ?
+            ORDER BY id DESC LIMIT 1
             """;
 
     private final DataSource dataSource;
@@ -92,6 +104,40 @@ public class JdbcCheckpointRepository implements ICheckpointRepository {
             }
         } catch (SQLException e) {
             throw new RuntimeException("Failed to load latest checkpoint", e);
+        }
+    }
+
+    @Override
+    public Optional<CheckpointSnapshot> loadLatestByReason(String sessionId, String reason) {
+        try (Connection c = dataSource.getConnection();
+             PreparedStatement ps = c.prepareStatement(SELECT_LATEST_BY_REASON_SQL)) {
+            ps.setString(1, sessionId);
+            ps.setString(2, reason);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapRow(rs));
+                }
+                return Optional.empty();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to load latest checkpoint by reason", e);
+        }
+    }
+
+    @Override
+    public Optional<CheckpointSnapshot> loadAtStep(String sessionId, long stepIndex) {
+        try (Connection c = dataSource.getConnection();
+             PreparedStatement ps = c.prepareStatement(SELECT_AT_STEP_SQL)) {
+            ps.setString(1, sessionId);
+            ps.setLong(2, stepIndex);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapRow(rs));
+                }
+                return Optional.empty();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to load checkpoint at step", e);
         }
     }
 

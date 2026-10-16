@@ -2,6 +2,7 @@ package net.linlan.dsh.domain.session.search.adapter.port;
 
 import net.linlan.dsh.domain.session.search.model.valobj.SearchHit;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -10,28 +11,19 @@ import java.util.List;
  */
 public interface ISessionSearchIndexPort extends AutoCloseable {
 
-    /**
-     * 索引一段会话内容。
-     *
-     * @param sessionId 会话 ID
-     * @param seq       事件序列号
-     * @param content   待索引的文本内容
-     */
     void index(String sessionId, long seq, String content);
 
-    /**
-     * 搜索匹配的会话片段。
-     *
-     * @param query 查询关键词
-     * @param limit 最大返回条数
-     * @return 匹配的搜索命中列表
-     */
     List<SearchHit> search(String query, int limit);
 
-    /**
-     * 清空索引。
-     */
     void clear();
+
+    void remove(String sessionId);
+
+    void removeOlderThan(Instant threshold);
+
+    void removeOldest(int count);
+
+    int documentCount();
 
     @Override
     default void close() {}

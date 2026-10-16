@@ -1,6 +1,7 @@
 package net.linlan.dsh.domain.session.checkpoint.service;
 
 import net.linlan.dsh.domain.session.checkpoint.adapter.repository.ICheckpointRepository;
+import net.linlan.dsh.domain.session.checkpoint.model.valobj.CheckpointRollback;
 import net.linlan.dsh.domain.session.checkpoint.model.valobj.CheckpointSnapshot;
 import net.linlan.dsh.domain.session.event.model.entity.SessionHeader;
 import net.linlan.dsh.domain.session.event.model.entity.SessionLog;
@@ -84,6 +85,115 @@ class CheckpointStrategyTest {
         assertEquals(CheckpointStrategy.REASON_BEFORE_TOOL_SIDE_EFFECT, latest.get().reason());
     }
 
+    @Test
+    @DisplayName("beforeToolExecution 写入工具执行前检查点")
+    void beforeToolExecutionWritesCheckpoint() {
+        var repo = new InMemoryCheckpointRepository();
+        var strategy = new CheckpointStrategy(repo);
+        var session = newSession("s5");
+
+        var snapshot = strategy.beforeToolExecution(session, "write_file");
+
+        assertEquals(CheckpointStrategy.REASON_BEFORE_TOOL_EXECUTION, snapshot.reason());
+        assertEquals(1, repo.saved.size());
+    }
+
+    @Test
+    @DisplayName("afterToolExecution 写入工具执行后检查点")
+    void afterToolExecutionWritesCheckpoint() {
+        var repo = new InMemoryCheckpointRepository();
+        var strategy = new CheckpointStrategy(repo);
+        var session = newSession("s6");
+
+        var snapshot = strategy.afterToolExecution(session, "write_file");
+
+        assertEquals(CheckpointStrategy.REASON_AFTER_TOOL_EXECUTION, snapshot.reason());
+    }
+
+    @Test
+    @DisplayName("beforeAgentTurn / afterAgentTurn 写入检查点")
+    void agentTurnCheckpoints() {
+        var repo = new InMemoryCheckpointRepository();
+        var strategy = new CheckpointStrategy(repo);
+        var session = newSession("s7");
+
+        var before = strategy.beforeAgentTurn(session);
+        var after = strategy.afterAgentTurn(session);
+
+        assertEquals(CheckpointStrategy.REASON_BEFORE_AGENT_TURN, before.reason());
+        assertEquals(CheckpointStrategy.REASON_AFTER_AGENT_TURN, after.reason());
+        assertEquals(2, repo.saved.size());
+    }
+
+    @Test
+    @DisplayName("checkpoint 通用方法支持任意 reason")
+    void checkpointWithCustomReason() {
+        var repo = new InMemoryCheckpointRepository();
+        var strategy = new CheckpointStrategy(repo);
+        var session = newSession("s8");
+
+        var snapshot = strategy.checkpoint(session, "custom-reason");
+
+        assertEquals("custom-reason", snapshot.reason());
+    }
+
+    @Test
+    @DisplayName("rollbackTo 按 stepIndex 回滚到检查点")
+    void rollbackToByStepIndex() {
+        var repo = new InMemoryCheckpointRepository();
+        var strategy = new CheckpointStrategy(repo);
+        var session = newSession("s9");
+
+        var snapshot = strategy.beforeModelRequest(session);
+
+        var rollback = strategy.rollbackTo("s9", snapshot.stepIndex());
+        assertTrue(rollback.success());
+        assertTrue(rollback.target().isPresent());
+        assertEquals(snapshot.stepIndex(), rollback.target().get().stepIndex());
+    }
+
+    @Test
+    @DisplayName("rollbackTo 不存在的 stepIndex 返回 notFound")
+    void rollbackToNotFound() {
+        var repo = new InMemoryCheckpointRepository();
+        var strategy = new CheckpointStrategy(repo);
+
+        var rollback = strategy.rollbackTo("nonexistent", 999L);
+        assertFalse(rollback.success());
+        assertTrue(rollback.target().isEmpty());
+    }
+
+    @Test
+    @DisplayName("rollbackToLatest 按 reason 回滚到最新检查点")
+    void rollbackToLatestByReason() {
+        var repo = new InMemoryCheckpointRepository();
+        var strategy = new CheckpointStrategy(repo);
+        var session = newSession("s10");
+
+        strategy.beforeModelRequest(session);
+        strategy.beforeToolExecution(session, "read_file");
+        strategy.beforeModelRequest(session);
+
+        var rollback = strategy.rollbackToLatest("s10", CheckpointStrategy.REASON_BEFORE_MODEL_REQUEST);
+        assertTrue(rollback.success());
+        assertEquals(CheckpointStrategy.REASON_BEFORE_MODEL_REQUEST, rollback.target().get().reason());
+    }
+
+    @Test
+    @DisplayName("rollbackToLatest 无 reason 回滚到最新检查点")
+    void rollbackToLatestAnyReason() {
+        var repo = new InMemoryCheckpointRepository();
+        var strategy = new CheckpointStrategy(repo);
+        var session = newSession("s11");
+
+        strategy.beforeModelRequest(session);
+        strategy.beforeToolExecution(session, "read_file");
+
+        var rollback = strategy.rollbackToLatest("s11");
+        assertTrue(rollback.success());
+        assertEquals(CheckpointStrategy.REASON_BEFORE_TOOL_EXECUTION, rollback.target().get().reason());
+    }
+
     private static SessionLog newSession(String id) {
         var header = SessionHeader.create(id, Instant.now(), "/tmp", "default");
         return new SessionLog(id, header);
@@ -108,8 +218,30 @@ class CheckpointStrategyTest {
         }
 
         @Override
+        public Optional<CheckpointSnapshot> loadLatestByReason(String sessionId, String reason) {
+            for (int i = saved.size() - 1; i >= 0; i--) {
+                var s = saved.get(i);
+                if (s.sessionId().equals(sessionId) && s.reason().equals(reason)) {
+                    return Optional.of(s);
+                }
+            }
+            return Optional.empty();
+        }
+
+        @Override
         public List<CheckpointSnapshot> loadAll(String sessionId) {
             return saved.stream().filter(s -> s.sessionId().equals(sessionId)).toList();
+        }
+
+        @Override
+        public Optional<CheckpointSnapshot> loadAtStep(String sessionId, long stepIndex) {
+            for (int i = saved.size() - 1; i >= 0; i--) {
+                var s = saved.get(i);
+                if (s.sessionId().equals(sessionId) && s.stepIndex() == stepIndex) {
+                    return Optional.of(s);
+                }
+            }
+            return Optional.empty();
         }
     }
 }

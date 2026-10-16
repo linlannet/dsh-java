@@ -86,4 +86,83 @@ class LuceneSessionSearchIndexTest {
             assertEquals("sess-B", hits.get(0).sessionId());
         }
     }
+
+    @Test
+    @DisplayName("documentCount 返回索引文档数")
+    void documentCount() {
+        try (var index = new LuceneSessionSearchIndex()) {
+            assertEquals(0, index.documentCount());
+            index.index("s1", 1, "hello");
+            index.index("s2", 2, "world");
+            assertEquals(2, index.documentCount());
+        }
+    }
+
+    @Test
+    @DisplayName("remove 按 sessionId 删除文档")
+    void removeBySessionId() {
+        try (var index = new LuceneSessionSearchIndex()) {
+            index.index("s1", 1, "hello world");
+            index.index("s2", 2, "hello dsh");
+            assertEquals(2, index.documentCount());
+
+            index.remove("s1");
+            assertEquals(1, index.documentCount());
+
+            var hits = index.search("hello", 10);
+            assertEquals(1, hits.size());
+            assertEquals("s2", hits.get(0).sessionId());
+        }
+    }
+
+    @Test
+    @DisplayName("removeOlderThan 删除指定时间前的文档")
+    void removeOlderThan() throws InterruptedException {
+        try (var index = new LuceneSessionSearchIndex()) {
+            index.index("s1", 1, "old content");
+            Thread.sleep(50);
+            var threshold = java.time.Instant.now();
+            Thread.sleep(50);
+            index.index("s2", 2, "new content");
+
+            index.removeOlderThan(threshold);
+            assertEquals(1, index.documentCount());
+            var hits = index.search("content", 10);
+            assertEquals(1, hits.size());
+            assertEquals("s2", hits.get(0).sessionId());
+        }
+    }
+
+    @Test
+    @DisplayName("removeOldest 删除最旧的 N 个文档")
+    void removeOldest() throws InterruptedException {
+        try (var index = new LuceneSessionSearchIndex()) {
+            index.index("s1", 1, "first");
+            Thread.sleep(20);
+            index.index("s2", 2, "second");
+            Thread.sleep(20);
+            index.index("s3", 3, "third");
+            assertEquals(3, index.documentCount());
+
+            index.removeOldest(1);
+            assertEquals(2, index.documentCount());
+            var hits = index.search("first", 10);
+            assertTrue(hits.isEmpty());
+        }
+    }
+
+    @Test
+    @DisplayName("容量上限自动驱逐最旧文档")
+    void capacityLimitAutoEviction() {
+        try (var index = new LuceneSessionSearchIndex(3)) {
+            index.index("s1", 1, "first content");
+            index.index("s2", 2, "second content");
+            index.index("s3", 3, "third content");
+            assertEquals(3, index.documentCount());
+
+            index.index("s4", 4, "fourth content");
+            assertTrue(index.documentCount() <= 3,
+                    "容量上限后文档数不应超过 maxDocuments");
+        }
+    }
 }

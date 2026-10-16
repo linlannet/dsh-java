@@ -7,15 +7,19 @@ import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.LongField;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.highlight.Highlighter;
 import org.apache.lucene.search.highlight.QueryScorer;
@@ -24,30 +28,39 @@ import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * LuceneSessionSearchIndex 是基于 Apache Lucene 的嵌入式全文索引适配器。
- * <p>实现 {@link ISessionSearchIndexPort}，使用内存目录（{@link ByteBuffersDirectory}）存储索引。
- */
 public final class LuceneSessionSearchIndex implements ISessionSearchIndexPort {
 
     private static final String F_SESSION_ID = "sessionId";
     private static final String F_SEQ = "seq";
     private static final String F_CONTENT = "content";
+    private static final String F_TIMESTAMP = "timestamp";
+    private static final String F_TIMESTAMP_SORT = "timestamp_sort";
 
     private final Directory directory;
     private final Analyzer analyzer;
     private final IndexWriter writer;
+    private final int maxDocuments;
 
     public LuceneSessionSearchIndex() {
-        this(new ByteBuffersDirectory(), new StandardAnalyzer());
+        this(new ByteBuffersDirectory(), new StandardAnalyzer(), 0);
+    }
+
+    public LuceneSessionSearchIndex(int maxDocuments) {
+        this(new ByteBuffersDirectory(), new StandardAnalyzer(), maxDocuments);
     }
 
     LuceneSessionSearchIndex(Directory directory, Analyzer analyzer) {
+        this(directory, analyzer, 0);
+    }
+
+    LuceneSessionSearchIndex(Directory directory, Analyzer analyzer, int maxDocuments) {
         this.directory = directory;
         this.analyzer = analyzer;
+        this.maxDocuments = maxDocuments;
         try {
             IndexWriterConfig config = new IndexWriterConfig(analyzer);
             config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
@@ -64,10 +77,38 @@ public final class LuceneSessionSearchIndex implements ISessionSearchIndexPort {
             doc.add(new StringField(F_SESSION_ID, sessionId, Field.Store.YES));
             doc.add(new LongField(F_SEQ, seq, Field.Store.YES));
             doc.add(new TextField(F_CONTENT, content, Field.Store.YES));
+            long ts = Instant.now().toEpochMilli();
+            doc.add(new LongField(F_TIMESTAMP, ts, Field.Store.YES));
+            doc.add(new NumericDocValuesField(F_TIMESTAMP_SORT, ts));
             writer.addDocument(doc);
             writer.commit();
+            enforceCapacity();
         } catch (IOException e) {
             throw new IllegalStateException("Failed to index document", e);
+        }
+    }
+
+    private void enforceCapacity() {
+        if (maxDocuments <= 0) return;
+        try {
+            int current = documentCount();
+            if (current <= maxDocuments) return;
+            int toEvict = current - maxDocuments;
+            try (DirectoryReader reader = DirectoryReader.open(directory)) {
+                IndexSearcher searcher = new IndexSearcher(reader);
+                Sort sort = new Sort(new SortField(F_TIMESTAMP_SORT, SortField.Type.LONG));
+                TopDocs oldest = searcher.search(
+                        new org.apache.lucene.search.MatchAllDocsQuery(),
+                        toEvict, sort);
+                for (ScoreDoc sd : oldest.scoreDocs) {
+                    Document doc = searcher.doc(sd.doc);
+                    long ts = doc.getField(F_TIMESTAMP).numericValue().longValue();
+                    writer.deleteDocuments(LongField.newRangeQuery(
+                            F_TIMESTAMP, ts, ts));
+                }
+                writer.commit();
+            }
+        } catch (IOException ignored) {
         }
     }
 
@@ -112,6 +153,60 @@ public final class LuceneSessionSearchIndex implements ISessionSearchIndexPort {
             writer.commit();
         } catch (IOException e) {
             throw new IllegalStateException("Failed to clear index", e);
+        }
+    }
+
+    @Override
+    public void remove(String sessionId) {
+        try {
+            writer.deleteDocuments(new Term(F_SESSION_ID, sessionId));
+            writer.commit();
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to remove session from index", e);
+        }
+    }
+
+    @Override
+    public void removeOlderThan(Instant threshold) {
+        try {
+            long thresholdMs = threshold.toEpochMilli();
+            writer.deleteDocuments(LongField.newRangeQuery(
+                    F_TIMESTAMP, Long.MIN_VALUE, thresholdMs - 1));
+            writer.commit();
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to remove old documents", e);
+        }
+    }
+
+    @Override
+    public void removeOldest(int count) {
+        if (count <= 0) return;
+        try {
+            try (DirectoryReader reader = DirectoryReader.open(directory)) {
+                IndexSearcher searcher = new IndexSearcher(reader);
+                Sort sort = new Sort(new SortField(F_TIMESTAMP_SORT, SortField.Type.LONG));
+                TopDocs oldest = searcher.search(
+                        new org.apache.lucene.search.MatchAllDocsQuery(),
+                        count, sort);
+                for (ScoreDoc sd : oldest.scoreDocs) {
+                    Document doc = searcher.doc(sd.doc);
+                    long ts = doc.getField(F_TIMESTAMP).numericValue().longValue();
+                    writer.deleteDocuments(LongField.newRangeQuery(
+                            F_TIMESTAMP, ts, ts));
+                }
+                writer.commit();
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to remove oldest documents", e);
+        }
+    }
+
+    @Override
+    public int documentCount() {
+        try (DirectoryReader reader = DirectoryReader.open(directory)) {
+            return reader.numDocs();
+        } catch (IOException e) {
+            return 0;
         }
     }
 

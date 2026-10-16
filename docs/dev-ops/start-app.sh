@@ -11,7 +11,7 @@ set -euo pipefail
 #   LLM_API_KEY=你的key ./start-app.sh
 
 APP_NAME="dsh-java"
-IMAGE="registry.cn-hangzhou.aliyuncs.com/linlannet/dsh-java:0.1.1"
+IMAGE="registry.cn-hangzhou.aliyuncs.com/linlannet/dsh-java:0.2.1"
 NETWORK_NAME="my-network"
 SERVER_PORT="8090"
 LLM_API_KEY="${LLM_API_KEY:-${DEEPSEEK_API_KEY:-sk-local}}"

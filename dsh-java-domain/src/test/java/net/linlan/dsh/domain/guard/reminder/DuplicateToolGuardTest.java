@@ -118,4 +118,71 @@ class DuplicateToolGuardTest {
         GuardDecision second = guard.check("shell", "");
         assertTrue(second.additionalContext().isPresent());
     }
+
+    @Test
+    @DisplayName("默认构造使用 ADVISORY 模式")
+    void defaultConstructorUsesAdvisoryMode() {
+        var guard = new DuplicateToolGuard();
+        assertEquals(DuplicateToolGuard.Mode.ADVISORY, guard.mode());
+    }
+
+    @Test
+    @DisplayName("ENFORCE 模式下重复调用返回 BLOCK")
+    void enforceModeBlocksDuplicateCall() {
+        var guard = new DuplicateToolGuard(DuplicateToolGuard.Mode.ENFORCE);
+        guard.check("fs_read", "{\"path\":\"/tmp\"}");
+        GuardDecision second = guard.check("fs_read", "{\"path\":\"/tmp\"}");
+        assertEquals(GuardDecision.Kind.BLOCK, second.kind());
+        assertNotNull(second.feedback());
+        assertTrue(second.feedback().contains("Duplicate tool call detected"));
+        assertTrue(second.feedback().contains("fs_read"));
+    }
+
+    @Test
+    @DisplayName("ENFORCE 模式下首次调用仍返回 ALLOW")
+    void enforceModeAllowsFirstCall() {
+        var guard = new DuplicateToolGuard(DuplicateToolGuard.Mode.ENFORCE);
+        GuardDecision first = guard.check("fs_read", "{\"path\":\"/tmp\"}");
+        assertEquals(GuardDecision.Kind.ALLOW, first.kind());
+    }
+
+    @Test
+    @DisplayName("ENFORCE 模式下不同参数仍返回 ALLOW")
+    void enforceModeAllowsDifferentArgs() {
+        var guard = new DuplicateToolGuard(DuplicateToolGuard.Mode.ENFORCE);
+        guard.check("fs_read", "{\"path\":\"/a\"}");
+        GuardDecision second = guard.check("fs_read", "{\"path\":\"/b\"}");
+        assertEquals(GuardDecision.Kind.ALLOW, second.kind());
+    }
+
+    @Test
+    @DisplayName("null mode 默认为 ADVISORY")
+    void nullModeDefaultsToAdvisory() {
+        var guard = new DuplicateToolGuard(null);
+        assertEquals(DuplicateToolGuard.Mode.ADVISORY, guard.mode());
+        guard.check("shell", "{}");
+        GuardDecision second = guard.check("shell", "{}");
+        assertEquals(GuardDecision.Kind.ALLOW, second.kind());
+        assertTrue(second.additionalContext().isPresent());
+    }
+
+    @Test
+    @DisplayName("ADVISORY 模式显式构造行为一致")
+    void explicitAdvisoryModeMatchesDefault() {
+        var guard = new DuplicateToolGuard(DuplicateToolGuard.Mode.ADVISORY);
+        guard.check("shell", "{}");
+        GuardDecision second = guard.check("shell", "{}");
+        assertEquals(GuardDecision.Kind.ALLOW, second.kind());
+        assertTrue(second.additionalContext().isPresent());
+    }
+
+    @Test
+    @DisplayName("ENFORCE 模式 reset 后相同调用不拦截")
+    void enforceModeResetClearsBlock() {
+        var guard = new DuplicateToolGuard(DuplicateToolGuard.Mode.ENFORCE);
+        guard.check("shell", "{}");
+        guard.reset();
+        GuardDecision after = guard.check("shell", "{}");
+        assertEquals(GuardDecision.Kind.ALLOW, after.kind());
+    }
 }

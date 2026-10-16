@@ -4,38 +4,44 @@
 
 ## 版本号：0.2.1
 - 更新日期：2026-10-11
-- 详情：docs/md/release-v0.2.1-development-notes.md
+- 详情：docs/spec/0.2.1/release-v0.2.1-development-notes.md
 
-- **dsh-java-app**：新增 checkpoint 与 workspace 表迁移
-  - fat jar 改用 exec 分类器并跳过上传
+- **dsh-java-app**：
+  - 新增 checkpoint 与 workspace 表迁移（`V20261011__checkpoint.sql`、`V20261011__workspace.sql`）
+  - fat jar 改用 exec 分类器并跳过上传（`classifier=exec`、`attach=false`）
 - **dsh-java-trigger**：本版本无变更
 - **dsh-java-api**：本版本无变更
 - **dsh-java-case**：本版本无变更
 - **dsh-java-domain**：
-  - 新增 LLM 重试策略与错误分类
-  - 新增上下文注入链与 Slash 命令
-  - 新增压缩：命令、结果裁剪、图片卸载
-  - 新增重复调用提醒与按工具超时
-  - 新增 Codex Hook 协议桥接
-  - 新增会话检查点与快照策略
-  - 新增会话全文检索契约
-  - 新增 OTel 遥测导出链路
-  - 新增统计、标题、大纲三类投影
-  - 新增 MCP Resource 发现能力
-  - 新增 Glob、Grep 与定时等工具
-  - 新增网页搜索与 Typert、PTC 沙箱
-  - 新增 LSP stdio 与 Profile Bundle
+  - 新增 LLM 重试策略与错误分类（`LlmRetryPolicy` / `RetryableErrorClassifier` / `LlmErrorCodes`）
+  - 新增上下文注入链（AgentsMd / FileReference / SessionSnapshot / Time / Tmux）与 Slash 命令
+  - 新增压缩：`CompactCommand`、`ToolResultPruner`、`ImageOffloader`
+  - 新增护栏：`DuplicateToolGuard`、`PerToolDeadlinePolicy`、`SandboxPolicyInjector`
+  - 新增 Codex Hook 协议桥接与进程内子代理驱动
+  - 新增会话检查点（`CheckpointStrategy` / `CheckpointSnapshot`）与快照策略
+  - 新增会话全文检索契约（`SessionSearchProvider` / `SessionFullTextIndex`）
+  - 新增 OTel 遥测导出链路（`OtelService` / `SessionTelemetryExporter` / `OtlpBuffer`）
+  - 新增统计、标题、大纲三类会话投影
+  - 新增 MCP Resource 发现能力（`McpResourceDiscovery` / `IMcpResourcePort`）
+  - 新增 Glob、Grep、Schedule 工具与 `ToolPresentation` 值对象
+  - 新增网页搜索（Exa / Perplexity）与 Typert、PTC 沙箱 Node 进程
+  - 新增 LSP stdio Provider 与 Profile Bundle 装配
+  - 新增内容寻址附件存储与 Workspace 聚合实体
 - **dsh-java-infrastructure**：
-  - 新增 PiAi 协议模型适配器
-  - 新增 Lucene 会话全文索引
+  - 新增 PiAi 协议 LLM 适配器（`PiAiAdapter`）
+  - 新增 Lucene 9.11.1 会话全文索引（`LuceneSessionSearchIndex`）
   - 新增 OTLP HTTP 遥测导出器
     - 按 `dsh.otel.enabled=true` 条件装配，端点由 `dsh.otel.exporter.otlp-endpoint` 配置（默认 `http://127.0.0.1:4318/v1/traces`）
     - 修复导出器无默认构造器导致 Spring 上下文启动失败的问题
-  - 新增检查点与工作区 JDBC 仓储
-  - 新增 Exa 与 Perplexity 搜索适配
-  - 新增 Typert 生成器与 MCP stdio 资源
+  - 新增检查点与工作区 JDBC 仓储（`JdbcCheckpointRepository` / `JdbcWorkspaceRepository`）
+  - 新增 Exa 与 Perplexity 网页搜索 HTTP 适配
+  - 新增 Typert 生成器（ts-morph）、PTC 沙箱 Node 进程与 MCP stdio 资源端口
+  - 新增 SHA-256 内容寻址存储实现
 - **dsh-java-types**：本版本无变更
-- **备注**：全量 pom 发布元数据对齐 GitHub 仓库，POM 版本统一为 0.2.1
+- **备注**：
+  - 全量 pom 发布元数据对齐 GitHub 仓库，POM 版本统一为 0.2.1
+  - Dockerfile 与打包脚本同步指向 `*-exec.jar`
+  - 全量 617 测试通过，0 回归
 
 ## 版本号：0.2.0
 - 更新日期：2026-10-11

@@ -71,5 +71,17 @@ class SessionFullTextIndexTest {
 
         @Override
         public void clear() {}
+
+        @Override
+        public void remove(String sessionId) {}
+
+        @Override
+        public void removeOlderThan(java.time.Instant threshold) {}
+
+        @Override
+        public void removeOldest(int count) {}
+
+        @Override
+        public int documentCount() { return indexed.size(); }
     }
 }

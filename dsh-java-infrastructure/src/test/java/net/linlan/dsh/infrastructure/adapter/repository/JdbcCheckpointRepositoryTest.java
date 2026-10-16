@@ -153,7 +153,46 @@ class JdbcCheckpointRepositoryTest {
     @Test
     @DisplayName("构造时自动建表，重复构造不报错")
     void ensureTableIdempotent() {
-        // 再次构造应不抛异常（IF NOT EXISTS）
         assertDoesNotThrow(() -> new JdbcCheckpointRepository(dataSource));
+    }
+
+    @Test
+    @DisplayName("loadLatestByReason 返回指定 reason 的最新快照")
+    void loadLatestByReasonReturnsNewest() {
+        repository.save(CheckpointSnapshot.of("sess-g", 1, "before-model", "{}"));
+        repository.save(CheckpointSnapshot.of("sess-g", 2, "before-tool", "{}"));
+        repository.save(CheckpointSnapshot.of("sess-g", 3, "before-model", "{}"));
+
+        var loaded = repository.loadLatestByReason("sess-g", "before-model");
+        assertTrue(loaded.isPresent());
+        assertEquals(3L, loaded.get().stepIndex());
+        assertEquals("before-model", loaded.get().reason());
+    }
+
+    @Test
+    @DisplayName("loadLatestByReason 不存在时返回 empty")
+    void loadLatestByReasonMissingReturnsEmpty() {
+        repository.save(CheckpointSnapshot.of("sess-h", 1, "before-model", "{}"));
+
+        assertTrue(repository.loadLatestByReason("sess-h", "nonexistent-reason").isEmpty());
+    }
+
+    @Test
+    @DisplayName("loadAtStep 返回指定 stepIndex 的快照")
+    void loadAtStepReturnsSnapshot() {
+        repository.save(CheckpointSnapshot.of("sess-i", 1, "before-model", "{}"));
+        repository.save(CheckpointSnapshot.of("sess-i", 5, "before-tool", "{}"));
+        repository.save(CheckpointSnapshot.of("sess-i", 10, "before-model", "{}"));
+
+        var loaded = repository.loadAtStep("sess-i", 5L);
+        assertTrue(loaded.isPresent());
+        assertEquals(5L, loaded.get().stepIndex());
+        assertEquals("before-tool", loaded.get().reason());
+    }
+
+    @Test
+    @DisplayName("loadAtStep 不存在时返回 empty")
+    void loadAtStepMissingReturnsEmpty() {
+        assertTrue(repository.loadAtStep("sess-j", 999L).isEmpty());
     }
 }

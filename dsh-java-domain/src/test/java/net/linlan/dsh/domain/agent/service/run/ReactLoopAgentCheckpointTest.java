@@ -86,8 +86,16 @@ class ReactLoopAgentCheckpointTest {
                 return Optional.empty();
             }
             @Override
+            public Optional<CheckpointSnapshot> loadLatestByReason(String sessionId, String reason) {
+                return Optional.empty();
+            }
+            @Override
             public List<CheckpointSnapshot> loadAll(String sessionId) {
                 return List.of();
+            }
+            @Override
+            public Optional<CheckpointSnapshot> loadAtStep(String sessionId, long stepIndex) {
+                return Optional.empty();
             }
         };
         var strategy = new CheckpointStrategy(throwingRepo);
@@ -231,6 +239,18 @@ class ReactLoopAgentCheckpointTest {
             return saved.stream()
                     .filter(s -> s.sessionId().equals(sessionId))
                     .toList();
+        }
+        @Override
+        public Optional<CheckpointSnapshot> loadLatestByReason(String sessionId, String reason) {
+            return saved.stream()
+                    .filter(s -> s.sessionId().equals(sessionId) && s.reason().equals(reason))
+                    .reduce((a, b) -> b);
+        }
+        @Override
+        public Optional<CheckpointSnapshot> loadAtStep(String sessionId, long stepIndex) {
+            return saved.stream()
+                    .filter(s -> s.sessionId().equals(sessionId) && s.stepIndex() == stepIndex)
+                    .reduce((a, b) -> b);
         }
     }
 }

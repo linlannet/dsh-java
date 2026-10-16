@@ -338,7 +338,7 @@ LlmStreamWaterfall.execute(options)
 | T1.034 | N | Runtime Resolution 端口 + 插件刷新 |
 | T1.035-T1.036 | O | SDK 协议扩展 + Stdio 路由 |
 
-> 以上 11 个任务已在 v0.2.0 中完成，详见 `release-v0.2.0-development-notes.md`。
+> 以上 11 个任务已在 v0.2.0 中完成，详见 `../spec/0.2.0/release-v0.2.0-development-notes.md`。
 
 ### 待完成
 
@@ -369,4 +369,4 @@ LlmStreamWaterfall.execute(options)
 
 v0.1.9 把 dsh-java 的核心底座从"功能具备但架构缺失"推进到"核心架构特征对齐参考实现"：Scope 路由、Waterfall 拦截链、五阶段工具管线、Session V4 迁移、投影框架+缓存、LLM Stream Waterfall 等关键底座已补齐并通过测试验证。全量 218 测试通过，0 回归。
 
-Phase 1 剩余 11 个任务（T1.026-T1.036）已在 v0.2.0 中完成，详见 `release-v0.2.0-development-notes.md`。下一阶段的重点是进入 Phase 2 核心能力增强（35 任务，目标 v0.2.0-beta）。
+Phase 1 剩余 11 个任务（T1.026-T1.036）已在 v0.2.0 中完成，详见 `../spec/0.2.0/release-v0.2.0-development-notes.md`。下一阶段的重点是进入 Phase 2 核心能力增强（35 任务，目标 v0.2.0-beta）。

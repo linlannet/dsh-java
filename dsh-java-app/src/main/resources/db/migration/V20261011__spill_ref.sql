@@ -3,6 +3,6 @@
 
 CREATE TABLE IF NOT EXISTS spill_ref (
     ref_id VARCHAR(64) PRIMARY KEY,
-    content CLOB,
+    content LONGTEXT,
     created_at TIMESTAMP NOT NULL
 );

@@ -50,6 +50,10 @@ class SessionSearchProviderTest {
         @Override public void index(String sessionId, long seq, String content) {}
         @Override public List<SearchHit> search(String query, int limit) { return List.of(); }
         @Override public void clear() {}
+        @Override public void remove(String sessionId) {}
+        @Override public void removeOlderThan(java.time.Instant threshold) {}
+        @Override public void removeOldest(int count) {}
+        @Override public int documentCount() { return 0; }
     }
 
     static final class StubPort implements ISessionSearchIndexPort {
@@ -66,5 +70,9 @@ class SessionSearchProviderTest {
         }
 
         @Override public void clear() {}
+        @Override public void remove(String sessionId) {}
+        @Override public void removeOlderThan(java.time.Instant threshold) {}
+        @Override public void removeOldest(int count) {}
+        @Override public int documentCount() { return 0; }
     }
 }

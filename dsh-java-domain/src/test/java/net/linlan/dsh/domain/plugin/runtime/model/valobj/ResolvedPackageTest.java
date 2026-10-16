@@ -1,4 +1,4 @@
-package net.linlan.dsh.domain.plugin.runtime.adapter.port;
+package net.linlan.dsh.domain.plugin.runtime.model.valobj;
 
 import net.linlan.dsh.domain.plugin.runtime.model.valobj.ResolvedPackage;
 import org.junit.jupiter.api.DisplayName;

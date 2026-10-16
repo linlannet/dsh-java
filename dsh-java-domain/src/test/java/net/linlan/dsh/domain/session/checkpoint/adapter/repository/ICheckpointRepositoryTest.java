@@ -15,31 +15,39 @@ import static org.junit.jupiter.api.Assertions.*;
 class ICheckpointRepositoryTest {
 
     @Test
-    @DisplayName("端口声明 save/loadLatest/loadAll 三个方法")
-    void portDeclaresThreeMethods() throws NoSuchMethodException {
+    @DisplayName("端口声明 save/loadLatest/loadLatestByReason/loadAll/loadAtStep 五个方法")
+    void portDeclaresFiveMethods() throws NoSuchMethodException {
         var save = ICheckpointRepository.class.getMethod(
                 "save", CheckpointSnapshot.class);
         var loadLatest = ICheckpointRepository.class.getMethod(
                 "loadLatest", String.class);
+        var loadLatestByReason = ICheckpointRepository.class.getMethod(
+                "loadLatestByReason", String.class, String.class);
         var loadAll = ICheckpointRepository.class.getMethod(
                 "loadAll", String.class);
+        var loadAtStep = ICheckpointRepository.class.getMethod(
+                "loadAtStep", String.class, long.class);
 
         assertEquals(void.class, save.getReturnType(),
                 "save 应返回 void");
         assertEquals(Optional.class, loadLatest.getReturnType(),
                 "loadLatest 应返回 Optional");
+        assertEquals(Optional.class, loadLatestByReason.getReturnType(),
+                "loadLatestByReason 应返回 Optional");
         assertEquals(List.class, loadAll.getReturnType(),
                 "loadAll 应返回 List");
+        assertEquals(Optional.class, loadAtStep.getReturnType(),
+                "loadAtStep 应返回 Optional");
     }
 
     @Test
-    @DisplayName("端口方法数量恰为 3，防止意外变更契约")
-    void methodCountIsThree() {
+    @DisplayName("端口方法数量恰为 5，防止意外变更契约")
+    void methodCountIsFive() {
         Method[] publicMethods = java.util.Arrays.stream(ICheckpointRepository.class.getMethods())
                 .filter(m -> m.getDeclaringClass() == ICheckpointRepository.class)
                 .toArray(Method[]::new);
-        assertEquals(3, publicMethods.length,
-                "ICheckpointRepository 应只声明 save/loadLatest/loadAll");
+        assertEquals(5, publicMethods.length,
+                "ICheckpointRepository 应只声明 save/loadLatest/loadLatestByReason/loadAll/loadAtStep");
     }
 
     @Test
@@ -58,9 +66,21 @@ class ICheckpointRepositoryTest {
                         ? Optional.of(s) : Optional.empty();
             }
             @Override
+            public Optional<CheckpointSnapshot> loadLatestByReason(String sessionId, String reason) {
+                var s = holder.get();
+                return s != null && s.sessionId().equals(sessionId) && s.reason().equals(reason)
+                        ? Optional.of(s) : Optional.empty();
+            }
+            @Override
             public List<CheckpointSnapshot> loadAll(String sessionId) {
                 var s = holder.get();
                 return s != null && s.sessionId().equals(sessionId) ? List.of(s) : List.of();
+            }
+            @Override
+            public Optional<CheckpointSnapshot> loadAtStep(String sessionId, long stepIndex) {
+                var s = holder.get();
+                return s != null && s.sessionId().equals(sessionId) && s.stepIndex() == stepIndex
+                        ? Optional.of(s) : Optional.empty();
             }
         };
 
@@ -83,11 +103,21 @@ class ICheckpointRepositoryTest {
                 return Optional.empty();
             }
             @Override
+            public Optional<CheckpointSnapshot> loadLatestByReason(String sessionId, String reason) {
+                return Optional.empty();
+            }
+            @Override
             public List<CheckpointSnapshot> loadAll(String sessionId) {
                 return List.of();
+            }
+            @Override
+            public Optional<CheckpointSnapshot> loadAtStep(String sessionId, long stepIndex) {
+                return Optional.empty();
             }
         };
         assertTrue(repo.loadLatest("any").isEmpty());
         assertTrue(repo.loadAll("any").isEmpty());
+        assertTrue(repo.loadLatestByReason("any", "reason").isEmpty());
+        assertTrue(repo.loadAtStep("any", 0L).isEmpty());
     }
 }
