@@ -9,6 +9,7 @@
 - **dsh-java-app**：
   - 新增 checkpoint 与 workspace 表迁移（`V20261011__checkpoint.sql`、`V20261011__workspace.sql`）
   - fat jar 改用 exec 分类器并跳过上传（`classifier=exec`、`attach=false`）
+  - 补充应用上下文冒烟测试 5 个
 - **dsh-java-trigger**：本版本无变更
 - **dsh-java-api**：本版本无变更
 - **dsh-java-case**：本版本无变更
@@ -30,7 +31,7 @@
 - **dsh-java-infrastructure**：
   - 新增 PiAi 协议 LLM 适配器（`PiAiAdapter`）
   - 新增 Lucene 9.11.1 会话全文索引（`LuceneSessionSearchIndex`）
-  - 新增 OTLP HTTP 遥测导出器
+  - 新增 OTLP HTTP 遥测导出器（`OtlpHttpExporter`）
     - 按 `dsh.otel.enabled=true` 条件装配，端点由 `dsh.otel.exporter.otlp-endpoint` 配置（默认 `http://127.0.0.1:4318/v1/traces`）
     - 修复导出器无默认构造器导致 Spring 上下文启动失败的问题
   - 新增检查点与工作区 JDBC 仓储（`JdbcCheckpointRepository` / `JdbcWorkspaceRepository`）
@@ -41,7 +42,7 @@
 - **备注**：
   - 全量 pom 发布元数据对齐 GitHub 仓库，POM 版本统一为 0.2.1
   - Dockerfile 与打包脚本同步指向 `*-exec.jar`
-  - 全量 617 测试通过，0 回归
+  - 全量测试：domain 564 + infrastructure 53 + app 5 = 622 通过，0 回归
 
 ## 版本号：0.2.0
 - 更新日期：2026-10-11
