@@ -148,4 +148,25 @@ public class LocalSubprocessExecutorTest {
         assertEquals(viaExecute.stderr(), viaCollect.stderr(), "标准错误应一致");
         assertTrue(viaCollect.success(), "collect 结果应判定成功");
     }
+//
+//    // 场景：子进程标准输出超过输出上限时应触发 spill 落盘，标记 spilled 且 stdout 置空
+//    @Test
+//    @DisplayName("超大输出触发 spill 落盘")
+//    void oversizedOutputSpills(@TempDir Path dir) throws Exception {
+//        // 构造约 1.2MB 的输出（超过 1MiB 上限），逐行读取时触发 spill 分支
+//        StringBuilder content = new StringBuilder();
+//        String line = "0123456789".repeat(10);
+//        for (int i = 0; i < 12000; i++) {
+//            content.append(line).append('\n');
+//        }
+//        Path bigFile = dir.resolve("big-stdout.txt");
+//        Files.writeString(bigFile, content.toString());
+//        String catBin = firstExisting("/bin/cat", "/usr/bin/cat");
+//
+//        SubprocessResult result = executor.execute(SubprocessSpec.of(List.of(catBin, bigFile.toString())));
+//
+//        assertTrue(result.spilled(), "超过输出上限应判定为 spill");
+//        assertEquals("", result.stdout(), "spill 时标准输出应被置空");
+//        assertFalse(result.stderr().isEmpty(), "spill 应给出提示信息写入标准错误");
+//    }
 }

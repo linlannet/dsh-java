@@ -3,6 +3,7 @@ package net.linlan.dsh.infrastructure.adapter.typert;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
@@ -160,5 +161,34 @@ public class CpythonPtcAdapterTest {
                 System.setProperty("os.name", originalOs);
             }
         }
+    }
+
+    // 场景：构造参数为 null 时应回退到 python3 并能正常执行
+    @Test
+    @DisplayName("null 解释器路径回退为 python3")
+    void nullExecutableFallsBackToPython3() {
+        assumeTrue(new CpythonPtcAdapter().platformSupported(), "非 macOS/Linux 平台跳过");
+        assumeTrue(python3Available(), "宿主未安装可用 python3，跳过");
+
+        String output = new CpythonPtcAdapter(null).execute("print(\"null-fallback\")", null);
+
+        assertTrue(output.contains("null-fallback"), "回退 python3 后应正常执行，实际为: " + output);
+    }
+
+    // 场景：env 中值为 null 的条目应被跳过，其余条目仍注入且脚本可正常执行
+    @Test
+    @DisplayName("env 中 null 值条目被跳过")
+    void nullEnvValueEntryIsSkipped() {
+        assumeTrue(new CpythonPtcAdapter().platformSupported(), "非 macOS/Linux 平台跳过");
+        assumeTrue(python3Available(), "宿主未安装可用 python3，跳过");
+
+        Map<String, Object> env = new HashMap<>();
+        env.put("DSH_UT_NULL", null);
+        env.put("DSH_UT_KEEP", "kept");
+
+        String output = new CpythonPtcAdapter()
+                .execute("import os\nprint(os.environ.get('DSH_UT_KEEP', ''))", env);
+
+        assertEquals("kept", output, "非 null 条目应被注入，null 条目应被跳过");
     }
 }

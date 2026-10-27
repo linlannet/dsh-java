@@ -198,4 +198,41 @@ public class BingTranslatorAdapterTest {
 
         assertTrue(result.isEmpty(), "空白译文应返回 empty");
     }
+
+    // 场景：endpoint 为 null 或空白时应回退到默认端点（空白输入仍短路返回 empty，不发起网络请求）
+    @Test
+    @DisplayName("null/空白 endpoint 回退默认端点")
+    void blankEndpointFallsBackToDefault() {
+        BingTranslatorAdapter nullEndpoint = assertDoesNotThrow(() -> new BingTranslatorAdapter(null, "key"));
+        BingTranslatorAdapter blankEndpoint = assertDoesNotThrow(() -> new BingTranslatorAdapter("   ", "key"));
+
+        assertTrue(nullEndpoint.translate("   ", "zh").isEmpty(), "null endpoint 构造后空白文本应短路返回 empty");
+        assertTrue(blankEndpoint.translate("   ", "zh").isEmpty(), "空白 endpoint 构造后空白文本应短路返回 empty");
+    }
+
+    // 场景：subscriptionKey 为 null 时应以空串作为订阅 Key 头发送，翻译仍可成功
+    @Test
+    @DisplayName("null 订阅 Key 以空串发送")
+    void nullSubscriptionKeySendsEmptyValue() throws IOException {
+        startServer("[{\"translations\":[{\"text\":\"你好\"}]}]");
+        BingTranslatorAdapter adapter = new BingTranslatorAdapter(endpoint(), null);
+
+        Optional<String> result = adapter.translate("hello", "zh");
+
+        assertTrue(result.isPresent(), "标准响应应解析出译文");
+        assertEquals("你好", result.get(), "应返回首个译文文本");
+        String key = lastSubscriptionKey.get();
+        assertTrue(key == null || key.isEmpty(), "null 订阅 Key 应以空串发送，实际为: " + key);
+    }
+
+    // 场景：translations 字段为非数组结构（对象）时应返回 empty
+    @Test
+    @DisplayName("translations 非数组结构返回 empty")
+    void nonArrayTranslationsReturnsEmpty() throws IOException {
+        startServer("[{\"translations\":{\"text\":\"x\"}}]");
+
+        Optional<String> result = new BingTranslatorAdapter(endpoint(), "key").translate("hello", "zh");
+
+        assertTrue(result.isEmpty(), "translations 非数组应返回 empty");
+    }
 }

@@ -9,13 +9,13 @@ import java.util.Objects;
  */
 public record AgentTeamRoster(
         String teamId,
-        String lead,
+        String leader,
         List<String> teammates,
         String messageStrategy
 ) {
     public AgentTeamRoster {
         Objects.requireNonNull(teamId, "teamId 不能为空");
-        Objects.requireNonNull(lead, "lead 不能为空");
+        Objects.requireNonNull(leader, "leader 不能为空");
         teammates = teammates == null ? List.of() : List.copyOf(teammates);
         messageStrategy = messageStrategy == null ? "direct" : messageStrategy;
     }

@@ -155,14 +155,14 @@ public class JdbcAgentTeamRepositoryTest {
     @Test
     @DisplayName("save 后 findById 往返花名册全部字段")
     void saveThenFindByIdRoundTrip() {
-        AgentTeamRoster roster = new AgentTeamRoster("team-1", "lead-a", List.of("m1", "m2"), "broadcast");
+        AgentTeamRoster roster = new AgentTeamRoster("team-1", "leader-a", List.of("m1", "m2"), "broadcast");
 
         repository.save(roster);
 
         Optional<AgentTeamRoster> loaded = repository.findById("team-1");
         assertTrue(loaded.isPresent(), "刚保存的团队应可加载");
         assertEquals("team-1", loaded.get().teamId(), "teamId 应往返一致");
-        assertEquals("lead-a", loaded.get().lead(), "lead 应往返一致");
+        assertEquals("leader-a", loaded.get().leader(), "leader 应往返一致");
         assertEquals(List.of("m1", "m2"), loaded.get().teammates(), "teammates 列表应保持顺序与内容");
         assertEquals("broadcast", loaded.get().messageStrategy(), "messageStrategy 应往返一致");
     }
@@ -171,7 +171,7 @@ public class JdbcAgentTeamRepositoryTest {
     @Test
     @DisplayName("teammates 为 null 时持久化为空列表")
     void nullTeammatesPersistedAsEmptyList() {
-        repository.save(new AgentTeamRoster("team-null", "lead-n", null, "direct"));
+        repository.save(new AgentTeamRoster("team-null", "leader-n", null, "direct"));
 
         Optional<AgentTeamRoster> loaded = repository.findById("team-null");
         assertTrue(loaded.isPresent(), "应能加载团队");
@@ -182,13 +182,13 @@ public class JdbcAgentTeamRepositoryTest {
     @Test
     @DisplayName("同 teamId 二次 save 为更新且不新增行")
     void saveIsIdempotentUpdate() throws SQLException {
-        repository.save(new AgentTeamRoster("team-up", "lead-1", List.of("a"), "direct"));
-        repository.save(new AgentTeamRoster("team-up", "lead-2", List.of("a", "b"), "broadcast"));
+        repository.save(new AgentTeamRoster("team-up", "leader-1", List.of("a"), "direct"));
+        repository.save(new AgentTeamRoster("team-up", "leader-2", List.of("a", "b"), "broadcast"));
 
         assertEquals(1, countRows("agent_team"), "同 teamId 二次保存不应新增行");
         Optional<AgentTeamRoster> loaded = repository.findById("team-up");
         assertTrue(loaded.isPresent(), "更新后应仍可加载");
-        assertEquals("lead-2", loaded.get().lead(), "lead 应被更新");
+        assertEquals("leader-2", loaded.get().leader(), "leader 应被更新");
         assertEquals(List.of("a", "b"), loaded.get().teammates(), "teammates 应被更新");
         assertEquals("broadcast", loaded.get().messageStrategy(), "messageStrategy 应被更新");
     }
@@ -383,7 +383,7 @@ public class JdbcAgentTeamRepositoryTest {
                 assertDoesNotThrow(() -> new JdbcAgentTeamRepository(flakyDataSource(1)));
 
         RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> repo.save(new AgentTeamRoster("team-x", "lead", List.of("a"), "direct")));
+                () -> repo.save(new AgentTeamRoster("team-x", "leader", List.of("a"), "direct")));
 
         assertEquals("Failed to save agent team", ex.getMessage(), "异常信息应指明保存失败");
         assertTrue(ex.getCause() instanceof SQLException, "应保留原始 SQLException 作为原因");
@@ -470,14 +470,27 @@ public class JdbcAgentTeamRepositoryTest {
     private void insertTeamRow(String teamId, String teammatesJson) throws SQLException {
         try (Connection c = newConnection();
              PreparedStatement ps = c.prepareStatement(
-                     "INSERT INTO agent_team (team_id, lead, teammates_json, message_strategy, created_at)"
+                     "INSERT INTO agent_team (team_id, leader, teammates_json, message_strategy, created_at)"
                              + " VALUES (?, ?, ?, ?, ?)")) {
             ps.setString(1, teamId);
-            ps.setString(2, "lead");
+            ps.setString(2, "leader");
             ps.setString(3, teammatesJson);
             ps.setString(4, "direct");
             ps.setTimestamp(5, Timestamp.from(Instant.parse("2026-01-01T00:00:00Z")));
             ps.executeUpdate();
         }
+    }
+
+    // 场景：teammates_json 为空字符串（非 null）时反序列化降级为空列表
+    @Test
+    @DisplayName("teammates_json 为空串时返回空列表")
+    void blankTeammatesJsonReturnsEmptyList() throws SQLException {
+        insertTeamRow("team-blank-json", "");
+
+        Optional<AgentTeamRoster> loaded = repository.findById("team-blank-json");
+
+        assertTrue(loaded.isPresent(), "应能加载团队");
+        assertEquals("team-blank-json", loaded.get().teamId(), "teamId 应往返一致");
+        assertTrue(loaded.get().teammates().isEmpty(), "空白 JSON 应降级为空列表");
     }
 }

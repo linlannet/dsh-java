@@ -25,7 +25,9 @@ public class LocalSubprocessExecutor implements ISubprocessExecutorPort {
     public SubprocessResult execute(SubprocessSpec spec) {
         try {
             ProcessBuilder pb = new ProcessBuilder(spec.argv());
-            pb.directory(new java.io.File(spec.cwd()));
+            if (spec.cwd() != null && !spec.cwd().isBlank()) {
+                pb.directory(new java.io.File(spec.cwd()));
+            }
             Map<String, String> env = pb.environment();
             env.clear();
             env.putAll(spec.envOverride());
@@ -35,23 +37,41 @@ public class LocalSubprocessExecutor implements ISubprocessExecutorPort {
             StringBuilder stdout = new StringBuilder();
             StringBuilder stderr = new StringBuilder();
 
+            Thread stderrReader = new Thread(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                    String errLine;
+                    while ((errLine = reader.readLine()) != null) {
+                        stderr.append(errLine).append('\n');
+                    }
+                } catch (Exception ignored) {
+                    // 进程被强制终止导致流读取中断属预期
+                }
+            }, "subprocess-stderr-reader");
+            stderrReader.setDaemon(true);
+            stderrReader.start();
+
+            boolean spilled = false;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     if (stdout.length() > OUTPUT_BOUND) {
-                        return SubprocessResult.spilled(process.waitFor(), "输出超限，已 spill 落盘");
+                        spilled = true;
+                        break;
                     }
                     stdout.append(line).append('\n');
                 }
             }
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    stderr.append(line).append('\n');
-                }
-            }
 
+            if (spilled) {
+                // 停止读取后子进程可能仍阻塞于 stdout 写入，强制终止以解除阻塞
+                process.destroyForcibly();
+            }
             int exitCode = process.waitFor();
+            stderrReader.join(1000);
+
+            if (spilled) {
+                return SubprocessResult.spilled(exitCode, "输出超限，已 spill 落盘");
+            }
             return SubprocessResult.of(exitCode, stdout.toString(), stderr.toString());
         } catch (Exception e) {
             return SubprocessResult.of(-1, "", e.getMessage());

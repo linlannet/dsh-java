@@ -45,7 +45,7 @@ class AgentTeamServiceTest {
         var repo = new InMemoryRepo();
         var service = new AgentTeamService(repo);
 
-        var roster = service.createTeam("lead-1", List.of("mate-1", "mate-2"));
+        var roster = service.createTeam("leader-1", List.of("mate-1", "mate-2"));
         assertNotNull(roster.teamId());
         assertTrue(repo.findById(roster.teamId()).isPresent());
     }
@@ -56,8 +56,8 @@ class AgentTeamServiceTest {
         var repo = new InMemoryRepo();
         var service = new AgentTeamService(repo);
 
-        var roster = service.createTeam("lead-1", List.of("mate-1"));
-        var msg = service.sendMessage(roster.teamId(), "lead-1", "mate-1", "hello");
+        var roster = service.createTeam("leader-1", List.of("mate-1"));
+        var msg = service.sendMessage(roster.teamId(), "leader-1", "mate-1", "hello");
         assertEquals("hello", msg.content());
     }
 
@@ -67,9 +67,9 @@ class AgentTeamServiceTest {
         var repo = new InMemoryRepo();
         var service = new AgentTeamService(repo);
 
-        var roster = service.createTeam("lead-1", List.of("mate-1"));
+        var roster = service.createTeam("leader-1", List.of("mate-1"));
         assertThrows(AgentTeamService.TeammateNotFoundException.class,
-                () -> service.sendMessage(roster.teamId(), "lead-1", "nonexistent", "hello"));
+                () -> service.sendMessage(roster.teamId(), "leader-1", "nonexistent", "hello"));
     }
 
     @Test
@@ -78,7 +78,7 @@ class AgentTeamServiceTest {
         var repo = new InMemoryRepo();
         var service = new AgentTeamService(repo);
 
-        var roster = service.createTeam("lead-1", List.of("mate-1"));
+        var roster = service.createTeam("leader-1", List.of("mate-1"));
         var task = service.createTask(roster.teamId(), "实现功能X", "mate-1");
         assertEquals("open", task.status());
         assertEquals("实现功能X", task.title());
@@ -90,9 +90,9 @@ class AgentTeamServiceTest {
         var repo = new InMemoryRepo();
         var service = new AgentTeamService(repo);
 
-        var roster = service.createTeam("lead-1", List.of("mate-1"));
+        var roster = service.createTeam("leader-1", List.of("mate-1"));
         var restored = service.restore(roster.teamId());
         assertTrue(restored.isPresent());
-        assertEquals("lead-1", restored.get().lead());
+        assertEquals("leader-1", restored.get().leader());
     }
 }

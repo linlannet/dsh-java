@@ -187,4 +187,48 @@ public class GoogleTranslatorAdapterTest {
 
         assertTrue(result.isEmpty(), "非法 JSON 应返回 empty");
     }
+
+    // 场景：endpoint 为 null 或空白时应回退到默认端点（空白输入仍短路返回 empty，不发起网络请求）
+    @Test
+    @DisplayName("null/空白 endpoint 回退默认端点")
+    void blankEndpointFallsBackToDefault() {
+        GoogleTranslatorAdapter nullEndpoint = assertDoesNotThrow(() -> new GoogleTranslatorAdapter(null, "key"));
+        GoogleTranslatorAdapter blankEndpoint = assertDoesNotThrow(() -> new GoogleTranslatorAdapter("   ", "key"));
+
+        assertTrue(nullEndpoint.translate("   ", "zh").isEmpty(), "null endpoint 构造后空白文本应短路返回 empty");
+        assertTrue(blankEndpoint.translate("   ", "zh").isEmpty(), "空白 endpoint 构造后空白文本应短路返回 empty");
+    }
+
+    // 场景：端点已带查询串时应以 & 追加 apiKey 参数，且仍可解析译文
+    @Test
+    @DisplayName("端点含查询串时以 & 追加参数")
+    void endpointWithQueryStringAppendsWithAmpersand() throws IOException {
+        startServer("{\"data\":{\"translations\":[{\"translatedText\":\"bonjour\"}]}}");
+        GoogleTranslatorAdapter adapter =
+                new GoogleTranslatorAdapter(endpoint() + "?foo=1", "api-key-2");
+
+        Optional<String> result = adapter.translate("hello", "fr");
+
+        assertTrue(result.isPresent(), "含查询串端点应仍可解析译文");
+        assertEquals("bonjour", result.get(), "应返回 translatedText");
+        String query = lastQuery.get();
+        assertNotNull(query, "请求应携带查询串");
+        assertTrue(query.contains("foo=1&key=api-key-2"), "应以 & 追加 apiKey 参数，实际为: " + query);
+    }
+
+    // 场景：apiKey 为 null 时应以空串作为查询参数值，翻译仍可成功
+    @Test
+    @DisplayName("null apiKey 以空串作为查询参数")
+    void nullApiKeyUsesEmptyQueryValue() throws IOException {
+        startServer("{\"data\":{\"translations\":[{\"translatedText\":\"你好\"}]}}");
+        GoogleTranslatorAdapter adapter = new GoogleTranslatorAdapter(endpoint(), null);
+
+        Optional<String> result = adapter.translate("hello", "zh");
+
+        assertTrue(result.isPresent(), "标准响应应解析出译文");
+        assertEquals("你好", result.get(), "应返回 translatedText");
+        String query = lastQuery.get();
+        assertNotNull(query, "请求应携带查询串");
+        assertTrue(query.contains("key="), "查询串应包含空的 apiKey 参数，实际为: " + query);
+    }
 }

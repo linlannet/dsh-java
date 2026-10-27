@@ -11,7 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * AgentTeamService 提供 Lead 与具名 teammate 的 roster 管理、直接 inbox 消息投递、
+ * AgentTeamService 提供 Leader 与具名 teammate 的 roster 管理、直接 inbox 消息投递、
  * 持久共享任务板（创建/更新任务）、冷恢复已存储 teammate。
  *
  * <p>实验性扩展，默认关闭，需在 app 模块显式配置 @ConditionalOnProperty(name="dsh.experimental.agent-team.enabled", havingValue="true") 启用。</p>
@@ -25,9 +25,9 @@ public class AgentTeamService {
         this.repository = Objects.requireNonNull(repository, "repository 不能为空");
     }
 
-    public AgentTeamRoster createTeam(String lead, List<String> teammates) {
+    public AgentTeamRoster createTeam(String leader, List<String> teammates) {
         String teamId = UUID.randomUUID().toString();
-        var roster = new AgentTeamRoster(teamId, lead, teammates, "direct");
+        var roster = new AgentTeamRoster(teamId, leader, teammates, "direct");
         repository.save(roster);
         return roster;
     }
@@ -37,7 +37,7 @@ public class AgentTeamService {
         if (roster.isEmpty()) {
             throw new TeamNotFoundException("团队不存在: " + teamId);
         }
-        if (!roster.get().teammates().contains(toAgent) && !roster.get().lead().equals(toAgent)) {
+        if (!roster.get().teammates().contains(toAgent) && !roster.get().leader().equals(toAgent)) {
             throw new TeammateNotFoundException("teammate 不存在: " + toAgent);
         }
         var message = new TeamMessage(teamId, fromAgent, toAgent, content, Instant.now());

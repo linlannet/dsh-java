@@ -171,4 +171,18 @@ public class SenseVoiceSpeechAdapterTest {
 
         assertTrue(result.isEmpty(), "非 2xx 应返回 empty");
     }
+
+    // 场景：apiKey 为空白字符串（非 null）时应视为未配置，不发送 Authorization 头
+    @Test
+    @DisplayName("空白 apiKey 不发送鉴权头")
+    void blankApiKeySendsNoAuthHeader() throws IOException {
+        startServer(200, "ok");
+        SenseVoiceSpeechAdapter adapter = new SenseVoiceSpeechAdapter(endpoint(), "   ");
+
+        Optional<String> result = adapter.transcribe(new byte[]{7});
+
+        assertTrue(result.isPresent(), "2xx 非空响应应返回结果");
+        assertEquals("ok", result.get(), "应返回响应文本");
+        assertNull(lastAuthorization.get(), "空白 apiKey 不应发送 Authorization 头");
+    }
 }

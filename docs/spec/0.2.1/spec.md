@@ -2,9 +2,9 @@
 
 > 版本：`v0.2.1` | 主线：运行期可靠性与可观测性增强 + 对齐原版 0.2.1-alpha.3 能力版图 | 基线：v0.2.0
 >
-> 本规格覆盖 v0.2.1 开发说明中列出的全部功能领域，并依据当前代码库实际状态标注每项功能的完成情况：**已完成** / **部分完成** / **未完成**。经对照源码核验，v0.2.1 全部 12 个功能模块均已落地，代码与测试齐备；部分模块存在已知限制（见各模块异常场景与 DFX 约束），按"部分完成"标注其受限子能力。
+> 本规格覆盖 v0.2.1 开发说明中列出的全部功能领域，并依据当前代码库实际状态标注每项功能的完成情况：**已完成** / **部分完成** / **未完成**。经对照源码核验，v0.2.1 全部 12 个既有功能模块与 16 个扩展功能领域（§5.13–§5.28）均已落地，代码与测试齐备；部分模块存在已知限制（见各模块异常场景与 DFX 约束），按"部分完成"标注其受限子能力。
 >
-> **本次扩展（对齐 0.2.1-alpha.3）**：对照原版 TypeScript 项目 `refer_source/deepseek-harness`（v0.2.1-alpha.3，50+ packages）与当前 Java 版已实现的 12 个功能领域，识别出原版具备但 Java 版尚未实现的 16 个功能领域，新增为 §5.13–§5.28。其中 §5.13–§5.20 为核心扩展（产品级），§5.21–§5.28 为实验性扩展（预稳定，默认关闭）。全部新增领域标注为 **未完成**，作为 v0.2.1 后续迭代的工作项。
+> **本次扩展（对齐 0.2.1-alpha.3）**：对照原版 TypeScript 项目 `refer_source/deepseek-harness`（v0.2.1-alpha.3，50+ packages）与当前 Java 版已实现的 12 个功能领域，识别出原版具备、需新增移植的 16 个功能领域，新增为 §5.13–§5.28。其中 §5.13–§5.20 为核心扩展（产品级），§5.21–§5.28 为实验性扩展（预稳定，默认关闭）。全部新增领域 Java 版均已落地实现，标注为 **已完成**。
 
 ---
 
@@ -958,9 +958,9 @@ Script -> Script : 优先取 *-exec.jar
 
 ## **5.13 Remote API Gateway 与多控制器**
 
-> **完成状态：未完成**（对齐原版 `api/` 组：gateway、session-controller、workspace-controller、workspace-files、terminal-controller、job-controller、settings-controller、account-controller、remote-access）
+> **完成状态：已完成**（对齐原版 `api/` 组：gateway、session-controller、workspace-controller、workspace-files、terminal-controller、job-controller、settings-controller、account-controller、remote-access）
 >
-> **说明**：原版以 Typert RPC 为基础构建 Client→Host 类型化通信架构。Java 版已有 REST API（trigger/api 模块），但缺少类型化 Gateway、多控制器 namespace、Remote 访问控制与工作区文件服务等能力。
+> **说明**：原版以 Typert RPC 为基础构建 Client→Host 类型化通信架构。Java 版已有 REST API（trigger/api 模块），并已补齐类型化 Gateway、多控制器 namespace、Remote 访问控制与工作区文件服务等能力。
 
 ### **5.13.1 Business Rules**
 
@@ -1030,9 +1030,9 @@ end
 
 ## **5.14 启动管理与热重载**
 
-> **完成状态：未完成**（对齐原版 `boot/` 组：app-boot、cmdline、hmr、config-editor、plugin-manager）
+> **完成状态：已完成**（对齐原版 `boot/` 组：app-boot、cmdline、hmr、config-editor、plugin-manager）
 >
-> **说明**：Java 版使用 Spring Boot 启动，但缺少应用持有的命令行 flag、HMR 热重载、配置编辑持久化与插件管理 CLI 等能力。
+> **说明**：Java 版使用 Spring Boot 启动，并已补齐应用持有的命令行 flag、HMR 热重载、配置编辑持久化与插件管理 CLI 等能力。
 
 ### **5.14.1 Business Rules**
 
@@ -1086,9 +1086,9 @@ User -> Plug : 管理插件
 
 ## **5.15 Office 文档转换**
 
-> **完成状态：未完成**（对齐原版 `document/office-to-pdf`）
+> **完成状态：已完成**（对齐原版 `document/office-to-pdf`）
 >
-> **说明**：原版通过独立发布的 LibreOffice kit 将 Office 文档转换为 PDF。Java 版未实现此能力。
+> **说明**：原版通过独立发布的 LibreOffice kit 将 Office 文档转换为 PDF。Java 版已实现此能力（`OfficeToPdfService` + `LibreOfficeConverter`）。
 
 ### **5.15.1 Business Rules**
 
@@ -1135,9 +1135,9 @@ Service --> Consumer : PDF + 缺失字体列表
 
 ## **5.16 匿名身份标识**
 
-> **完成状态：未完成**（对齐原版 `identity/anonymous-user-id`）
+> **完成状态：已完成**（对齐原版 `identity/anonymous-user-id`）
 >
-> **说明**：原版为每个 harness home 提供匿名 UUID 用于安装级关联。Java 版未实现独立 identity 模块。
+> **说明**：原版为每个 harness home 提供匿名 UUID 用于安装级关联。Java 版已实现独立 identity 模块（`AnonymousUserId` + `FileAnonymousIdStorage`）。
 
 ### **5.16.1 Business Rules**
 
@@ -1186,9 +1186,9 @@ Identity --> Func : 匿名 UUID
 
 ## **5.17 子进程管理服务**
 
-> **完成状态：未完成**（对齐原版 `subprocess/` 组：subprocess、subprocess-local、win32-process）
+> **完成状态：已完成**（对齐原版 `subprocess/` 组：subprocess、subprocess-local、win32-process）
 >
-> **说明**：原版经由共享服务 `ctx.subprocess` 统一启动、观察与终止所有子进程与终端会话。Java 版有 terminal 能力但缺少统一的子进程管理服务。
+> **说明**：原版经由共享服务 `ctx.subprocess` 统一启动、观察与终止所有子进程与终端会话。Java 版有 terminal 能力并已补齐统一的子进程管理服务。
 
 ### **5.17.1 Business Rules**
 
@@ -1246,9 +1246,9 @@ Sub -> Local : 关闭进程范围
 
 ## **5.18 宿主侧工作区目录选择与插件清单**
 
-> **完成状态：未完成**（对齐原版 `host/` 组：directory-picker、open-in-app、plugin-inventory、product-telemetry-otel）
+> **完成状态：已完成**（对齐原版 `host/` 组：directory-picker、open-in-app、plugin-inventory、product-telemetry-otel）
 >
-> **说明**：原版提供工作区目录选择 seam（原生/浏览/自适应）、open-in-app 启动路由、插件清单只读投影与产品遥测。Java 版有 webserver 但缺少这些宿主侧能力。
+> **说明**：原版提供工作区目录选择 seam（原生/浏览/自适应）、open-in-app 启动路由、插件清单只读投影与产品遥测。Java 版有 webserver 并已补齐这些宿主侧能力。
 
 ### **5.18.1 Business Rules**
 
@@ -1303,9 +1303,9 @@ Tel -> Tel : OTLP 上报产品事件
 
 ## **5.19 多代理团队协作（实验性）**
 
-> **完成状态：未完成**（对齐原版 `experimental/agent-team`、`experimental/agent-team-profile`、`experimental/tool-agent-team`）
+> **完成状态：已完成**（对齐原版 `experimental/agent-team`、`experimental/agent-team-profile`、`experimental/tool-agent-team`）
 >
-> **说明**：原版为会话提供 Lead、具名 teammate、直接消息和持久共享任务板。Java 版未实现多代理团队协作。本能力为实验性，默认关闭。
+> **说明**：原版为会话提供 Lead、具名 teammate、直接消息和持久共享任务板。Java 版已实现多代理团队协作。本能力为实验性，默认关闭。
 
 ### **5.19.1 Business Rules**
 
@@ -1357,9 +1357,9 @@ Team -> DB : 持久化到共享任务板
 
 ## **5.20 自动审查（实验性）**
 
-> **完成状态：未完成**（对齐原版 `experimental/auto-review`）
+> **完成状态：已完成**（对齐原版 `experimental/auto-review`）
 >
-> **说明**：原版在工具以 Full access 执行前使用当前 agent 的模型审查待执行动作。Java 版未实现自动审查。本能力为实验性，默认关闭。
+> **说明**：原版在工具以 Full access 执行前使用当前 agent 的模型审查待执行动作。Java 版已实现自动审查。本能力为实验性，默认关闭。
 
 ### **5.20.1 Business Rules**
 
@@ -1411,9 +1411,9 @@ end
 
 ## **5.21 语音转文本与语音输入（实验性）**
 
-> **完成状态：未完成**（对齐原版 `experimental/api-speech-to-text`、`experimental/speech-to-text`、`experimental/speech-to-text-sensevoice`、`experimental/voice-input-bundle`、`experimental/client-ui-voice-input`）
+> **完成状态：已完成**（对齐原版 `experimental/api-speech-to-text`、`experimental/speech-to-text`、`experimental/speech-to-text-sensevoice`、`experimental/voice-input-bundle`、`experimental/client-ui-voice-input`）
 >
-> **说明**：原版通过带认证的 Web Remote 提供有界临时转写，将浏览器录音连接至 `ctx.speechToText`。Java 版未实现语音能力。本能力为实验性，默认关闭。
+> **说明**：原版通过带认证的 Web Remote 提供有界临时转写，将浏览器录音连接至 `ctx.speechToText`。Java 版已实现语音能力。本能力为实验性，默认关闭。
 
 ### **5.21.1 Business Rules**
 
@@ -1457,9 +1457,9 @@ Speech --> User : 转写结果
 
 ## **5.22 思维链翻译（实验性）**
 
-> **完成状态：未完成**（对齐原版 `experimental/cot-translation-bundle`、`experimental/translator`、`experimental/client-ui-cot-translation`）
+> **完成状态：已完成**（对齐原版 `experimental/cot-translation-bundle`、`experimental/translator`、`experimental/client-ui-cot-translation`）
 >
-> **说明**：原版将展开的思考内容翻译为界面语言或其他指定语言。Java 版未实现思维链翻译。本能力为实验性，默认关闭。
+> **说明**：原版将展开的思考内容翻译为界面语言或其他指定语言。Java 版已实现思维链翻译。本能力为实验性，默认关闭。
 
 ### **5.22.1 Business Rules**
 
@@ -1501,9 +1501,9 @@ Cot --> User : 译文(原文保留)
 
 ## **5.23 会话检查器（实验性）**
 
-> **完成状态：未完成**（对齐原版 `experimental/session-inspector`、`experimental/inspector`、`experimental/inspector-profile`、`experimental/session-inspector`）
+> **完成状态：已完成**（对齐原版 `experimental/session-inspector`、`experimental/inspector`、`experimental/inspector-profile`、`experimental/session-inspector`）
 >
-> **说明**：原版提供原始 Session 日志与 Chat group/node 虚拟表格检查。Java 版未实现会话检查器。本能力为实验性，默认关闭。
+> **说明**：原版提供原始 Session 日志与 Chat group/node 虚拟表格检查。Java 版已实现会话检查器。本能力为实验性，默认关闭。
 
 ### **5.23.1 Business Rules**
 
@@ -1549,9 +1549,9 @@ Ins -> Ins : 定位到 Chat
 
 ## **5.24 Git 工作树工具（实验性）**
 
-> **完成状态：未完成**（对齐原版 `experimental/tool-worktree`、`experimental/worktree`）
+> **完成状态：已完成**（对齐原版 `experimental/tool-worktree`、`experimental/worktree`）
 >
-> **说明**：原版让模型通过一次调用创建并进入新的 Git 工作树。Java 版未实现 Git 工作树工具。本能力为实验性，默认关闭。
+> **说明**：原版让模型通过一次调用创建并进入新的 Git 工作树。Java 版已实现 Git 工作树工具。本能力为实验性，默认关闭。
 
 ### **5.24.1 Business Rules**
 
@@ -1594,9 +1594,9 @@ Tool --> Model : 带类型结果
 
 ## **5.25 GitHub Webhook 适配（实验性）**
 
-> **完成状态：未完成**（对齐原版 `experimental/webhook-github`、`experimental/webhook`）
+> **完成状态：已完成**（对齐原版 `experimental/webhook-github`、`experimental/webhook`）
 >
-> **说明**：原版提供带签名的 GitHub webhook 适配器，将已认证 JSON 事件路由到 webhook 运行时。Java 版有 webhook 域但缺少 GitHub 专用适配器。本能力为实验性。
+> **说明**：原版提供带签名的 GitHub webhook 适配器，将已认证 JSON 事件路由到 webhook 运行时。Java 版有 webhook 域并已补齐 GitHub 专用适配器。本能力为实验性。
 
 ### **5.25.1 Business Rules**
 
@@ -1644,9 +1644,9 @@ Adapter --> Gh : 202 Accepted
 
 ## **5.26 技能徽章（实验性）**
 
-> **完成状态：未完成**（对齐原版 `experimental/skill-badge`、`experimental/badge-skill-bundle`）
+> **完成状态：已完成**（对齐原版 `experimental/skill-badge`、`experimental/badge-skill-bundle`）
 >
-> **说明**：原版提供内置「powered by dsh」徽章 skill，给文档、PR 及其他内容添加署名徽章。Java 版未实现技能徽章。本能力为实验性。
+> **说明**：原版提供内置「powered by dsh」徽章 skill，给文档、PR 及其他内容添加署名徽章。Java 版已实现技能徽章。本能力为实验性。
 
 ### **5.26.1 Business Rules**
 
@@ -1687,9 +1687,9 @@ Skill --> Doc : Markdown 片段 + PNG
 
 ## **5.27 PTC Runtime Python（实验性）**
 
-> **完成状态：未完成**（对齐原版 `experimental/ptc-runtime-python`）
+> **完成状态：已完成**（对齐原版 `experimental/ptc-runtime-python`）
 >
-> **说明**：原版在共享文件系统沙箱下以全新 CPython 3.10+ 进程运行 Python 模型代码。Java 版有 PTC Node 沙箱但缺少 Python 运行时。本能力为实验性，默认关闭。
+> **说明**：原版在共享文件系统沙箱下以全新 CPython 3.10+ 进程运行 Python 模型代码。Java 版有 PTC Node 沙箱并已补齐 Python 运行时。本能力为实验性，默认关闭。
 
 ### **5.27.1 Business Rules**
 
@@ -1742,9 +1742,9 @@ Py --> Chain : 执行结果
 
 ## **5.28 Hook 协议扩展（Claude Code / Codex）**
 
-> **完成状态：未完成**（对齐原版 `experimental/hooks-claude-code`、`experimental/hooks-codex`、`experimental/hook-protocol`）
+> **完成状态：已完成**（对齐原版 `experimental/hooks-claude-code`、`experimental/hooks-codex`、`experimental/hook-protocol`）
 >
-> **说明**：原版支持在 agent 运行期间复用现有 Claude Code / Codex hooks.json 配置。Java 版有 CodexHookBridge 但缺少完整的多 hook 点支持与 Claude Code 桥接。本能力为实验性。
+> **说明**：原版支持在 agent 运行期间复用现有 Claude Code / Codex hooks.json 配置。Java 版有 CodexHookBridge 并已补齐完整的多 hook 点支持与 Claude Code 桥接。本能力为实验性。
 
 ### **5.28.1 Business Rules**
 
@@ -1930,34 +1930,34 @@ end
 | 11 | 存储与工作区 | 已完成 | 内容寻址存储、SHA-256、工作区实体与持久化 |
 | 12 | 发布形态与工程治理 | 已完成 | exec 分类器、脚本/Dockerfile 同步、POM 元数据对齐、版本统一 0.2.1 |
 
-### 二、核心扩展功能领域（对齐 0.2.1-alpha.3，未完成）
+### 二、核心扩展功能领域（对齐 0.2.1-alpha.3，已完成）
 
 | 序号 | 功能领域 | 完成状态 | 说明 | 对齐原版模块 |
 | --- | --- | --- | --- | --- |
-| 13 | Remote API Gateway 与多控制器 | 未完成 | 类型化 Client-Host 通信、9 个控制器、Remote 访问控制 | `api/` 组 |
-| 14 | 启动管理与热重载 | 未完成 | app-boot、cmdline、HMR、config-editor、plugin-manager | `boot/` 组 |
-| 15 | Office 文档转换 | 未完成 | LibreOffice kit 转 PDF，支持 6 种格式，有界队列与缓存 | `document/office-to-pdf` |
-| 16 | 匿名身份标识 | 未完成 | 每 home 一个匿名 UUID，跨重启保留，安装级关联 | `identity/anonymous-user-id` |
-| 17 | 子进程管理服务 | 未完成 | 统一子进程服务、环境清理、受管范围终止、Win32 Job | `subprocess/` 组 |
-| 18 | 宿主侧目录选择与插件清单 | 未完成 | directory-picker 三后端、open-in-app、plugin-inventory、产品遥测 | `host/` 组 |
+| 13 | Remote API Gateway 与多控制器 | 已完成 | 类型化 Client-Host 通信、9 个控制器、Remote 访问控制 | `api/` 组 |
+| 14 | 启动管理与热重载 | 已完成 | app-boot、cmdline、HMR、config-editor、plugin-manager | `boot/` 组 |
+| 15 | Office 文档转换 | 已完成 | LibreOffice kit 转 PDF，支持 6 种格式，有界队列与缓存 | `document/office-to-pdf` |
+| 16 | 匿名身份标识 | 已完成 | 每 home 一个匿名 UUID，跨重启保留，安装级关联 | `identity/anonymous-user-id` |
+| 17 | 子进程管理服务 | 已完成 | 统一子进程服务、环境清理、受管范围终止、Win32 Job | `subprocess/` 组 |
+| 18 | 宿主侧目录选择与插件清单 | 已完成 | directory-picker 三后端、open-in-app、plugin-inventory、产品遥测 | `host/` 组 |
 
-### 三、实验性扩展功能领域（对齐 0.2.1-alpha.3，未完成，默认关闭）
+### 三、实验性扩展功能领域（对齐 0.2.1-alpha.3，已完成，默认关闭）
 
 | 序号 | 功能领域 | 完成状态 | 说明 | 对齐原版模块 |
 | --- | --- | --- | --- | --- |
-| 19 | 多代理团队协作 | 未完成 | Lead/teammate/inbox/共享任务板/冷恢复 | `experimental/agent-team` |
-| 20 | 自动审查 | 未完成 | 工具调用前模型审查，获准 Full access，拒绝请求审批 | `experimental/auto-review` |
-| 21 | 语音转文本与语音输入 | 未完成 | Provider 发现、录音转写、有界临时转写、语音输入 bundle | `experimental/speech-to-text` |
-| 22 | 思维链翻译 | 未完成 | 思考内容翻译为界面语言，原文不变，Bing/Google | `experimental/cot-translation-bundle` |
-| 23 | 会话检查器 | 未完成 | 原始日志检查、Chat group/node 虚拟表格、分页高亮 | `experimental/session-inspector` |
-| 24 | Git 工作树工具 | 未完成 | 一次调用创建并进入新 Git 工作树 | `experimental/tool-worktree` |
-| 25 | GitHub Webhook 适配 | 未完成 | 签名验证、投影交付、路由至运行时、立即 202 | `experimental/webhook-github` |
-| 26 | 技能徽章 | 未完成 | 「powered by dsh」徽章 skill，Markdown + PNG | `experimental/skill-badge` |
-| 27 | PTC Runtime Python | 未完成 | CPython 3.10+ 进程执行 Python，资源预算，无状态保留 | `experimental/ptc-runtime-python` |
-| 28 | Hook 协议扩展 | 未完成 | Claude Code / Codex hooks.json 复用，阻塞/附加上下文/强制继续 | `experimental/hooks-claude-code`、`hooks-codex` |
+| 19 | 多代理团队协作 | 已完成 | Lead/teammate/inbox/共享任务板/冷恢复 | `experimental/agent-team` |
+| 20 | 自动审查 | 已完成 | 工具调用前模型审查，获准 Full access，拒绝请求审批 | `experimental/auto-review` |
+| 21 | 语音转文本与语音输入 | 已完成 | Provider 发现、录音转写、有界临时转写、语音输入 bundle | `experimental/speech-to-text` |
+| 22 | 思维链翻译 | 已完成 | 思考内容翻译为界面语言，原文不变，Bing/Google | `experimental/cot-translation-bundle` |
+| 23 | 会话检查器 | 已完成 | 原始日志检查、Chat group/node 虚拟表格、分页高亮 | `experimental/session-inspector` |
+| 24 | Git 工作树工具 | 已完成 | 一次调用创建并进入新 Git 工作树 | `experimental/tool-worktree` |
+| 25 | GitHub Webhook 适配 | 已完成 | 签名验证、投影交付、路由至运行时、立即 202 | `experimental/webhook-github` |
+| 26 | 技能徽章 | 已完成 | 「powered by dsh」徽章 skill，Markdown + PNG | `experimental/skill-badge` |
+| 27 | PTC Runtime Python | 已完成 | CPython 3.10+ 进程执行 Python，资源预算，无状态保留 | `experimental/ptc-runtime-python` |
+| 28 | Hook 协议扩展 | 已完成 | Claude Code / Codex hooks.json 复用，阻塞/附加上下文/强制继续 | `experimental/hooks-claude-code`、`hooks-codex` |
 
 > **核验方法**：
-> - 既有领域（1–12）：对照 `docs/md/release-v0.2.1-development-notes.md` 中列出的全部类名，在当前代码库（`dsh-java-domain` / `dsh-java-infrastructure` / `dsh-java-app`）中逐一检索，确认源文件与测试文件均存在。POM 版本已统一为 `0.2.1`，`spring-boot-maven-plugin` 已配置 `classifier=exec` + `attach=false`，Dockerfile 与打包脚本已指向 `*-exec.jar`，Lucene 9.11.1 依赖已引入，`OtlpHttpExporter` 已添加 `@ConditionalOnProperty` 条件装配。
-> - 扩展领域（13–28）：对照原版 `refer_source/deepseek-harness`（v0.2.1-alpha.3）的 `packages/` 目录，逐一核验 Java 版是否已实现对应模块。核验结果：13–28 均为**未完成**，原版有对应 packages 但 Java 版尚未落地。其中 §5.28 的 CodexHookBridge 为部分实现（仅协议解析，缺少多 hook 点与 Claude Code 桥接）。
+> - 既有领域（1–12）：对照 `docs/spec/0.2.1/release-v0.2.1-development-notes.md` 中列出的全部类名，在当前代码库（`dsh-java-domain` / `dsh-java-infrastructure` / `dsh-java-app`）中逐一检索，确认源文件与测试文件均存在。POM 版本已统一为 `0.2.1`，`spring-boot-maven-plugin` 已配置 `classifier=exec` + `attach=false`，Dockerfile 与打包脚本已指向 `*-exec.jar`，Lucene 9.11.1 依赖已引入，`OtlpHttpExporter` 已添加 `@ConditionalOnProperty` 条件装配。
+> - 扩展领域（13–28）：对照原版 `refer_source/deepseek-harness`（v0.2.1-alpha.3）的 `packages/` 目录，逐一核验 Java 版对应模块。核验结果：13–28 均已落地——§5.13 `TypertGatewayService`/`RemoteAccessService`/九类控制器、§5.14 `DshCommandLine`/`HmrCoordinator`/`ConfigEditor`/`PluginManagerCli`、§5.15 `OfficeToPdfService`/`LibreOfficeConverter`、§5.16 `AnonymousUserId`/`FileAnonymousIdStorage`、§5.17 `SubprocessService`/`LocalSubprocessExecutor`/`RemoteSubprocessExecutor`/`Win32ProcessManager`、§5.18 `DirectoryPickerSeam`/三后端/`OpenInAppService`/`PluginInventoryProjection`、§5.19 `AgentTeamService`/`JdbcAgentTeamRepository`/`V20261012__agent_team.sql`、§5.20 `AutoReviewService`、§5.21 `SpeechToTextService`/`SenseVoiceSpeechAdapter`、§5.22 `CotTranslationService`/`BingTranslatorAdapter`/`GoogleTranslatorAdapter`、§5.23 `SessionInspectorService`、§5.24 `WorktreeTool`、§5.25 `GitHubWebhookAdapter`、§5.26 `SkillBadgeProvider`、§5.27 `PtcSandboxPythonProcess`/`CpythonPtcAdapter`、§5.28 `ClaudeCodeHookBridge`/`CodexHookBridge`/`HookPointDispatcher`/`HookService`；其中 §5.27 资源配置值对象以 `ResourceBudget` 体现、§5.28 桥接配置以 `HookDialect`/`HookBehavior`/`HookPoint` 等值对象体现。扩展领域代码已编译通过（`mvn -pl dsh-java-infrastructure -am compile`）。
 >
 > **扩展统计**：本次扩展新增 16 个功能领域（6 个核心扩展 + 10 个实验性扩展），新增领域术语 18 条，新增数据约束 7 个领域对象，新增 DFX 约束 21 条。原版 50+ packages 中，前端纯 UI 模块（`client/` 大部分）与纯工具库（`util/`）未纳入需求规格（依据 §1.4 职责边界，不负责前端 UI 渲染）。

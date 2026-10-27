@@ -34,7 +34,7 @@ public class JdbcAgentTeamRepository implements IAgentTeamRepository {
     private static final String CREATE_TEAM_TABLE_SQL = """
             CREATE TABLE IF NOT EXISTS agent_team (
                 team_id VARCHAR(64) PRIMARY KEY,
-                lead VARCHAR(128) NOT NULL,
+                leader VARCHAR(128) NOT NULL,
                 teammates_json TEXT,
                 message_strategy VARCHAR(32) NOT NULL,
                 created_at TIMESTAMP NOT NULL
@@ -66,17 +66,17 @@ public class JdbcAgentTeamRepository implements IAgentTeamRepository {
             """;
 
     private static final String INSERT_TEAM_SQL = """
-            INSERT INTO agent_team (team_id, lead, teammates_json, message_strategy, created_at)
+            INSERT INTO agent_team (team_id, leader, teammates_json, message_strategy, created_at)
             VALUES (?, ?, ?, ?, ?)
             """;
 
     private static final String UPDATE_TEAM_SQL = """
-            UPDATE agent_team SET lead = ?, teammates_json = ?, message_strategy = ?
+            UPDATE agent_team SET leader = ?, teammates_json = ?, message_strategy = ?
             WHERE team_id = ?
             """;
 
     private static final String SELECT_TEAM_SQL = """
-            SELECT team_id, lead, teammates_json, message_strategy
+            SELECT team_id, leader, teammates_json, message_strategy
             FROM agent_team WHERE team_id = ?
             """;
 
@@ -125,7 +125,7 @@ public class JdbcAgentTeamRepository implements IAgentTeamRepository {
         try (Connection c = dataSource.getConnection()) {
             int updated;
             try (PreparedStatement ps = c.prepareStatement(UPDATE_TEAM_SQL)) {
-                ps.setString(1, roster.lead());
+                ps.setString(1, roster.leader());
                 ps.setString(2, teammatesJson);
                 ps.setString(3, roster.messageStrategy());
                 ps.setString(4, roster.teamId());
@@ -134,7 +134,7 @@ public class JdbcAgentTeamRepository implements IAgentTeamRepository {
             if (updated == 0) {
                 try (PreparedStatement ps = c.prepareStatement(INSERT_TEAM_SQL)) {
                     ps.setString(1, roster.teamId());
-                    ps.setString(2, roster.lead());
+                    ps.setString(2, roster.leader());
                     ps.setString(3, teammatesJson);
                     ps.setString(4, roster.messageStrategy());
                     ps.setTimestamp(5, Timestamp.from(Instant.now()));
@@ -155,7 +155,7 @@ public class JdbcAgentTeamRepository implements IAgentTeamRepository {
                 if (rs.next()) {
                     return Optional.of(new AgentTeamRoster(
                             rs.getString("team_id"),
-                            rs.getString("lead"),
+                            rs.getString("leader"),
                             deserializeTeammates(rs.getString("teammates_json")),
                             rs.getString("message_strategy")
                     ));
