@@ -34,9 +34,12 @@ public class ConversationRecentSessionsNode
     @Override
     protected List<ConversationSessionSummaryResponseDTO> doApply(SessionListRequestDTO query, NoContext context) {
         var result = conversationQueryService.listRecentSessions(query.limit(), query.offset()).stream()
+                // 契约 v1：lastMessage 取最近消息摘要；updatedAt 取最近活动时间（缺失回落创建时间）
                 .map(summary -> new ConversationSessionSummaryResponseDTO(
                         summary.sessionId(), summary.title(), summary.preview(), summary.status(),
-                        summary.createdAt(), summary.agentId(), summary.workspaceId()
+                        summary.createdAt(), summary.agentId(), summary.workspaceId(),
+                        summary.preview(), summary.modelCode(),
+                        summary.lastActivityAt() != null ? summary.lastActivityAt() : summary.createdAt()
                 ))
                 .toList();
         log.debug("[Session] 最近会话查询完成，limit={} offset={} count={}", query.limit(), query.offset(), result.size());

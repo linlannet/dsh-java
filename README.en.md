@@ -193,7 +193,7 @@ java -jar dsh-java-app/target/dsh-java-app.jar \
 
 #### Import the MySQL Schema
 
-Recommended: directly import the MySQL 8 dump from the repository, which contains 12 Harness tables:
+Recommended: directly import the MySQL 8 dump from the repository, which contains 30 tables (12 of them are `harness_*` related):
 
 ```bash
 mysql -u root -p < docs/dev-ops/mysql/sql/dsh_java.sql
@@ -1175,21 +1175,49 @@ The repository includes a Baidu AI Search example skill: `skills/baidu-ai-search
 
 ## 11. Persistence Model
 
-The main tables currently initialized by `schema.sql` (12 in total) include:
+The main tables currently initialized by `schema.sql` (30 in total) include:
 
 | Table | Purpose |
 | --- | --- |
 | `harness_session` | Session aggregate base state |
 | `harness_session_header` | session request headers and context fold state |
-| `harness_session_event` / `harness_session_event_log` | session and Agent process events |
+| `harness_session_event` | session process events |
+| `harness_session_event_log` | Agent process event log |
 | `harness_task` | task submission and execution state |
 | `harness_goal_state` | goal state |
 | `harness_plugin_installation` | plugin install metadata |
 | `harness_plugin_runtime_binding` | plugin runtime binding info |
+| `harness_plugin_config` | plugin config entries |
 | `harness_model_setting` | model channel and Provider config |
-| `harness_tool_catalog` / `harness_tool_profile_binding` | tool catalog and Profile binding |
+| `harness_tool_catalog` | tool catalog |
+| `harness_tool_profile_binding` | tool Profile binding |
+| `token_snapshot` | session token snapshot |
+| `digital_human` | digital human profile |
+| `digital_human_endpoint` | digital human remote endpoint and health state |
+| `collaboration_room` | collaboration room |
+| `room_participant` | collaboration room participant |
+| `collaboration_task` | collaboration task |
+| `collaboration_artifact` | collaboration artifact |
+| `room_event` | collaboration room event |
+| `workspace` | workspace definition |
+| `session_workspace` | session-workspace binding |
+| `checkpoint` | session execution checkpoint snapshot |
+| `spill_ref` | context spill reference |
+| `anonymous_user_id` | stable anonymous user identity |
+| `message_feedback` | message rating and note |
+| `slash_command` | registered slash command |
+| `agent_team` | multi-agent team roster (experimental) |
+| `team_task` | team shared task board (experimental) |
+| `team_message` | team agent message (experimental) |
 
 MySQL carries structured state and events (default profile); standalone profile uses H2 file database (`MODE=MySQL` compatibility mode), both share the same schema, `sql.init.mode=always` idempotent rerun.
+
+### Schema Source and Maintenance Convention
+
+- **Effective script**: at startup Spring SQL Init (`sql.init.mode=always`) executes `dsh-java-app/src/main/resources/schema.sql`, the script effective for both the default profile and the standalone profile.
+- **Source of truth**: the table set is defined by the union of `db/migration/*.sql` and `schema.sql` (30 tables currently); `db/migration/*.sql` is a read-only reference and is not executed at startup.
+- **Fallback logic**: `SchemaMigrationRunner` only backfills a few columns/tables idempotently at startup (e.g. `token_snapshot`); it is an evolution fallback, not the authoritative table set.
+- **Maintenance convention**: when adding or changing tables, keep `schema.sql`, `db/migration/*.sql` and `docs/dev-ops/mysql/sql/dsh_java.sql` in sync, and run `scripts/check-sql-parity.sh` before committing to verify the three table sets match.
 
 ---
 

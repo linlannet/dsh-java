@@ -18,6 +18,7 @@ const DEFAULT_CHANNEL = '';
 const PLUGIN_API = '/api/harness/plugins';
 const CONSOLE_API = '/api/harness/console';
 const APPROVAL_API = '/api/harness/approvals';
+const DIGITAL_HUMAN_API = '/api/digital-humans';
 
 async function apiRequest(path, options = {}) {
   const response = await fetch(path, options);
@@ -169,11 +170,16 @@ const state = {
   currentChannel: localStorage.getItem('currentChannel') || DEFAULT_CHANNEL,
   activeMainTab: 'chat',
   activeSettingsTab: 'models',
+  // 协作房间：近期房间记录（localStorage 兜底，后端暂无房间列表接口）与当前打开房间
+  collabRooms: JSON.parse(localStorage.getItem('dshConsoleRooms') || '[]'),
+  activeRoomId: null,
   plugins: [],
   pluginConfigs: {},
   selectedPluginId: null,
   // v11: 审批队列
   pendingApprovals: [],
+  // 契约 v1（docs/spec/0.2.2/contract）：待回答提问，形状 RuntimeQuestion{questionId, agentId, questions[], createdAt}
+  pendingQuestions: [],
   // v11: 侧边面板
   activePanel: null, // 'todos' | 'plan' | 'goal' | 'trajectory' | 'subagents' | 'deliverables' | 'jobs' | 'recall' | null
   // v29: 轨迹视图搜索关键字
@@ -253,7 +259,7 @@ function el(tag, attrs, ...children) {
 
 function icon(name, className) {
   const icons = {
-    brand: "<span class='brand-emoji' aria-hidden='true'>🐳</span>",
+    brand: "<img class='brand-logo' src='/brand-logo.svg' alt='' aria-hidden='true' />",
     panel: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><rect x='4.5' y='5' width='15' height='14' rx='3' stroke='currentColor' stroke-width='1.7'/><path d='M10 5.8v12.4' stroke='currentColor' stroke-width='1.7' stroke-linecap='round'/></svg>",
     plus: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M12 7v10M7 12h10' stroke='currentColor' stroke-width='1.8' stroke-linecap='round'/><circle cx='12' cy='12' r='8.5' stroke='currentColor' stroke-width='1.5' opacity='.45'/></svg>",
     plusPlain: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M12 7v10M7 12h10' stroke='currentColor' stroke-width='1.8' stroke-linecap='round'/></svg>",
@@ -264,6 +270,11 @@ function icon(name, className) {
     settings: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M12 8.7a3.3 3.3 0 1 0 0 6.6 3.3 3.3 0 0 0 0-6.6Z' stroke='currentColor' stroke-width='1.7'/><path d='M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7.5 7.5 0 0 0-1.7-1l-.3-2.5h-4l-.3 2.5a7.5 7.5 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7.5 7.5 0 0 0 1.7 1l.3 2.5h4l.3-2.5a7.5 7.5 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5c.1-.3.1-.7.1-1Z' stroke='currentColor' stroke-width='1.4' stroke-linejoin='round'/></svg>",
     pencil: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3Z' stroke='currentColor' stroke-width='1.7' stroke-linejoin='round'/><path d='M14.5 7.5l3 3' stroke='currentColor' stroke-width='1.7' stroke-linecap='round'/></svg>",
     trash: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M5 7h14M10 7V5h4v2M6.5 7l.7 12a2 2 0 0 0 2 1.9h5.6a2 2 0 0 0 2-1.9L17.5 7' stroke='currentColor' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/></svg>",
+    users: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><circle cx='9' cy='9' r='3.2' stroke='currentColor' stroke-width='1.6'/><path d='M3.5 19c.6-3 2.8-4.6 5.5-4.6S14 16 14.6 19' stroke='currentColor' stroke-width='1.6' stroke-linecap='round'/><path d='M15.5 7.2a3 3 0 0 1 0 5.6M17 14.6c2 .7 3.3 2.2 3.7 4.4' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' opacity='.7'/></svg>",
+    plugin: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M10 4.5a2 2 0 1 1 4 0V6h3a1.5 1.5 0 0 1 1.5 1.5v3h-1.5a2 2 0 1 0 0 4h1.5v3A1.5 1.5 0 0 1 17 19h-3v-1.5a2 2 0 1 0-4 0V19H7a1.5 1.5 0 0 1-1.5-1.5v-3H7a2 2 0 1 0 0-4H5.5v-3A1.5 1.5 0 0 1 7 6h3V4.5Z' stroke='currentColor' stroke-width='1.5' stroke-linejoin='round'/></svg>",
+    shield: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M12 3.5 19 6v5.2c0 4.3-2.8 7.3-7 9.3-4.2-2-7-5-7-9.3V6l7-2.5Z' stroke='currentColor' stroke-width='1.6' stroke-linejoin='round'/><path d='m9.2 11.8 2 2 3.6-3.8' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>",
+    file: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M7.5 3.5h5.7L18 8.3V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5a1.5 1.5 0 0 1 1.5-1.5Z' stroke='currentColor' stroke-width='1.6' stroke-linejoin='round'/><path d='M13 3.8v4.7h4.7' stroke='currentColor' stroke-width='1.6' stroke-linejoin='round'/></svg>",
+    star: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='m12 4 2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4-3.9-3.8 5.4-.8L12 4Z' stroke='currentColor' stroke-width='1.5' stroke-linejoin='round'/></svg>",
   };
   return el('span', { class: 'icon' + (className ? ' ' + className : ''), html: icons[name] || '' });
 }
@@ -415,7 +426,10 @@ function toggleTheme() {
 function render() {
   const root = $('#app') || document.body;
   root.innerHTML = '';
-  root.appendChild(state.activeMainTab === 'settings' ? renderSettingsPage() : renderLayout());
+  if (state.activeMainTab === 'settings') { root.appendChild(renderSettingsPage()); return; }
+  if (state.activeMainTab === 'collaboration') { root.appendChild(renderCollaborationPage()); return; }
+  stopCollabStream();
+  root.appendChild(renderLayout());
 }
 
 function renderLayout() {
@@ -1046,6 +1060,9 @@ function renderMain() {
   if (state.pendingApprovals.length > 0) {
     main.appendChild(renderApprovalBanner());
   }
+  if (state.pendingQuestions.length > 0) {
+    main.appendChild(renderQuestionBanner());
+  }
   main.appendChild(renderComposer(sess));
 
   return main;
@@ -1440,93 +1457,189 @@ function hideSlashSuggestions() {
 }
 
 // ═══════════════════════════════════════════
-// @ 插件提及
+// @ 资源提及（对齐桌面端：资源 / 项目 / 插件 / 技能）
 // ═══════════════════════════════════════════
-state.mentionState = { items: [], activeIndex: -1 };
+state.mentionState = { items: [], activeIndex: -1, trigger: null };
+state.skillOptions = null;
 
-function activeMentionPlugins() {
-  return state.plugins.filter(function(plugin) {
-    return !plugin.status || plugin.status === 'ACTIVE';
+const SKILLS_API = '/api/harness/extensions/skills';
+const RESOURCE_FILE_TEXT_LIMIT = 20000;
+// 交付插件固定清单（提示词与桌面端 App.tsx RESOURCE_PLUGIN_PROMPTS 一致）
+const RESOURCE_PLUGIN_KINDS = [
+  { kind: 'word', label: 'Word', prompt: '按 Word 文档交付，优先生成或编辑 .docx 内容。' },
+  { kind: 'excel', label: 'Excel', prompt: '按 Excel 表格交付，优先生成或编辑 .xlsx 内容。' },
+  { kind: 'md', label: 'MD', prompt: '按 Markdown 文档交付，优先生成或编辑 .md 内容。' },
+  { kind: 'echart', label: 'EChart', prompt: '按 ECharts 图表交付，优先生成可渲染的 echarts 代码块或图表配置。' },
+  { kind: 'drawio', label: 'Draw.io', prompt: '按 draw.io 图表交付，优先生成或编辑 .drawio 文件：内容必须是合法的 mxGraphModel XML（mxfile 包裹），用 <mxCell> 节点与 edge 表达节点、连线与布局，写盘后给出绝对路径。' },
+];
+
+function ensureSessionResources(sess) {
+  if (!sess) return [];
+  if (!sess.resources) sess.resources = [];
+  return sess.resources;
+}
+
+async function loadSkillOptions() {
+  if (state.skillOptions) return state.skillOptions;
+  try {
+    const data = await apiRequest(SKILLS_API);
+    state.skillOptions = (Array.isArray(data) ? data : [])
+      .filter(function (skill) { return skill && skill.enabled !== false; })
+      .map(function (skill) {
+        return {
+          name: skill.name || skill.skillName || skill.id || '未命名技能',
+          path: skill.path || skill.installPath || skill.dir || '',
+          description: skill.description || ''
+        };
+      });
+  } catch (e) { state.skillOptions = []; }
+  return state.skillOptions;
+}
+
+function mentionTriggerAt(input, cursorPos) {
+  const text = input.value.slice(0, cursorPos);
+  const match = text.match(/(?:^|\s)@([\w.\u4e00-\u9fa5-]*)$/);
+  return match ? { start: cursorPos - match[0].length, query: match[1] } : null;
+}
+
+async function buildMentionItems(query) {
+  const q = (query || '').trim().toLowerCase();
+  const hit = function (value) { return !q || String(value || '').toLowerCase().includes(q); };
+  const sess = getCurrentSession();
+  const resources = sess ? ensureSessionResources(sess) : [];
+  const used = function (predicate) { return resources.some(predicate); };
+
+  const items = [
+    { group: '资源', icon: 'folder', label: '文件夹', desc: '选择本机目录作为对话资源', action: 'pick-folder' },
+    { group: '资源', icon: 'file', label: '文件（图片、MD 等）', desc: '文本读入上下文，图片作为多模态附件', action: 'pick-file' }
+  ].filter(function (item) { return hit(item.label); });
+
+  (state.workspaces || []).forEach(function (workspace) {
+    const name = wsEntryName(workspace);
+    const path = wsEntryPath(workspace);
+    if (!hit(name) && !hit(path)) return;
+    items.push({
+      group: '项目', icon: 'folder', label: name, desc: path, action: 'project',
+      resource: { kind: 'project', name: name, path: path }
+    });
   });
+
+  RESOURCE_PLUGIN_KINDS.forEach(function (plugin) {
+    if (!hit(plugin.label)) return;
+    if (used(function (r) { return r.kind === 'plugin' && r.pluginKind === plugin.kind; })) return;
+    items.push({ group: '插件', icon: 'plugin', label: plugin.label, desc: plugin.prompt, action: 'plugin', plugin: plugin });
+  });
+
+  const skills = await loadSkillOptions();
+  skills.forEach(function (skill) {
+    if (!hit(skill.name) && !hit(skill.description)) return;
+    if (used(function (r) { return r.kind === 'skill' && r.name === skill.name; })) return;
+    items.push({
+      group: '技能', icon: 'star', label: skill.name, desc: skill.description || skill.path, action: 'skill',
+      resource: { kind: 'skill', name: skill.name, path: skill.path }
+    });
+  });
+
+  return items.slice(0, 20);
 }
 
 function handlePluginMention(input, cursorPos) {
-  const text = input.value.slice(0, cursorPos);
-  const match = text.match(/(?:^|\s)@([A-Za-z0-9._-]*)$/);
-  if (!match) {
+  const trigger = mentionTriggerAt(input, cursorPos);
+  if (!trigger) {
     hidePluginMentionSuggestions();
     return;
   }
-
-  const partial = match[1].toLowerCase();
-  const items = activeMentionPlugins().filter(function(plugin) {
-    const id = (plugin.pluginId || '').toLowerCase();
-    const name = (plugin.displayName || '').toLowerCase();
-    return id.includes(partial) || name.includes(partial);
-  }).slice(0, 8);
-
-  if (items.length === 0) {
-    hidePluginMentionSuggestions();
-    return;
-  }
-  showPluginMentionSuggestions(input, items);
+  buildMentionItems(trigger.query).then(function (items) {
+    const current = mentionTriggerAt(input, input.selectionStart || 0);
+    if (!current || current.query !== trigger.query) return;
+    if (!items.length) { hidePluginMentionSuggestions(); return; }
+    showMentionMenu(input, items, current);
+  });
 }
 
-function showPluginMentionSuggestions(input, items) {
+function showMentionMenu(input, items, trigger) {
   hidePluginMentionSuggestions();
   state.mentionState.items = items;
   state.mentionState.activeIndex = 0;
+  state.mentionState.trigger = trigger;
 
-  const container = el('div', { class: 'slash-command-suggestions', id: 'plugin-mention-suggestions' });
-  items.forEach(function(plugin, index) {
-    const item = el('button', {
+  const container = el('div', { class: 'slash-command-suggestions mention-menu', id: 'plugin-mention-suggestions' });
+  let lastGroup = null;
+  items.forEach(function (item, index) {
+    if (item.group !== lastGroup) {
+      container.appendChild(el('div', { class: 'slash-group-label' }, item.group));
+      lastGroup = item.group;
+    }
+    const node = el('button', {
       type: 'button',
       class: 'slash-cmd-item' + (index === 0 ? ' active' : ''),
-      onclick: function() {
-        applyPluginMention(input, plugin.pluginId);
-      }
+      onclick: function () { applyMentionItem(input, item); }
     });
-    item.appendChild(el('span', { class: 'slash-cmd-icon' }, '🧩'));
-    item.appendChild(el('div', { class: 'slash-cmd-info' },
-      el('div', { class: 'slash-cmd-name' }, '@' + plugin.pluginId),
-      el('div', { class: 'slash-cmd-desc' }, plugin.displayName || plugin.pluginId)
+    node.appendChild(icon(item.icon, 'slash-cmd-icon'));
+    node.appendChild(el('div', { class: 'slash-cmd-info' },
+      el('div', { class: 'slash-cmd-name' }, item.label),
+      item.desc ? el('div', { class: 'slash-cmd-desc' }, item.desc) : null
     ));
-    container.appendChild(item);
+    container.appendChild(node);
   });
 
   const rect = input.getBoundingClientRect();
   container.style.position = 'fixed';
   container.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
   container.style.left = rect.left + 'px';
-  container.style.width = Math.max(rect.width, 260) + 'px';
+  container.style.width = Math.max(rect.width, 300) + 'px';
+  container.style.maxHeight = '380px';
+  container.style.overflowY = 'auto';
   document.body.appendChild(container);
+  setTimeout(function () {
+    document.addEventListener('click', dismissMentionOnOutsideClick);
+  }, 0);
+}
+
+function dismissMentionOnOutsideClick(e) {
+  const menu = $('#plugin-mention-suggestions');
+  if (menu && !menu.contains(e.target)) hidePluginMentionSuggestions();
+}
+
+// 输入框「+」按钮：直接弹出与 @ 菜单一致的分层资源菜单（不过滤）
+function openComposerPlusMenu() {
+  const input = $('#composer-input');
+  if (!input) return;
+  buildMentionItems('').then(function (items) {
+    if (!items.length) { showToast('暂无可添加的资源'); return; }
+    showMentionMenu(input, items, null);
+  });
 }
 
 function hidePluginMentionSuggestions() {
   const existing = $('#plugin-mention-suggestions');
   if (existing) existing.remove();
+  document.removeEventListener('click', dismissMentionOnOutsideClick);
   state.mentionState.items = [];
   state.mentionState.activeIndex = -1;
+  state.mentionState.trigger = null;
 }
 
 function handleMentionKeys(input, event) {
   const container = $('#plugin-mention-suggestions');
   if (!container || state.mentionState.items.length === 0) return false;
 
+  const nodes = Array.from(container.querySelectorAll('.slash-cmd-item'));
   if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
     event.preventDefault();
     const count = state.mentionState.items.length;
     state.mentionState.activeIndex = event.key === 'ArrowDown'
       ? (state.mentionState.activeIndex + 1) % count
       : (state.mentionState.activeIndex - 1 + count) % count;
-    Array.from(container.children).forEach(function(item, index) {
-      item.classList.toggle('active', index === state.mentionState.activeIndex);
+    nodes.forEach(function (node, index) {
+      node.classList.toggle('active', index === state.mentionState.activeIndex);
+      if (index === state.mentionState.activeIndex) node.scrollIntoView({ block: 'nearest' });
     });
     return true;
   }
   if ((event.key === 'Enter' || event.key === 'Tab') && state.mentionState.activeIndex >= 0) {
     event.preventDefault();
-    applyPluginMention(input, state.mentionState.items[state.mentionState.activeIndex].pluginId);
+    applyMentionItem(input, state.mentionState.items[state.mentionState.activeIndex]);
     return true;
   }
   if (event.key === 'Escape') {
@@ -1541,22 +1654,182 @@ function hasActivePluginMention() {
   return !!$('#plugin-mention-suggestions');
 }
 
-function applyPluginMention(input, pluginId) {
-  const cursorPos = input.selectionStart || input.value.length;
-  const before = input.value.slice(0, cursorPos);
-  const match = before.match(/@([A-Za-z0-9._-]*)$/);
-  if (!match) {
-    hidePluginMentionSuggestions();
+function removeMentionTriggerWord(input) {
+  const trigger = state.mentionState.trigger;
+  const caret = input.selectionStart || input.value.length;
+  if (trigger) {
+    input.value = input.value.slice(0, trigger.start) + input.value.slice(caret);
+    input.setSelectionRange(trigger.start, trigger.start);
+  } else {
+    const before = input.value.slice(0, caret);
+    const match = before.match(/@([\w.\u4e00-\u9fa5-]*)$/);
+    if (match) {
+      const start = caret - match[0].length;
+      input.value = input.value.slice(0, start) + input.value.slice(caret);
+      input.setSelectionRange(start, start);
+    }
+  }
+  input.focus();
+  autoResize({ target: input });
+}
+
+function chipLabel(resource) {
+  if (resource.kind === 'folder') return '📁 文件夹：' + resource.name;
+  if (resource.kind === 'project') return '📁 项目：' + resource.name;
+  if (resource.kind === 'file') return '📄 文件：' + resource.name;
+  if (resource.kind === 'skill') return '⭐ 技能：' + resource.name;
+  if (resource.kind === 'plugin') return '🧩 插件：' + (resource.plugin ? resource.plugin.label : resource.name);
+  return resource.name;
+}
+
+function addComposerResource(resource) {
+  const sess = getCurrentSession();
+  if (!sess) return;
+  const resources = ensureSessionResources(sess);
+  const duplicate = resources.some(function (r) {
+    return r.kind === resource.kind && r.name === resource.name && (r.pluginKind || '') === (resource.pluginKind || '');
+  });
+  if (duplicate) { showToast('该资源已添加'); return; }
+  resources.push(resource);
+  updateResourceBanner();
+}
+
+function removeComposerResource(index) {
+  const sess = getCurrentSession();
+  if (!sess || !sess.resources) return;
+  sess.resources.splice(index, 1);
+  updateResourceBanner();
+}
+
+function updateResourceBanner() {
+  const banner = $('#resource-banner');
+  if (!banner) return;
+  const sess = getCurrentSession();
+  const resources = (sess && sess.resources) || [];
+  banner.innerHTML = '';
+  resources.forEach(function (resource, index) {
+    const chip = el('span', { class: 'resource-chip' }, chipLabel(resource));
+    chip.appendChild(el('button', {
+      class: 'resource-chip-remove',
+      title: '移除资源',
+      onclick: function () { removeComposerResource(index); }
+    }, '×'));
+    banner.appendChild(chip);
+  });
+}
+
+function applyMentionItem(input, item) {
+  removeMentionTriggerWord(input);
+  hidePluginMentionSuggestions();
+
+  if (item.action === 'pick-folder') { getComposerFolderPicker().click(); return; }
+  if (item.action === 'pick-file') { getComposerFilePicker().click(); return; }
+  if (item.action === 'plugin') {
+    addComposerResource({ kind: 'plugin', name: item.plugin.label, pluginKind: item.plugin.kind, plugin: item.plugin });
     return;
   }
-  const start = cursorPos - match[0].length;
-  const insertion = '@' + pluginId + ' ';
-  input.value = input.value.slice(0, start) + insertion + input.value.slice(cursorPos);
-  const caret = start + insertion.length;
-  input.focus();
-  input.setSelectionRange(caret, caret);
-  autoResize({ target: input });
-  hidePluginMentionSuggestions();
+  if (item.resource) addComposerResource(item.resource);
+}
+
+let composerFolderPicker = null;
+let composerFilePicker = null;
+
+function getComposerFolderPicker() {
+  if (composerFolderPicker) return composerFolderPicker;
+  composerFolderPicker = el('input', { type: 'file', webkitdirectory: '', style: 'display:none' });
+  composerFolderPicker.addEventListener('change', function () {
+    const files = Array.from(composerFolderPicker.files || []);
+    let root = '';
+    if (files.length && files[0].webkitRelativePath) root = files[0].webkitRelativePath.split('/')[0];
+    else if (files.length) root = files[0].name;
+    if (root) addComposerResource({ kind: 'folder', name: root, path: '' });
+    composerFolderPicker.value = '';
+  });
+  document.body.appendChild(composerFolderPicker);
+  return composerFolderPicker;
+}
+
+function getComposerFilePicker() {
+  if (composerFilePicker) return composerFilePicker;
+  composerFilePicker = el('input', { type: 'file', multiple: '', style: 'display:none' });
+  composerFilePicker.addEventListener('change', function () {
+    Array.from(composerFilePicker.files || []).forEach(function (file) { ingestPickedFile(file); });
+    composerFilePicker.value = '';
+  });
+  document.body.appendChild(composerFilePicker);
+  return composerFilePicker;
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise(function (resolve) {
+    const reader = new FileReader();
+    reader.onload = function () { resolve(String(reader.result || '')); };
+    reader.onerror = function () { resolve(''); };
+    reader.readAsDataURL(file);
+  });
+}
+
+const RESOURCE_TEXT_FILE_RE = /\.(md|markdown|txt|json|ya?ml|csv|log|xml|html?|css|js|jsx|ts|tsx|java|py|go|rs|sql|sh|toml|ini|properties)$/i;
+
+async function ingestPickedFile(file) {
+  if (file.type && file.type.startsWith('image/')) {
+    const dataUrl = await readFileAsDataUrl(file);
+    const sess = getCurrentSession();
+    if (sess && dataUrl) {
+      if (!sess.pendingAttachments) sess.pendingAttachments = [];
+      sess.pendingAttachments.push({ type: 'image', url: dataUrl, name: file.name });
+      render();
+      showToast('图片已加入附件');
+    }
+    return;
+  }
+  const looksText = RESOURCE_TEXT_FILE_RE.test(file.name)
+    || (file.type && (file.type.indexOf('text/') === 0 || file.type === 'application/json' || file.type === 'application/xml'));
+  if (!looksText) {
+    addComposerResource({ kind: 'file', name: file.name, path: '', mimeType: file.type || '' });
+    showToast('该文件类型暂不支持读取内容，已作为引用添加');
+    return;
+  }
+  let textContent = '';
+  try { textContent = await file.text(); } catch (e) { textContent = ''; }
+  addComposerResource({ kind: 'file', name: file.name, path: '', mimeType: file.type || 'text/plain', textContent: textContent });
+}
+
+// 资源 → 隐藏上下文块（与桌面端 resourcesHiddenContext 文案一致）
+function resourcesHiddenContext(resources) {
+  if (!resources || !resources.length) return '';
+  const lines = resources.map(function (resource) {
+    if (resource.kind === 'folder') return '- 文件夹：' + resource.name + '（浏览器端选择，无绝对路径）';
+    if (resource.kind === 'project') return '- 项目：' + resource.name + ' (' + resource.path + ')';
+    if (resource.kind === 'file') {
+      let docText = '';
+      if (resource.textContent) {
+        const truncated = resource.textContent.length > RESOURCE_FILE_TEXT_LIMIT;
+        const body = truncated
+          ? resource.textContent.slice(0, RESOURCE_FILE_TEXT_LIMIT) + '\n…（内容过长已截断）'
+          : resource.textContent;
+        docText = '；文档文本内容如下（已由前端读取）：\n[文件内容开始]\n' + body + '\n[文件内容结束]';
+      }
+      return '- 文件：' + resource.name + (resource.mimeType ? '；类型：' + resource.mimeType : '') + docText;
+    }
+    if (resource.kind === 'skill') {
+      return '- 技能：' + resource.name + (resource.path ? ' (' + resource.path + ')' : '')
+        + '；请先阅读该技能目录下的 SKILL.md 及其附带的资料与脚本，并严格按技能说明的流程完成任务。';
+    }
+    const plugin = resource.plugin || {};
+    return '- 插件：' + (plugin.label || resource.name) + '；' + (plugin.prompt || '按指定插件类型交付内容。');
+  });
+  return '[用户添加的资源]\n' + lines.join('\n')
+    + '\n\n[重要] 文件夹/文件/项目资源均已由用户授权使用。若资源是图片，请使用多模态能力识别图片内容；若资源是插件，请按插件类型明确产出目标文件内容。';
+}
+
+// 发送文本 = 用户输入 + 资源隐藏上下文；同时清空当前资源胶囊
+function textWithResourceContext(sess, text) {
+  const resources = (sess && sess.resources) || [];
+  if (!resources.length) return text;
+  const context = resourcesHiddenContext(resources);
+  if (sess) sess.resources = [];
+  return context ? (text + '\n\n' + context) : text;
 }
 
 async function executeSlashCommand(text, sess) {
@@ -1768,6 +2041,67 @@ async function resolveRuntimeApproval(approval, verdict) {
   render();
 }
 
+// 契约 v1：提问（question）。GET /api/harness/questions/runtime/pending
+// RuntimeQuestion{questionId, agentId, questions[{id, question, header, options[{label,description}], multiSelect}], createdAt}
+function renderQuestionBanner() {
+  const item = state.pendingQuestions[0];
+  const banner = el('div', { class: 'approval-banner question-banner' });
+  const questions = Array.isArray(item.questions) ? item.questions : [];
+  const first = questions[0] || {};
+  banner.appendChild(el('div', { class: 'approval-info' },
+    el('span', { class: 'approval-icon' }, '❓'),
+    el('span', null,
+      el('strong', null, '智能体提问'),
+      el('div', { class: 'approval-command' }, first.question || (first.header || '需要你补充信息'))
+    )
+  ));
+  const options = el('div', { class: 'question-options' });
+  const chosen = { value: null };
+  const list = Array.isArray(first.options) ? first.options : [];
+  for (const opt of list) {
+    const btn = el('button', {
+      class: 'btn btn-secondary question-option',
+      onclick: function() { chosen.value = opt.label; }
+    }, opt.label);
+    if (opt.description) btn.title = opt.description;
+    options.appendChild(btn);
+  }
+  banner.appendChild(options);
+  const actions = el('div', { class: 'approval-actions' });
+  actions.appendChild(el('button', {
+    class: 'btn btn-primary',
+    onclick: function() {
+      const answer = chosen.value || (list[0] && list[0].label) || '';
+      if (!answer) { showToast('请选择一个选项'); return; }
+      answerRuntimeQuestion(item, [{ id: first.id, answer: answer }]);
+    }
+  }, '提交回答'));
+  banner.appendChild(actions);
+  return banner;
+}
+
+async function answerRuntimeQuestion(item, answers) {
+  try {
+    await apiRequest('/api/harness/questions/runtime/' + encodeURIComponent(item.questionId) + '/answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers: answers })
+    });
+    showToast('已提交回答');
+  } catch (e) {
+    showToast('回答失败：' + e.message);
+  }
+  state.pendingQuestions = state.pendingQuestions.filter(q => q !== item);
+  render();
+}
+
+async function loadPendingQuestions() {
+  try {
+    const data = await apiRequest('/api/harness/questions/runtime/pending');
+    state.pendingQuestions = Array.isArray(data) ? data : [];
+  } catch (e) { /* ignore */ }
+}
+
 function startApprovalPolling(sess) {
   stopApprovalPolling(sess);
   sess.approvalPollTimer = setInterval(async function() {
@@ -1793,27 +2127,41 @@ function stopApprovalPolling(sess) {
 // ═══════════════════════════════════════════
 // P1: 历史消息加载
 // ═══════════════════════════════════════════
+// 契约 v1（docs/spec/0.2.2/contract/fixtures/session-timeline.json）：
+// 归一化消息含 id / createdAt / reasoning / toolName / callId / arguments / result / status / durationMs / attribution。
+// 后端当前时间字段为 occurredAt，这里做兼容映射（createdAt 优先）。
+function normalizeTimelineMessage(m) {
+  return {
+    id: m.id || null,
+    role: m.role,
+    content: m.content || '',
+    reasoning: m.reasoning || null,
+    blocks: m.blocks,
+    toolName: m.toolName || null,
+    callId: m.callId || null,
+    arguments: m.arguments || null,
+    result: m.result || null,
+    status: m.status || null,
+    duration: m.durationMs != null ? (m.durationMs / 1000).toFixed(1) + 's' : null,
+    attribution: m.attribution || null,
+    time: formatTime(m.createdAt || m.occurredAt || new Date().toISOString()),
+    streaming: false,
+    meta: m.role === 'assistant' ? {
+      time: m.createdAt || m.occurredAt || new Date().toISOString(),
+      duration: '-',
+      firstToken: '-',
+      tokens: estimateTokens(m.content || ''),
+    } : null,
+  };
+}
+
 async function loadHistoryMessages(sess) {
   try {
     const data = await apiRequest(
       CONSOLE_API + '/sessions/' + encodeURIComponent(sess.sessionId) + '/messages'
     );
       if (Array.isArray(data) && data.length > 0) {
-        sess.messages = data.map(function(m) {
-          return {
-            role: m.role,
-            content: m.content || '',
-            blocks: m.blocks,
-            time: formatTime(m.occurredAt || new Date().toISOString()),
-            streaming: false,
-            meta: m.role === 'assistant' ? {
-              time: m.occurredAt || new Date().toISOString(),
-              duration: '-',
-              firstToken: '-',
-              tokens: estimateTokens(m.content || ''),
-            } : null,
-          };
-        });
+        sess.messages = data.map(normalizeTimelineMessage);
         saveSessionsToStorage();
         if (state.currentSessionId === sess.agentId) render();
         setTimeout(scrollToBottom, 50);
@@ -1831,7 +2179,7 @@ async function loadEarlierMessages(sess) {
       CONSOLE_API + '/sessions/' + encodeURIComponent(sess.sessionId) + '/messages'
     );
       if (Array.isArray(data) && data.length > 0) {
-        sess.messages = [...data, ...sess.messages];
+        sess.messages = [...data.map(normalizeTimelineMessage), ...sess.messages];
         render();
       } else {
         showToast('没有更多历史消息');
@@ -2767,6 +3115,11 @@ function renderComposer(sess) {
     box.appendChild(attArea);
   }
 
+  // @ 资源横条（对齐桌面端 mention-banner）：选中的资源以胶囊展示，可单个移除
+  const resourceBanner = el('div', { class: 'mention-banner', id: 'resource-banner' });
+  box.appendChild(resourceBanner);
+  updateResourceBanner();
+
   const textarea = el('textarea', {
     class: 'composer-input',
     id: 'composer-input',
@@ -2804,15 +3157,8 @@ function renderComposer(sess) {
 
   const left = el('div', { class: 'composer-left' });
   const attachBtn = el('button', { class: 'composer-attach-btn', onclick: function() {
-    const fileInput = el('input', { type: 'file', accept: 'image/*', multiple: 'true', style: 'display:none', onchange: function() {
-      for (const file of fileInput.files) {
-        addAttachment(sess, file);
-      }
-    } });
-    document.body.appendChild(fileInput);
-    fileInput.click();
-    document.body.removeChild(fileInput);
-  }, title: '添加图片' }, '+');
+    openComposerPlusMenu();
+  }, title: '添加资源（文件夹 / 文件 / 项目 / 插件 / 技能）' }, '+');
   left.appendChild(attachBtn);
   left.appendChild(approvalInline);
 
@@ -2941,23 +3287,39 @@ function renderSettingsPage() {
     el('span', { class: 'settings-brand-caption' }, '设置')));
   nav.appendChild(brand);
   const navGroups = el('div', { class: 'settings-nav-groups' });
-  const tabConfigs = [
-    { id: 'models', label: '模型配置', desc: '接入、默认模型与 API' },
-    { id: 'plugins', label: '插件管理', desc: '安装、启停与参数配置' },
-    { id: 'presets', label: '预设', desc: '会话默认行为' },
-    { id: 'permissions', label: '权限', desc: '工具审批边界' },
+  // 与桌面端一致的分组导航：AI 能力 / 扩展 / 系统，每项带图标与数量徽标
+  const tabGroups = [
+    { label: 'AI 能力', items: [
+      { id: 'models', label: '模型', desc: '接入、默认模型与 API', icon: 'sliders', countKey: 'models' },
+      { id: 'digital-humans', label: '数字人', desc: '档案、端点与并发策略', icon: 'users', countKey: 'dh' },
+    ] },
+    { label: '扩展', items: [
+      { id: 'plugins', label: '插件', desc: '安装、启停与参数配置', icon: 'plugin', countKey: 'plugins' },
+    ] },
+    { label: '系统', items: [
+      { id: 'presets', label: '预设', desc: '会话默认行为', icon: 'panel' },
+      { id: 'permissions', label: '权限', desc: '工具审批边界', icon: 'shield' },
+    ] },
   ];
-  for (const item of tabConfigs) {
-    const active = state.activeSettingsTab === item.id;
-    navGroups.appendChild(el('button', {
-      class: 'settings-nav-item' + (active ? ' active' : ''),
-      onclick: function() { openSettingsPage(item.id); }
-    },
-      el('span', { class: 'settings-nav-label' }, item.label),
-      el('span', { class: 'settings-nav-desc' }, item.desc)
-    ));
+  const tabConfigs = tabGroups.reduce(function (all, group) { return all.concat(group.items); }, []);
+  for (const group of tabGroups) {
+    navGroups.appendChild(el('div', { class: 'settings-nav-group-label' }, group.label));
+    for (const item of group.items) {
+      const active = state.activeSettingsTab === item.id;
+      const navItem = el('button', {
+        class: 'settings-nav-item' + (active ? ' active' : ''),
+        onclick: function() { openSettingsPage(item.id); }
+      },
+        icon(item.icon, 'settings-nav-icon'),
+        el('span', { class: 'settings-nav-label' }, item.label));
+      if (item.countKey) {
+        navItem.appendChild(el('span', { class: 'settings-nav-count', 'data-nav-count': item.countKey }));
+      }
+      navGroups.appendChild(navItem);
+    }
   }
   nav.appendChild(navGroups);
+  refreshSettingsNavCounts();
   const navFooter = el('div', { class: 'settings-nav-footer' });
   navFooter.appendChild(el('button', { class: 'settings-app-return', onclick: function() { state.activeMainTab = 'chat'; render(); } },
     '← 返回应用'));
@@ -2978,6 +3340,7 @@ function renderSettingsPage() {
   switch (state.activeSettingsTab) {
     case 'models': renderModelSettings(body, null); break;
     case 'plugins': renderPluginSettings(body, null); break;
+    case 'digital-humans': renderDigitalHumanSettings(body, null); break;
     case 'presets': renderPresetSettings(body, null); break;
     case 'permissions': renderPermissionSettings(body, null); break;
   }
@@ -3739,6 +4102,818 @@ function renderPermissionSettings(body, footer) {
   }
 }
 
+// ── 数字人档案 ───────────────────────────────
+// 后端接口：GET/POST/PUT/DELETE /api/digital-humans、POST /discover、POST /{id}/health-check
+const DH_APPROVAL_POLICIES = [
+  { value: 'AUTO_ALLOW', label: '自动放行' },
+  { value: 'WRITE_REQUIRES_APPROVAL', label: '写操作需审批' },
+  { value: 'ALWAYS_CONFIRM', label: '全部需确认' },
+];
+const DH_ENDPOINT_TYPES = [
+  { value: 'local-dsh', label: '本地内置（local-dsh）' },
+  { value: 'remote-dsh', label: '远端 DSH（remote-dsh）' },
+  { value: 'a2a', label: 'A2A 协议（a2a）' },
+];
+const DH_HEALTH_LABEL = { online: '在线', degraded: '降级', offline: '离线', unauthorized: '凭据无效', unknown: '未检测' };
+
+function dhOptionLabel(options, value) {
+  const hit = options.find(function (o) { return o.value === value; });
+  return hit ? hit.label : (value || '—');
+}
+
+function wrapSelectField(key, label, options, value) {
+  const group = el('div', { class: 'form-group' });
+  group.appendChild(el('label', { class: 'form-label' }, label));
+  const select = el('select', { class: 'form-input', 'data-key': key });
+  for (const opt of options) {
+    const option = el('option', { value: opt.value }, opt.label);
+    if (opt.value === value) option.selected = true;
+    select.appendChild(option);
+  }
+  group.appendChild(select);
+  return group;
+}
+
+// 收集 data-key 表单；key 用 'a.b' 形式时写入嵌套对象，例如 endpoint.baseUrl
+function collectDigitalHumanForm(scope) {
+  const data = {};
+  scope.querySelectorAll('input[data-key], select[data-key], textarea[data-key]').forEach(function (field) {
+    let raw = field.value == null ? '' : String(field.value).trim();
+    const path = String(field.dataset.key || '').split('.');
+    if (path[0] === 'concurrencyLimit') {
+      raw = raw === '' ? '' : Math.max(1, Math.min(8, parseInt(raw, 10) || 1));
+    }
+    if (path.length === 1) { data[path[0]] = raw; return; }
+    data[path[0]] = data[path[0]] || {};
+    data[path[0]][path[1]] = raw;
+  });
+  return data;
+}
+
+function renderDigitalHumanSettings(body, footer) {
+  const panel = el('section', { class: 'settings-panel' });
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, '数字人档案'),
+      el('p', { class: 'settings-panel-desc' }, '维护数字人的名称、用途、能力标签与审批/并发策略。本地数字人使用内置 runtime；远端数字人或 A2A 智能体需填写服务端点地址。')),
+    el('span', { class: 'settings-pill' }, '多数字人')
+  ));
+
+  const listWrap = el('div', { class: 'dh-list' });
+  listWrap.appendChild(el('div', { class: 'dh-empty' }, '加载中…'));
+  panel.appendChild(listWrap);
+  body.appendChild(panel);
+  body.appendChild(renderDigitalHumanCreatePanel());
+  body.appendChild(renderDigitalHumanDiscoverPanel());
+  body.appendChild(renderCollabRoomsPanel());
+  loadDigitalHumanList(listWrap);
+}
+
+// 协作房间管理（入口在数字人配置内，与桌面端能力对齐）
+function renderCollabRoomsPanel() {
+  const panel = el('section', { class: 'settings-panel' });
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, '协作房间'),
+      el('p', { class: 'settings-panel-desc' }, '创建房间并邀请数字人加入协作；发送目标后由编排器拆解派活，房间内可跟踪任务、产物与实时事件流。')),
+    el('span', { class: 'settings-pill' }, '协作')
+  ));
+
+  const form = el('div', { class: 'settings-form-grid' });
+  form.appendChild(wrapInput('title', '房间标题', '例如：登录模块重构'));
+  form.appendChild(wrapInput('objective', '协作目标', '要达成什么结果'));
+  form.appendChild(wrapInput('workspaceId', '工作区 ID', 'default'));
+  form.appendChild(wrapSelectField('orchestrationMode', '编排模式', [
+    { value: 'AUTO', label: '自动拆解（AUTO）' },
+    { value: 'MANUAL', label: '手动派活（MANUAL）' }
+  ], 'AUTO'));
+  panel.appendChild(form);
+
+  const createBtn = el('button', { class: 'btn btn-primary', style: 'margin-top:12px' }, '创建并打开房间');
+  createBtn.onclick = async function () {
+    const payload = collectDigitalHumanForm(form);
+    if (!payload.title) { showToast('标题不能为空'); return; }
+    createBtn.textContent = '创建中…';
+    createBtn.disabled = true;
+    try {
+      const room = await apiRequest(COLLAB_API + '/rooms', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      rememberCollabRoom(room);
+      openCollaborationPage(room.id);
+      showToast('房间已创建');
+    } catch (e) {
+      showToast('创建失败: ' + e.message);
+      createBtn.textContent = '创建并打开房间';
+      createBtn.disabled = false;
+    }
+  };
+  panel.appendChild(createBtn);
+
+  // 最近房间
+  const list = el('div', { class: 'dh-list', style: 'margin-top:14px' });
+  if (!state.collabRooms.length) {
+    list.appendChild(el('div', { class: 'dh-empty' }, '暂无历史房间记录'));
+  }
+  for (const room of state.collabRooms.slice(0, 8)) {
+    const row = el('button', { class: 'collab-room-item', onclick: function () { openCollaborationPage(room.id); } },
+      el('span', { class: 'collab-room-item-title' }, room.title || room.id),
+      el('span', { class: 'collab-room-item-id' }, room.id));
+    list.appendChild(row);
+  }
+  panel.appendChild(list);
+
+  // 按 ID 打开
+  const openRow = el('div', { class: 'collab-invite', style: 'margin-top:12px' });
+  const openInput = el('input', { class: 'form-input', 'data-key': 'roomId', placeholder: '按房间 ID 打开（room_xxx）' });
+  openRow.appendChild(openInput);
+  const openBtn = el('button', { class: 'btn btn-secondary btn-sm' }, '打开');
+  openBtn.onclick = function () {
+    const rid = String(openInput.value || '').trim();
+    if (!rid) { showToast('请填写房间 ID'); return; }
+    openCollaborationPage(rid);
+  };
+  openRow.appendChild(openBtn);
+  panel.appendChild(openRow);
+
+  return panel;
+}
+
+async function loadDigitalHumanList(listWrap) {
+  try {
+    const humans = await apiRequest(DIGITAL_HUMAN_API) || [];
+    listWrap.innerHTML = '';
+    if (!humans.length) {
+      listWrap.appendChild(el('div', { class: 'dh-empty' }, '还没有数字人，先在下方创建一个。'));
+      return;
+    }
+    for (const human of humans) listWrap.appendChild(renderDigitalHumanCard(human));
+  } catch (e) {
+    listWrap.innerHTML = '';
+    listWrap.appendChild(el('div', { class: 'dh-empty' }, '加载失败：' + (e && e.message ? e.message : e)));
+  }
+}
+
+function renderDigitalHumanCard(human) {
+  const card = el('div', { class: 'model-card dh-card' });
+  const endpoint = human.endpoint || {};
+
+  const top = el('div', { class: 'model-card-header' });
+  const avatar = el('div', { class: 'dh-avatar' }, human.avatarRef || '🤖');
+  if (human.themeColor) avatar.style.background = human.themeColor;
+  top.appendChild(avatar);
+  const titleWrap = el('div', { class: 'dh-title-wrap' });
+  titleWrap.appendChild(el('div', { class: 'model-card-name' }, human.displayName || '未命名'));
+  titleWrap.appendChild(el('div', { class: 'dh-subtitle' }, human.purpose || '—'));
+  top.appendChild(titleWrap);
+  const health = endpoint.healthState || 'unknown';
+  top.appendChild(el('span', { class: 'dh-health dh-health-' + health }, DH_HEALTH_LABEL[health] || health));
+  card.appendChild(top);
+
+  if (human.roleTags && human.roleTags.length) {
+    const tags = el('div', { class: 'permission-list' });
+    for (const tag of human.roleTags) tags.appendChild(el('span', { class: 'permission-tag allowed' }, tag));
+    card.appendChild(tags);
+  }
+
+  const meta = el('div', { class: 'settings-card-meta' });
+  const kv = function (label, value) {
+    return el('div', null,
+      el('span', { class: 'settings-meta-label' }, label),
+      el('span', { class: 'settings-meta-value' }, value || '—'));
+  };
+  const endpointText = dhOptionLabel(DH_ENDPOINT_TYPES, endpoint.type) + (endpoint.baseUrl ? ' · ' + endpoint.baseUrl : '');
+  meta.appendChild(kv('审批策略', dhOptionLabel(DH_APPROVAL_POLICIES, human.approvalPolicy)));
+  meta.appendChild(kv('并发上限', String(human.concurrencyLimit == null ? 1 : human.concurrencyLimit)));
+  meta.appendChild(kv('项目路径', human.projectPath || '全局（不限项目）'));
+  meta.appendChild(kv('端点', endpointText));
+  meta.appendChild(kv('协议', endpoint.protocolVersion || '—'));
+  card.appendChild(meta);
+
+  const actions = el('div', { class: 'dh-actions' });
+  const checkBtn = el('button', { class: 'btn btn-secondary btn-sm' }, '健康检查');
+  checkBtn.onclick = async function () {
+    checkBtn.textContent = '检查中…';
+    checkBtn.disabled = true;
+    try {
+      const res = await apiRequest(DIGITAL_HUMAN_API + '/' + encodeURIComponent(human.id) + '/health-check', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
+      });
+      const state = res && res.healthState;
+      showToast('健康状态：' + (DH_HEALTH_LABEL[state] || state || '未知') + (res && res.latencyMs != null ? ' · ' + res.latencyMs + 'ms' : ''));
+      openSettingsPage('digital-humans');
+    } catch (e) {
+      showToast('检查失败: ' + e.message);
+      checkBtn.textContent = '健康检查';
+      checkBtn.disabled = false;
+    }
+  };
+  const editBtn = el('button', { class: 'btn btn-secondary btn-sm' }, '编辑');
+  editBtn.onclick = function () { toggleEdit(card); };
+  const deleteBtn = el('button', { class: 'btn btn-secondary btn-sm' }, '删除');
+  deleteBtn.onclick = async function () {
+    if (!confirm('删除数字人「' + (human.displayName || human.id) + '」？该数字人的端点配置会一并删除。')) return;
+    try {
+      await apiRequest(DIGITAL_HUMAN_API + '/' + encodeURIComponent(human.id), { method: 'DELETE' });
+      openSettingsPage('digital-humans');
+      showToast('已删除');
+    } catch (e) { showToast('删除失败: ' + e.message); }
+  };
+  actions.appendChild(checkBtn);
+  actions.appendChild(editBtn);
+  actions.appendChild(deleteBtn);
+  card.appendChild(actions);
+
+  card.appendChild(renderDigitalHumanEditForm(human));
+  return card;
+}
+
+function renderDigitalHumanEditForm(human) {
+  const endpoint = human.endpoint || {};
+  const form = el('div', { class: 'model-edit-form', style: 'display:none' });
+  const grid = el('div', { class: 'settings-form-grid' });
+  grid.appendChild(wrapEditInput('displayName', '名称', human.displayName || ''));
+  grid.appendChild(wrapEditInput('purpose', '用途描述', human.purpose || ''));
+  grid.appendChild(wrapEditInput('avatarRef', '头像（emoji 或 URL）', human.avatarRef || ''));
+  grid.appendChild(wrapEditInput('roleTags', '能力标签（逗号分隔）', (human.roleTags || []).join(', ')));
+  grid.appendChild(wrapEditInput('themeColor', '主题色', human.themeColor || '#4160f0'));
+  grid.appendChild(wrapEditInput('projectPath', '绑定项目路径（留空为全局）', human.projectPath || ''));
+  grid.appendChild(wrapEditInput('concurrencyLimit', '并发上限（1-8）', String(human.concurrencyLimit == null ? 1 : human.concurrencyLimit)));
+  grid.appendChild(wrapSelectField('approvalPolicy', '审批策略', DH_APPROVAL_POLICIES, human.approvalPolicy || 'WRITE_REQUIRES_APPROVAL'));
+  grid.appendChild(wrapSelectField('endpoint.type', '端点类型', DH_ENDPOINT_TYPES, endpoint.type || 'local-dsh'));
+  grid.appendChild(wrapEditInput('endpoint.baseUrl', '服务地址', endpoint.baseUrl || ''));
+  grid.appendChild(wrapEditInput('endpoint.credentialRef', '凭据引用', endpoint.credentialRef || ''));
+  form.appendChild(grid);
+
+  const saveBtn = el('button', { class: 'btn btn-primary', style: 'margin-top:12px' }, '保存修改');
+  saveBtn.onclick = async function () {
+    saveBtn.textContent = '保存中…';
+    saveBtn.disabled = true;
+    try {
+      await apiRequest(DIGITAL_HUMAN_API + '/' + encodeURIComponent(human.id), {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(collectDigitalHumanForm(form))
+      });
+      openSettingsPage('digital-humans');
+      showToast('已保存');
+    } catch (e) {
+      showToast('保存失败: ' + e.message);
+      saveBtn.textContent = '保存修改';
+      saveBtn.disabled = false;
+    }
+  };
+  const actions = el('div', { class: 'settings-panel-actions' });
+  actions.appendChild(saveBtn);
+  form.appendChild(actions);
+  return form;
+}
+
+function renderDigitalHumanCreatePanel() {
+  const panel = el('section', { class: 'settings-panel' });
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, '新建数字人'),
+      el('p', { class: 'settings-panel-desc' }, '名称与用途为必填。端点类型选「本地内置」时无需填写服务地址；远端/A2A 需填写可访问的服务地址。')),
+    el('span', { class: 'settings-pill' }, '创建')
+  ));
+  const form = el('div', { class: 'settings-form-grid' });
+  form.appendChild(wrapInput('displayName', '名称', '例如：代码评审助手'));
+  form.appendChild(wrapInput('purpose', '用途描述', '这个数字人负责什么'));
+  form.appendChild(wrapInput('avatarRef', '头像（emoji 或 URL）', '🤖'));
+  form.appendChild(wrapInput('roleTags', '能力标签（逗号分隔）', 'code, review, test'));
+  form.appendChild(wrapInput('themeColor', '主题色', '#4160f0'));
+  form.appendChild(wrapInput('projectPath', '绑定项目路径（留空为全局）', '/Users/…/my-project'));
+  form.appendChild(wrapInput('concurrencyLimit', '并发上限（1-8）', '1'));
+  form.appendChild(wrapSelectField('approvalPolicy', '审批策略', DH_APPROVAL_POLICIES, 'WRITE_REQUIRES_APPROVAL'));
+  form.appendChild(wrapSelectField('endpoint.type', '端点类型', DH_ENDPOINT_TYPES, 'local-dsh'));
+  form.appendChild(wrapInput('endpoint.baseUrl', '服务地址', 'http://127.0.0.1:8090'));
+  form.appendChild(wrapInput('endpoint.credentialRef', '凭据引用', '远端服务需要鉴权时填写'));
+  panel.appendChild(form);
+
+  const actions = el('div', { class: 'settings-panel-actions' });
+  const submit = el('button', { class: 'btn btn-primary' }, '创建数字人');
+  submit.onclick = async function () {
+    const payload = collectDigitalHumanForm(form);
+    if (!payload.displayName) { showToast('名称不能为空'); return; }
+    if (!payload.purpose) { showToast('用途描述不能为空'); return; }
+    submit.textContent = '创建中…';
+    submit.disabled = true;
+    try {
+      await apiRequest(DIGITAL_HUMAN_API, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      openSettingsPage('digital-humans');
+      showToast('已创建');
+    } catch (e) {
+      showToast('创建失败: ' + e.message);
+      submit.textContent = '创建数字人';
+      submit.disabled = false;
+    }
+  };
+  actions.appendChild(submit);
+  panel.appendChild(actions);
+  return panel;
+}
+
+function renderDigitalHumanDiscoverPanel() {
+  const panel = el('section', { class: 'settings-panel' });
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, '探测试点端点'),
+      el('p', { class: 'settings-panel-desc' }, '按 DSH Agent Card（/.well-known/dsh-agent-card）或 A2A（/.well-known/agent.json）探测远端服务，返回协议版本与建议的档案字段。')),
+    el('span', { class: 'settings-pill' }, '探测')
+  ));
+  const form = el('div', { class: 'settings-form-grid' });
+  form.appendChild(wrapInput('baseUrl', '服务地址', 'http://127.0.0.1:8090'));
+  form.appendChild(wrapSelectField('endpointType', '端点类型', DH_ENDPOINT_TYPES.slice(1), 'remote-dsh'));
+  form.appendChild(wrapInput('token', '访问令牌（可选）', 'Bearer token'));
+  panel.appendChild(form);
+
+  const result = el('div', { class: 'dh-discover-result', style: 'display:none' });
+  panel.appendChild(result);
+
+  const actions = el('div', { class: 'settings-panel-actions' });
+  const btn = el('button', { class: 'btn btn-secondary' }, '开始探测');
+  btn.onclick = async function () {
+    btn.textContent = '探测中…';
+    btn.disabled = true;
+    try {
+      const res = await apiRequest(DIGITAL_HUMAN_API + '/discover', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(collectDigitalHumanForm(form))
+      });
+      renderDigitalHumanDiscoverResult(result, res);
+    } catch (e) {
+      showToast('探测失败: ' + e.message);
+    }
+    btn.textContent = '开始探测';
+    btn.disabled = false;
+  };
+  actions.appendChild(btn);
+  panel.appendChild(actions);
+  return panel;
+}
+
+function renderDigitalHumanDiscoverResult(result, data) {
+  result.innerHTML = '';
+  result.style.display = 'block';
+  if (!data || !data.reachable) {
+    const err = (data && data.error) || {};
+    result.appendChild(el('div', { class: 'dh-discover-fail' }, '不可达：' + (err.message || '未知原因')));
+    return;
+  }
+  result.appendChild(el('div', { class: 'dh-discover-ok' },
+    '可达 · 协议 ' + (data.protocolVersion || '—') + (data.latencyMs != null ? ' · ' + data.latencyMs + 'ms' : '')));
+  const suggested = data.suggested || {};
+  const meta = el('div', { class: 'settings-card-meta' });
+  const kv = function (label, value) {
+    return el('div', null,
+      el('span', { class: 'settings-meta-label' }, label),
+      el('span', { class: 'settings-meta-value' }, value || '—'));
+  };
+  meta.appendChild(kv('建议名称', suggested.displayName));
+  meta.appendChild(kv('建议用途', suggested.purpose));
+  meta.appendChild(kv('建议标签', (suggested.roleTags || []).join(', ')));
+  meta.appendChild(kv('建议策略', dhOptionLabel(DH_APPROVAL_POLICIES, suggested.approvalPolicy)));
+  meta.appendChild(kv('并发上限', String(suggested.maxConcurrentTasks == null ? 1 : suggested.maxConcurrentTasks)));
+  result.appendChild(meta);
+}
+
+// ── 协作房间 ────────────────────────────────
+// 后端接口：POST /rooms、GET /rooms/{id}、POST|DELETE /rooms/{id}/participants、
+//          POST /rooms/{id}/messages、POST /tasks/{id}/{cancel|resume|retry|reassign}、
+//          GET /rooms/{id}/events、GET /rooms/{id}/events/stream（SSE，事件名 room-event）
+const COLLAB_API = '/api/collaboration';
+const COLLAB_ROOMS_KEY = 'dshConsoleRooms';
+const TASK_STATE_LABEL = {
+  READY: '待排队', ASSIGNED: '已派发', RUNNING: '办公中', WAITING_APPROVAL: '待审批',
+  COMPLETED: '已完成', FAILED: '失败', CANCELED: '已取消', TIMEOUT: '超时'
+};
+const PRESENCE_LABEL = { idle: '空闲', working: '工作中', waiting: '等待中', offline: '离线' };
+const COLLAB_EVENT_LABEL = {
+  ROOM_CREATED: '房间创建', MESSAGE_CREATED: '新消息', TASK_STATE_CHANGED: '任务状态',
+  ARTIFACT_CREATED: '新产物', PARTICIPANT_JOINED: '加入房间', PARTICIPANT_LEFT: '离开房间',
+  PARTICIPANT_STATUS_CHANGED: '状态变化'
+};
+const ROOM_RUN_STATE_LABEL = { idle: '空闲', planning: '规划中', running: '进行中', completed: '已完成', failed: '失败' };
+
+let collabStream = null;
+let collabHumansCache = null;
+
+function collabTaskStateLabel(state) {
+  return TASK_STATE_LABEL[String(state || '').toUpperCase()] || state || '未知';
+}
+function collabTaskStateClass(state) {
+  const s = String(state || '').toLowerCase();
+  if (s === 'running') return 'running';
+  if (s === 'waiting_approval') return 'waiting';
+  if (s === 'completed') return 'done';
+  if (s === 'failed' || s === 'canceled' || s === 'timeout') return 'error';
+  return 'queued';
+}
+function collabCanRetry(state) {
+  return ['FAILED', 'CANCELED', 'COMPLETED', 'TIMEOUT'].indexOf(String(state || '').toUpperCase()) >= 0;
+}
+
+function stopCollabStream() {
+  if (collabStream) { collabStream.close(); collabStream = null; }
+}
+
+function rememberCollabRoom(room) {
+  if (!room || !room.id) return;
+  const entry = { id: room.id, title: room.title || room.id, workspaceId: room.workspaceId || '' };
+  state.collabRooms = state.collabRooms.filter(function (r) { return r.id !== entry.id; });
+  state.collabRooms.unshift(entry);
+  state.collabRooms = state.collabRooms.slice(0, 20);
+  localStorage.setItem(COLLAB_ROOMS_KEY, JSON.stringify(state.collabRooms));
+}
+
+function openCollaborationPage(roomId) {
+  if (roomId) state.activeRoomId = roomId;
+  state.activeMainTab = 'collaboration';
+  render();
+}
+
+async function loadCollabHumans() {
+  if (collabHumansCache) return collabHumansCache;
+  try {
+    collabHumansCache = await apiRequest(DIGITAL_HUMAN_API) || [];
+  } catch (e) { collabHumansCache = []; }
+  return collabHumansCache;
+}
+
+// 设置页导航数量徽标：模型渠道数 / 已安装插件数 / 数字人数
+async function refreshSettingsNavCounts() {
+  collabHumansCache = null;
+  await Promise.all([loadModelSettings(), loadPlugins(), loadCollabHumans()]);
+  const counts = {
+    models: (state.modelSettings || []).length,
+    plugins: (state.plugins || []).filter(function (p) { return p.status !== 'UNINSTALLED'; }).length,
+    dh: (collabHumansCache || []).length
+  };
+  document.querySelectorAll('[data-nav-count]').forEach(function (node) {
+    const value = counts[node.getAttribute('data-nav-count')];
+    node.textContent = value == null ? '' : String(value);
+  });
+}
+
+function renderCollaborationPage() {
+  const page = el('div', { class: 'collab-app' });
+
+  // ── 左侧：新建 / 打开 / 最近房间 ──
+  const aside = el('aside', { class: 'collab-aside' });
+  aside.appendChild(el('button', {
+    class: 'settings-app-return',
+    onclick: function () { openSettingsPage('digital-humans'); }
+  }, '← 返回数字人'));
+
+  const createSection = el('section', { class: 'collab-aside-section' });
+  createSection.appendChild(el('div', { class: 'collab-section-label' }, '新建房间'));
+  const createForm = el('div', { class: 'collab-form' });
+  createForm.appendChild(wrapInput('title', '标题', '例如：登录模块重构'));
+  createForm.appendChild(wrapInput('objective', '协作目标', '要达成什么结果'));
+  createForm.appendChild(wrapInput('workspaceId', '工作区 ID', 'default'));
+  createForm.appendChild(wrapSelectField('orchestrationMode', '编排模式', [
+    { value: 'AUTO', label: '自动拆解（AUTO）' },
+    { value: 'MANUAL', label: '手动派活（MANUAL）' }
+  ], 'AUTO'));
+  createSection.appendChild(createForm);
+  const createBtn = el('button', { class: 'btn btn-primary' }, '创建房间');
+  createBtn.onclick = async function () {
+    const payload = collectDigitalHumanForm(createForm);
+    if (!payload.title) { showToast('标题不能为空'); return; }
+    createBtn.disabled = true;
+    createBtn.textContent = '创建中…';
+    try {
+      const room = await apiRequest(COLLAB_API + '/rooms', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      rememberCollabRoom(room);
+      openCollaborationPage(room.id);
+      showToast('房间已创建');
+    } catch (e) {
+      showToast('创建失败: ' + e.message);
+      createBtn.disabled = false;
+      createBtn.textContent = '创建房间';
+    }
+  };
+  createSection.appendChild(createBtn);
+  aside.appendChild(createSection);
+
+  const openSection = el('section', { class: 'collab-aside-section' });
+  openSection.appendChild(el('div', { class: 'collab-section-label' }, '按 ID 打开房间'));
+  const openForm = el('div', { class: 'collab-form' });
+  openForm.appendChild(wrapInput('roomId', '房间 ID', 'room_xxx'));
+  openSection.appendChild(openForm);
+  const openBtn = el('button', { class: 'btn btn-secondary' }, '打开');
+  openBtn.onclick = function () {
+    const rid = collectDigitalHumanForm(openForm).roomId;
+    if (!rid) { showToast('请填写房间 ID'); return; }
+    openCollaborationPage(rid);
+  };
+  openSection.appendChild(openBtn);
+  aside.appendChild(openSection);
+
+  const listSection = el('section', { class: 'collab-aside-section' });
+  listSection.appendChild(el('div', { class: 'collab-section-label' }, '最近房间'));
+  const list = el('div', { class: 'collab-room-list' });
+  if (!state.collabRooms.length) {
+    list.appendChild(el('div', { class: 'dh-empty' }, '还没有房间记录'));
+  }
+  for (const room of state.collabRooms) {
+    list.appendChild(el('button', {
+      class: 'collab-room-item' + (state.activeRoomId === room.id ? ' active' : ''),
+      onclick: function () { openCollaborationPage(room.id); }
+    },
+      el('span', { class: 'collab-room-item-title' }, room.title || room.id),
+      el('span', { class: 'collab-room-item-id' }, room.id)));
+  }
+  listSection.appendChild(list);
+  aside.appendChild(listSection);
+  page.appendChild(aside);
+
+  // ── 右侧：房间详情 ──
+  const main = el('main', { class: 'collab-main' });
+  const body = el('div', { class: 'collab-room-body' });
+  main.appendChild(body);
+  page.appendChild(main);
+
+  if (state.activeRoomId) loadCollabRoom(state.activeRoomId, body);
+  else body.appendChild(el('div', { class: 'dh-empty' }, '在左侧创建或打开一个协作房间。'));
+  return page;
+}
+
+async function loadCollabRoom(roomId, container) {
+  let room;
+  try {
+    room = await apiRequest(COLLAB_API + '/rooms/' + encodeURIComponent(roomId));
+  } catch (e) {
+    container.innerHTML = '';
+    container.appendChild(el('div', { class: 'dh-empty' }, '加载房间失败：' + e.message));
+    return;
+  }
+  rememberCollabRoom(room);
+  container.innerHTML = '';
+  container.appendChild(await renderCollabRoomDetail(room, container));
+  startCollabStream(room.id, container);
+}
+
+async function renderCollabRoomDetail(room, container) {
+  const wrap = el('div', { class: 'collab-room' });
+  const reload = function () { loadCollabRoom(room.id, container); };
+  const humans = await loadCollabHumans();
+
+  // 头部
+  const header = el('header', { class: 'collab-room-header' });
+  const headMain = el('div', null);
+  headMain.appendChild(el('h1', { class: 'collab-room-title' }, room.title || '未命名房间'));
+  headMain.appendChild(el('div', { class: 'collab-room-sub' },
+    'ID ' + room.id + ' · 工作区 ' + (room.workspaceId || '—') + ' · 编排 ' + (room.orchestrationMode || '—')));
+  header.appendChild(headMain);
+  header.appendChild(el('span', { class: 'collab-run-state' }, ROOM_RUN_STATE_LABEL[room.runState] || room.runState || '空闲'));
+  const refreshBtn = el('button', { class: 'btn btn-secondary btn-sm', onclick: reload }, '刷新');
+  header.appendChild(refreshBtn);
+  wrap.appendChild(header);
+
+  if (room.objective) {
+    wrap.appendChild(el('div', { class: 'collab-objective' }, '目标：' + room.objective));
+  }
+
+  // 参与者
+  const participants = room.participants || [];
+  const pSection = el('section', { class: 'collab-block' });
+  pSection.appendChild(el('div', { class: 'collab-section-label' }, '参与者 '));
+  pSection.appendChild(el('span', { class: 'collab-count' }, String(participants.length)));
+  if (!participants.length) {
+    pSection.appendChild(el('div', { class: 'dh-empty' }, '还没有数字人加入'));
+  }
+  for (const p of participants) {
+    const row = el('div', { class: 'collab-participant' });
+    const avatar = el('div', { class: 'dh-avatar' }, p.avatarRef || '🤖');
+    if (p.themeColor) avatar.style.background = p.themeColor;
+    row.appendChild(avatar);
+    const main2 = el('div', { class: 'collab-participant-main' });
+    main2.appendChild(el('div', { class: 'collab-participant-name' }, p.displayName || p.digitalHumanId));
+    main2.appendChild(el('div', { class: 'collab-participant-task' },
+      p.activeTaskLabel || PRESENCE_LABEL[p.presence] || p.presence || '—'));
+    row.appendChild(main2);
+    row.appendChild(el('span', { class: 'collab-presence' }, p.roomRole || 'member'));
+    const removeBtn = el('button', { class: 'btn btn-secondary btn-sm' }, '移出');
+    removeBtn.onclick = async function () {
+      try {
+        await apiRequest(COLLAB_API + '/rooms/' + encodeURIComponent(room.id) + '/participants/' + encodeURIComponent(p.digitalHumanId), { method: 'DELETE' });
+        reload();
+        showToast('已移出');
+      } catch (e) { showToast('移出失败: ' + e.message); }
+    };
+    row.appendChild(removeBtn);
+    pSection.appendChild(row);
+  }
+  const inviteRow = el('div', { class: 'collab-invite' });
+  const inviteSelect = el('select', { class: 'form-input' }, el('option', { value: '' }, '— 选择数字人加入 —'));
+  for (const h of humans) {
+    if (participants.some(function (p) { return p.digitalHumanId === h.id; })) continue;
+    inviteSelect.appendChild(el('option', { value: h.id }, h.displayName));
+  }
+  inviteRow.appendChild(inviteSelect);
+  const inviteBtn = el('button', { class: 'btn btn-secondary btn-sm' }, '加入房间');
+  inviteBtn.onclick = async function () {
+    const humanId = inviteSelect.value;
+    if (!humanId) { showToast('先选择数字人'); return; }
+    try {
+      await apiRequest(COLLAB_API + '/rooms/' + encodeURIComponent(room.id) + '/participants', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ digitalHumanId: humanId, roomRole: 'member' })
+      });
+      reload();
+      showToast('已加入');
+    } catch (e) { showToast('加入失败: ' + e.message); }
+  };
+  inviteRow.appendChild(inviteBtn);
+  pSection.appendChild(inviteRow);
+  wrap.appendChild(pSection);
+
+  // 任务工作台
+  const tasks = room.tasks || [];
+  const tSection = el('section', { class: 'collab-block' });
+  tSection.appendChild(el('div', { class: 'collab-section-label' }, '任务工作台 '));
+  tSection.appendChild(el('span', { class: 'collab-count' }, String(tasks.length)));
+  if (!tasks.length) {
+    tSection.appendChild(el('div', { class: 'dh-empty' }, '还没有任务，在下方发送目标后会自动拆解派活。'));
+  }
+  for (const task of tasks) {
+    tSection.appendChild(renderCollabTaskCard(task, humans, room.id, reload));
+  }
+  wrap.appendChild(tSection);
+
+  // 产物
+  const artifacts = room.artifacts || [];
+  if (artifacts.length) {
+    const aSection = el('section', { class: 'collab-block' });
+    aSection.appendChild(el('div', { class: 'collab-section-label' }, '产物 '));
+    aSection.appendChild(el('span', { class: 'collab-count' }, String(artifacts.length)));
+    for (const artifact of artifacts) {
+      const card = el('div', { class: 'collab-artifact' });
+      card.appendChild(el('div', { class: 'collab-artifact-title' },
+        (artifact.title || '未命名产物') + ' · ' + (artifact.kind || '—') + ' · v' + (artifact.version == null ? 1 : artifact.version)));
+      card.appendChild(el('div', { class: 'collab-artifact-meta' }, '产出者：' + (artifact.producerName || artifact.producerId || '—')));
+      const content = el('pre', { class: 'collab-artifact-content' }, String(artifact.content || '（空）'));
+      card.appendChild(content);
+      aSection.appendChild(card);
+    }
+    wrap.appendChild(aSection);
+  }
+
+  // 事件流
+  const eSection = el('section', { class: 'collab-block' });
+  eSection.appendChild(el('div', { class: 'collab-section-label' }, '事件流（实时）'));
+  const feed = el('div', { class: 'collab-events' });
+  feed.appendChild(el('div', { class: 'dh-empty' }, '连接中…'));
+  eSection.appendChild(feed);
+  wrap.appendChild(eSection);
+  loadCollabEvents(room.id, feed);
+
+  // 发送目标 / 派活
+  const composer = el('section', { class: 'collab-block collab-composer' });
+  composer.appendChild(el('div', { class: 'collab-section-label' }, '发送目标'));
+  const content = el('textarea', { class: 'form-input collab-composer-input', placeholder: '描述要达成的目标，发送后编排器会拆解并派活', rows: '3' });
+  composer.appendChild(content);
+  const mentionsInput = el('input', { class: 'form-input', placeholder: '指定数字人 ID（逗号分隔，可留空由编排器自动分配）' });
+  composer.appendChild(mentionsInput);
+  const sendBtn = el('button', { class: 'btn btn-primary' }, '发送并派活');
+  sendBtn.onclick = async function () {
+    const text = String(content.value || '').trim();
+    if (!text) { showToast('请先填写目标'); return; }
+    const mentions = String(mentionsInput.value || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    sendBtn.disabled = true;
+    sendBtn.textContent = '派活中…';
+    try {
+      await apiRequest(COLLAB_API + '/rooms/' + encodeURIComponent(room.id) + '/messages', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: text, mentions: mentions, roomId: room.id })
+      });
+      content.value = '';
+      reload();
+      showToast('已派发');
+    } catch (e) {
+      showToast('派发失败: ' + e.message);
+      sendBtn.disabled = false;
+      sendBtn.textContent = '发送并派活';
+    }
+  };
+  composer.appendChild(sendBtn);
+  wrap.appendChild(composer);
+
+  return wrap;
+}
+
+function renderCollabTaskCard(task, humans, roomId, reload) {
+  const card = el('div', { class: 'collab-task-card' });
+  const top = el('div', { class: 'collab-task-top' });
+  top.appendChild(el('span', { class: 'collab-task-title' }, task.title || '未命名任务'));
+  top.appendChild(el('span', { class: 'collab-task-state ' + collabTaskStateClass(task.state) }, collabTaskStateLabel(task.state)));
+  card.appendChild(top);
+
+  const meta = el('div', { class: 'collab-task-meta' });
+  meta.appendChild(el('span', null, '执行者：' + (task.assigneeName || task.assignedTo || '未指派')));
+  if (task.errorSummary) meta.appendChild(el('span', { class: 'collab-task-error' }, '错误：' + task.errorSummary));
+  if (task.traceId) meta.appendChild(el('span', { class: 'collab-task-trace' }, 'trace ' + task.traceId));
+  card.appendChild(meta);
+
+  const actions = el('div', { class: 'collab-task-actions' });
+  const post = function (path, extra) {
+    return apiRequest(COLLAB_API + '/tasks/' + encodeURIComponent(task.taskId) + path, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ roomId: roomId }, extra || {}))
+    });
+  };
+  const act = function (label, path, extra) {
+    const btn = el('button', { class: 'btn btn-secondary btn-sm' }, label);
+    btn.onclick = async function () {
+      btn.disabled = true;
+      try { await post(path, extra); reload(); showToast(label + '成功'); }
+      catch (e) { showToast(label + '失败: ' + e.message); btn.disabled = false; }
+    };
+    return btn;
+  };
+  if (['READY', 'ASSIGNED', 'RUNNING', 'WAITING_APPROVAL'].indexOf(String(task.state || '').toUpperCase()) >= 0) {
+    actions.appendChild(act('取消', '/cancel'));
+    actions.appendChild(act('恢复', '/resume'));
+  }
+  if (collabCanRetry(task.state)) actions.appendChild(act('重试', '/retry'));
+
+  const reassignSelect = el('select', { class: 'collab-task-select' }, el('option', { value: '' }, '改派给…'));
+  for (const h of humans) {
+    if (h.id === task.assignedTo) continue;
+    reassignSelect.appendChild(el('option', { value: h.id }, h.displayName));
+  }
+  actions.appendChild(reassignSelect);
+  const reassignBtn = el('button', { class: 'btn btn-secondary btn-sm' }, '改派');
+  reassignBtn.onclick = async function () {
+    const target = reassignSelect.value;
+    if (!target) { showToast('先选择改派对象'); return; }
+    reassignBtn.disabled = true;
+    try { await post('/reassign', { targetDigitalHumanId: target }); reload(); showToast('已改派'); }
+    catch (e) { showToast('改派失败: ' + e.message); reassignBtn.disabled = false; }
+  };
+  actions.appendChild(reassignBtn);
+  card.appendChild(actions);
+  return card;
+}
+
+async function loadCollabEvents(roomId, feed) {
+  try {
+    const events = await apiRequest(COLLAB_API + '/rooms/' + encodeURIComponent(roomId) + '/events?afterSeq=0') || [];
+    feed.innerHTML = '';
+    if (!events.length) {
+      feed.appendChild(el('div', { class: 'dh-empty' }, '暂无事件'));
+      return;
+    }
+    for (const event of events) appendCollabEvent(feed, event);
+  } catch (e) {
+    feed.innerHTML = '';
+    feed.appendChild(el('div', { class: 'dh-empty' }, '事件加载失败：' + e.message));
+  }
+}
+
+function appendCollabEvent(feed, event) {
+  const empty = feed.querySelector('.dh-empty');
+  if (empty) empty.remove();
+  const seq = event.seq == null ? '—' : event.seq;
+  const row = el('div', { class: 'collab-event' });
+  row.appendChild(el('span', { class: 'collab-event-seq' }, '#' + seq));
+  row.appendChild(el('span', { class: 'collab-event-type' }, COLLAB_EVENT_LABEL[event.type] || event.type || '事件'));
+  row.appendChild(el('span', { class: 'collab-event-actor' }, event.displayName || event.digitalHumanId || '系统'));
+  let summary = '';
+  const payload = event.payload || {};
+  if (typeof payload === 'object') {
+    summary = payload.state || payload.text || payload.message || payload.title || payload.displayName || '';
+    if (!summary) summary = JSON.stringify(payload).slice(0, 160);
+  }
+  row.appendChild(el('span', { class: 'collab-event-payload' }, String(summary).slice(0, 200)));
+  if (event.occurredAt) row.appendChild(el('span', { class: 'collab-event-time' }, formatTime(event.occurredAt)));
+  feed.appendChild(row);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function startCollabStream(roomId, container) {
+  stopCollabStream();
+  const feed = container.querySelector('.collab-events');
+  if (!feed || typeof EventSource === 'undefined') return;
+  let lastSeq = 0;
+  feed.querySelectorAll('.collab-event-seq').forEach(function (node) {
+    const n = parseInt(String(node.textContent || '').replace('#', ''), 10);
+    if (!isNaN(n) && n > lastSeq) lastSeq = n;
+  });
+  try {
+    collabStream = new EventSource(COLLAB_API + '/rooms/' + encodeURIComponent(roomId) + '/events/stream?afterSeq=' + lastSeq);
+  } catch (e) { return; }
+  collabStream.addEventListener('room-event', function (ev) {
+    let parsed = null;
+    try { parsed = JSON.parse(ev.data); } catch (e) { return; }
+    if (parsed) appendCollabEvent(feed, parsed);
+  });
+  collabStream.onerror = function () { stopCollabStream(); };
+}
+
 // ── Toast ──────────────────────────────────
 function showToast(msg) {
   const existing = $('.toast');
@@ -3871,7 +5046,7 @@ async function sendMessage(overrideText) {
     // v11: 排队消息
     const text = overrideText || ($('#composer-input')?.value?.trim() || '');
     if (text) {
-      sess.queue.push(text);
+      sess.queue.push(textWithResourceContext(sess, text));
       const input = $('#composer-input');
       if (input) input.value = '';
       render();
@@ -3883,6 +5058,10 @@ async function sendMessage(overrideText) {
   const input = $('#composer-input');
   const text = overrideText || (input?.value?.trim() || '');
   if (!text) return;
+
+  // @ 资源：已添加资源转为隐藏上下文块，拼进请求文本（输入框与消息展示保持干净）
+  const usedResources = (sess.resources || []).slice();
+  const requestText = textWithResourceContext(sess, text);
 
   // v11: 斜杠命令
   if (text.startsWith('/') && !overrideText) {
@@ -3904,7 +5083,7 @@ async function sendMessage(overrideText) {
   const msgAttachments = sess.pendingAttachments || [];
   sess.pendingAttachments = [];
 
-  sess.messages.push({ role: 'user', content: text, time: formatTime(new Date().toISOString()), attachments: msgAttachments });
+  sess.messages.push({ role: 'user', content: text, time: formatTime(new Date().toISOString()), attachments: msgAttachments, resources: usedResources });
 
   // 图片附件随本次请求发给后端（sendWithRetry 里读取 lastRequestAttachments）
   sess.lastRequestAttachments = msgAttachments;
@@ -3928,7 +5107,7 @@ async function sendMessage(overrideText) {
   let firstChunkTime = null;
   let fullContent = '';
 
-  await sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime, fullContent, 0);
+  await sendWithRetry(sess, requestText, assistantMsg, startTime, firstChunkTime, fullContent, 0);
 
   // v11: 处理排队消息
   if (sess.queue && sess.queue.length > 0 && !sess.sending) {
@@ -4069,8 +5248,9 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
               }
               reasoningBlock.text = assistantMsg.reasoning;
               if (state.currentSessionId === sess.agentId) updateStreamingMessage(assistantMsg);
-            } else if (eventType === 'step_break') {
+            } else if (eventType === 'step_break' || eventType === 'tool') {
               // 工具调用事件（独立 SSE 事件）。
+              // 契约 v1（docs/spec/0.2.2/contract）统一事件名含 `tool`；后端当前仍推 `step_break`，两者兼容处理。
               // 完成当前 assistant 消息 → 插入工具卡片 → 创建新的 streaming 消息
               receivedChunks = true;
               stopWaitTimer(sess);
@@ -4122,6 +5302,20 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
               }
               sess.currentStage = (data.status === 'error' ? '工具失败 · ' : '工具完成 · ')
                 + (data.toolName || 'unknown');
+              if (state.currentSessionId === sess.agentId) render();
+            } else if (eventType === 'approval') {
+              // 契约 v1：approval 事件 → 立即拉取 pending 审批并渲染
+              receivedChunks = true;
+              stopWaitTimer(sess);
+              sess.currentStage = '等待审批';
+              await loadPendingApprovals();
+              if (state.currentSessionId === sess.agentId) render();
+            } else if (eventType === 'question') {
+              // 契约 v1：question 事件 → 立即拉取 pending 提问并渲染
+              receivedChunks = true;
+              stopWaitTimer(sess);
+              sess.currentStage = '等待回答';
+              await loadPendingQuestions();
               if (state.currentSessionId === sess.agentId) render();
             } else if (eventType === 'finish') {
               receivedChunks = true;
@@ -4753,6 +5947,10 @@ async function loadSessionHistory() {
           sess.title = hist.title || hist.lastMessage || '历史对话';
           sess.lastMessage = hist.lastMessage || '';
           sess.createdAt = hist.createdAt || hist.startTime || new Date().toISOString();
+          // 契约 v1 session-list：updatedAt / workspaceId / modelCode
+          sess.updatedAt = hist.updatedAt || sess.createdAt;
+          sess.workspaceId = hist.workspaceId || null;
+          sess.modelCode = hist.modelCode || null;
           sess.messages = []; // 历史消息按需懒加载（见 selectSession）
           state.sessions.push(sess);
         }

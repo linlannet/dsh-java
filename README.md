@@ -201,7 +201,7 @@ java -jar dsh-java-app/target/dsh-java-app.jar \
 
 #### 导入 MySQL 库表
 
-推荐直接导入仓库内的 MySQL 8 dump，它包含 12 张 Harness 表：
+推荐直接导入仓库内的 MySQL 8 dump，它包含 30 张表（其中 `harness_*` 相关 12 张）：
 
 ```bash
 mysql -u root -p < docs/dev-ops/mysql/sql/dsh_java.sql
@@ -1183,21 +1183,49 @@ flowchart TD
 
 ## 11. 持久化模型
 
-`schema.sql` 当前初始化的主要表（共 12 张）包括：
+`schema.sql` 当前初始化的主要表（共 30 张）包括：
 
 | 表 | 用途 |
 | --- | --- |
 | `harness_session` | Session 聚合基础状态 |
 | `harness_session_header` | 会话请求头与上下文折叠状态 |
-| `harness_session_event` / `harness_session_event_log` | 会话与 Agent 过程事件 |
+| `harness_session_event` | 会话过程事件 |
+| `harness_session_event_log` | Agent 过程事件日志 |
 | `harness_task` | 任务提交与执行状态 |
 | `harness_goal_state` | 目标状态 |
 | `harness_plugin_installation` | 插件安装元数据 |
 | `harness_plugin_runtime_binding` | 插件运行绑定信息 |
+| `harness_plugin_config` | 插件配置项 |
 | `harness_model_setting` | 模型渠道与 Provider 配置 |
-| `harness_tool_catalog` / `harness_tool_profile_binding` | 工具目录与 Profile 绑定 |
+| `harness_tool_catalog` | 工具目录 |
+| `harness_tool_profile_binding` | 工具 Profile 绑定 |
+| `token_snapshot` | 会话 Token 快照 |
+| `digital_human` | 数字人档案 |
+| `digital_human_endpoint` | 数字人远端端点与健康状态 |
+| `collaboration_room` | 协作房间 |
+| `room_participant` | 协作房间参与者 |
+| `collaboration_task` | 协作任务 |
+| `collaboration_artifact` | 协作产物 |
+| `room_event` | 协作房间事件 |
+| `workspace` | 工作空间定义 |
+| `session_workspace` | 会话-工作空间关联 |
+| `checkpoint` | Session 执行检查点快照 |
+| `spill_ref` | 上下文溢出引用 |
+| `anonymous_user_id` | 匿名用户稳定标识 |
+| `message_feedback` | 消息评分与备注 |
+| `slash_command` | 已注册 Slash 命令 |
+| `agent_team` | 多代理团队花名册（实验性） |
+| `team_task` | 团队共享任务板（实验性） |
+| `team_message` | 团队内代理消息（实验性） |
 
 MySQL 承载结构化状态和事件（默认 profile）；standalone profile 使用 H2 文件库（`MODE=MySQL` 兼容模式），两者共用同一套 schema，`sql.init.mode=always` 幂等重跑。
+
+### 表结构来源与维护约定
+
+- **生效脚本**：应用启动时由 Spring SQL Init（`sql.init.mode=always`）执行 `dsh-java-app/src/main/resources/schema.sql`，它是默认 profile 与 standalone profile 共同生效的建表脚本。
+- **事实来源**：表结构以 `db/migration/*.sql` 与 `schema.sql` 的并集为唯一口径（当前共 30 张表）；`db/migration/*.sql` 仅作为只读对照来源，不在启动时执行。
+- **兜底逻辑**：`SchemaMigrationRunner` 仅在启动期幂等补齐个别列/表（如 `token_snapshot`），属演进兜底，不作为表集合的权威定义。
+- **维护约定**：新增/变更表时应同步 `schema.sql`、`db/migration/*.sql` 与 `docs/dev-ops/mysql/sql/dsh_java.sql`，提交前请执行 `scripts/check-sql-parity.sh` 校验三方表集合一致。
 
 ---
 

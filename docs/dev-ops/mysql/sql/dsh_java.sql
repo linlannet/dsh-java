@@ -294,7 +294,7 @@ DROP TABLE IF EXISTS `agent_team`;
 
 CREATE TABLE `agent_team` (
   `team_id` varchar(64) NOT NULL,
-  `lead` varchar(128) NOT NULL,
+  `leader` varchar(128) NOT NULL,
   `teammates_json` text,
   `message_strategy` varchar(32) NOT NULL,
   `created_at` timestamp(3) NOT NULL,
@@ -492,3 +492,154 @@ CREATE TABLE `workspace` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
+
+# ============================================================
+# 补建表（2026-11-01）：数字人档案 + 协作房间
+# ------------------------------------------------------------
+# 以下 6 张表此前只有 Java DAO 引用（IDigitalHumanDao / ICollaborationDao），
+# 本转储文件、schema.sql、db/migration 三处都没有建表语句，
+# 导致按本文件初始化的库上访问数字人/协作功能时抛
+#   "Table 'dsh_java.digital_human' doesn't exist"
+# 现按 DigitalHumanPO / CollaborationPO 与 DAO 的 SQL 列补齐，
+# 与 schema.sql、db/migration/V20261101__digital_human_and_collaboration.sql 保持一致。
+# ============================================================
+
+# 转储表 digital_human
+# ------------------------------------------------------------
+# 说明：数字人档案表。数字人的基础信息与并发/审批策略；
+#       端点（地址、协议、健康状态）存在 digital_human_endpoint，通过 digital_human_id 关联。
+
+DROP TABLE IF EXISTS `digital_human`;
+
+CREATE TABLE `digital_human` (
+  `id` varchar(128) NOT NULL COMMENT '主键ID',
+  `display_name` varchar(128) NOT NULL COMMENT '展示名称',
+  `avatar_ref` varchar(512) DEFAULT NULL COMMENT '头像引用（emoji 或 URL）',
+  `purpose` varchar(1024) DEFAULT NULL COMMENT '用途描述',
+  `role_tags` varchar(512) DEFAULT NULL COMMENT '能力标签（逗号分隔）',
+  `theme_color` varchar(32) DEFAULT NULL COMMENT '主题色',
+  `approval_policy` varchar(32) DEFAULT NULL COMMENT '审批策略：AUTO_ALLOW / WRITE_REQUIRES_APPROVAL / ALWAYS_CONFIRM',
+  `concurrency_limit` int DEFAULT '1' COMMENT '并发任务上限（1-8）',
+  `project_path` varchar(1024) DEFAULT NULL COMMENT '绑定项目路径（本地数字人的工作目录）',
+  `created_at` timestamp(3) NULL DEFAULT NULL COMMENT '创建时间',
+  `updated_at` timestamp(3) NULL DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='数字人档案表：数字人基础信息与并发/审批策略';
+
+
+# 转储表 collaboration_room
+# ------------------------------------------------------------
+# 说明：协作房间表。一次多人（多数字人）协作的容器，挂在工作区下；
+#       run_state 表示房间整体运行状态，objective 由编排器首次填充。
+
+DROP TABLE IF EXISTS `collaboration_room`;
+
+CREATE TABLE `collaboration_room` (
+  `id` varchar(128) NOT NULL COMMENT '房间ID',
+  `workspace_id` varchar(128) NOT NULL COMMENT '工作区ID',
+  `title` varchar(256) DEFAULT NULL COMMENT '房间标题',
+  `objective` text COMMENT '协作目标',
+  `orchestration_mode` varchar(64) DEFAULT NULL COMMENT '编排模式',
+  `run_state` varchar(32) DEFAULT NULL COMMENT '运行状态',
+  `created_at` timestamp(3) NULL DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_cr_workspace` (`workspace_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='协作房间表';
+
+
+# 转储表 room_participant
+# ------------------------------------------------------------
+# 说明：协作房间参与者表。房间与数字人的多对多关系，
+#       room_role 为房间内角色、presence 为在场状态、active_task_label 为当前任务摘要。
+
+DROP TABLE IF EXISTS `room_participant`;
+
+CREATE TABLE `room_participant` (
+  `id` varchar(128) NOT NULL COMMENT '主键ID',
+  `room_id` varchar(128) NOT NULL COMMENT '房间ID',
+  `digital_human_id` varchar(128) NOT NULL COMMENT '数字人ID',
+  `room_role` varchar(64) DEFAULT NULL COMMENT '房间角色',
+  `presence` varchar(32) DEFAULT NULL COMMENT '在场状态',
+  `active_task_label` varchar(512) DEFAULT NULL COMMENT '当前任务摘要',
+  `joined_at` timestamp(3) NULL DEFAULT NULL COMMENT '加入时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_rp_room` (`room_id`),
+  KEY `idx_rp_human` (`digital_human_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='协作房间参与者表';
+
+
+# 转储表 collaboration_task
+# ------------------------------------------------------------
+# 说明：协作任务表。房间内的任务单，可指派给某数字人（assigned_to）并挂到远端会话；
+#       depends_on / *_artifacts 存 JSON，state 为任务状态机取值。
+
+DROP TABLE IF EXISTS `collaboration_task`;
+
+CREATE TABLE `collaboration_task` (
+  `id` varchar(128) NOT NULL COMMENT '任务ID',
+  `room_id` varchar(128) NOT NULL COMMENT '房间ID',
+  `parent_task_id` varchar(128) DEFAULT NULL COMMENT '父任务ID（子任务拆解）',
+  `title` varchar(512) DEFAULT NULL COMMENT '任务标题',
+  `instruction` text COMMENT '任务指令',
+  `assigned_to` varchar(128) DEFAULT NULL COMMENT '指派给的数字人ID',
+  `requested_by` varchar(128) DEFAULT NULL COMMENT '发起方ID',
+  `state` varchar(32) DEFAULT NULL COMMENT '任务状态',
+  `depends_on` text COMMENT '依赖任务（JSON）',
+  `input_artifacts` text COMMENT '输入产物（JSON）',
+  `output_artifacts` text COMMENT '输出产物（JSON）',
+  `remote_session_id` varchar(128) DEFAULT NULL COMMENT '远端会话ID（远端数字人执行时）',
+  `trace_id` varchar(128) DEFAULT NULL COMMENT '链路追踪ID',
+  `error_summary` text COMMENT '错误摘要',
+  `created_at` timestamp(3) NULL DEFAULT NULL COMMENT '创建时间',
+  `updated_at` timestamp(3) NULL DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_ct_room` (`room_id`),
+  KEY `idx_ct_state` (`state`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='协作任务表';
+
+
+# 转储表 collaboration_artifact
+# ------------------------------------------------------------
+# 说明：协作产物表。任务产出的文档/代码/结论等，version 用于同名产物迭代。
+
+DROP TABLE IF EXISTS `collaboration_artifact`;
+
+CREATE TABLE `collaboration_artifact` (
+  `id` varchar(128) NOT NULL COMMENT '产物ID',
+  `room_id` varchar(128) NOT NULL COMMENT '房间ID',
+  `task_id` varchar(128) DEFAULT NULL COMMENT '来源任务ID',
+  `producer_id` varchar(128) DEFAULT NULL COMMENT '生产者ID（数字人）',
+  `kind` varchar(64) DEFAULT NULL COMMENT '产物类型',
+  `title` varchar(512) DEFAULT NULL COMMENT '产物标题',
+  `version` int DEFAULT NULL COMMENT '版本号',
+  `content` text COMMENT '产物内容',
+  `trace_id` varchar(128) DEFAULT NULL COMMENT '链路追踪ID',
+  `created_at` timestamp(3) NULL DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_ca_room` (`room_id`),
+  KEY `idx_ca_task` (`task_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='协作产物表';
+
+
+# 转储表 room_event
+# ------------------------------------------------------------
+# 说明：协作房间事件表。房间内的时序事件流，seq 为房间内单调递增序号，
+#       前端按 (room_id, seq > afterSeq) 增量拉取；payload 为 JSON 事件负载。
+
+DROP TABLE IF EXISTS `room_event`;
+
+CREATE TABLE `room_event` (
+  `id` varchar(128) NOT NULL COMMENT '事件ID',
+  `room_id` varchar(128) NOT NULL COMMENT '房间ID',
+  `seq` bigint NOT NULL COMMENT '房间内事件序号（单调递增）',
+  `task_id` varchar(128) DEFAULT NULL COMMENT '关联任务ID',
+  `participant_id` varchar(128) DEFAULT NULL COMMENT '关联参与者ID',
+  `digital_human_id` varchar(128) DEFAULT NULL COMMENT '关联数字人ID',
+  `event_type` varchar(128) NOT NULL COMMENT '事件类型',
+  `occurred_at` timestamp(3) NULL DEFAULT NULL COMMENT '发生时间',
+  `visibility` varchar(32) DEFAULT NULL COMMENT '可见范围',
+  `payload` text COMMENT '事件负载（JSON）',
+  `trace_id` varchar(128) DEFAULT NULL COMMENT '链路追踪ID',
+  PRIMARY KEY (`id`),
+  KEY `idx_re_room_seq` (`room_id`,`seq`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='协作房间事件表';
