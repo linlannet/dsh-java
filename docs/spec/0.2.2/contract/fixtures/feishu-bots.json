@@ -1,0 +1,50 @@
+{
+  "contractVersion": 1,
+  "kind": "feishu-bots",
+  "source": "GET /api/harness/bots",
+  "note": "飞书 Bot 管理（v0.2.2）。bots 为归一化后的 FeishuBotDTO（不含 app_secret，仅 secretConfigured 标记）；pairing 为 FeishuPairingDTO 形状。",
+  "bots": [
+    {
+      "botId": "fbot-a1b2",
+      "botName": "客服小助手",
+      "appId": "cli_a1b2c3d4e5f6",
+      "secretRef": "FEISHU_BOT_FBOT_A1B2_APP_SECRET",
+      "secretConfigured": true,
+      "enabled": true,
+      "agentBaseId": "feishu-agent",
+      "channelCode": null,
+      "cwd": "/Users/mac/Workspace/linlannet/dsh-java",
+      "groupRequireMention": true,
+      "connectionState": "CONNECTED",
+      "lastError": null,
+      "updatedAt": "2026-11-02T02:10:00Z"
+    },
+    {
+      "botId": "fbot-c7d9",
+      "botName": "构建播报",
+      "appId": "cli_c7d9e0f1a2b3",
+      "secretRef": "FEISHU_BOT_FBOT_C7D9_APP_SECRET",
+      "secretConfigured": false,
+      "enabled": false,
+      "agentBaseId": "feishu-agent",
+      "channelCode": null,
+      "cwd": null,
+      "groupRequireMention": false,
+      "connectionState": "IDLE",
+      "lastError": "凭据 FEISHU_BOT_FBOT_C7D9_APP_SECRET 未配置 app_secret",
+      "updatedAt": "2026-11-02T01:40:00Z"
+    }
+  ],
+  "pairing": {
+    "pairingId": "9f3c2a11",
+    "status": "WAITING",
+    "url": "https://accounts.feishu.cn/sign?t=1&source=dsh-java",
+    "userCode": "ABCD-1234",
+    "expireIn": 1800,
+    "botId": null,
+    "appId": null,
+    "error": null
+  },
+  "connectionStates": ["IDLE", "CONNECTING", "CONNECTED", "ERROR"],
+  "pairingStatuses": ["WAITING", "SAVED", "FAILED", "CANCELLED", "EXPIRED"]
+}
