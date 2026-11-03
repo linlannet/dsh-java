@@ -2,7 +2,7 @@
 
 > 版本：`v0.2.2` | 基线：v0.2.1 | 架构：DDD 六边形架构（Maven 多模块 / Spring Boot 3.5.16 / Java 17）
 >
-> 本清单将 `docs/spec/0.2.2/spec.md` 的 **§5.1–§5.9 九大能力领域**与 **§6 数据约束**、`docs/spec/0.2.2/design.md` 的全部分层落位、接口清单、数值参数转化为可执行、可验收的编码任务。
+> 本清单将 `docs/spec/0.2.2/spec.md` 的 **§5.1–§5.9 九大能力领域**、**§7 平台能力对齐**与 **§6 数据约束（含 §6.8/§6.9）**、`docs/spec/0.2.2/design.md` 的全部分层落位、接口清单、数值参数转化为可执行、可验收的编码任务。
 >
 > 主线为**飞书（Feishu / Lark）Bot WebSocket 长连接接入与 IM 会话渠道打通**：
 > - **接入方式**：飞书官方 SDK WebSocket 长连接（`com.lark.oapi.ws.Client` + `EventDispatcher`），**无 HTTP webhook**；出站 IM v1 create/update（文本、就地编辑、Markdown 卡片）；入站事件 `im.message.receive_v1`。
@@ -223,3 +223,34 @@
 
 ### 13.2 架构约束与范围边界核对
 - [x] 核对：① 不新增 Maven 模块（根 pom `<modules>` 不变）；② 依赖方向"基础设施 → 领域"无反向依赖；③ 不改既有 GitHub Webhook 与 Agent 入口契约、不改 `domain/channel`/`harness_session.channel_code` 语义；④ 不引入 Flyway；⑤ `feishu_bot` 新表不影响既有表结构与数据（spec §1.4/§4.5）；验收：逐项核对通过；依赖：全部任务完成 —— `pom.xml`、`dsh-java-domain`、`dsh-java-app/src/main/resources/schema.sql`
+
+---
+
+## 14. 参考源 0.2.2-alpha.2 升级项落地（Java 对齐）
+
+> 来源：`refer_source/deepseek-harness/docs/upgrade-guide/v0.2.2-alpha.2/`
+> 覆盖：上游六条升级项中适用的三条 —— `llm-request-purpose-declarations`、`schedule-agent-tools`、`schedule-remote-host-tasks`
+> 完成状态：已完成 ｜ 对照：`design.md` 第三章、`spec.md` §7（§7.1/§7.2/§7.3）与 §6.8/§6.9
+
+### 14.1 `purpose` 声明式校验（对应 `llm-request-purpose-declarations`）
+
+> 覆盖：spec §7.1 / §6.9 ｜ design §3.1
+
+- [x] 新增 `LlmRequestPurposes`（`domain/llm/model/valobj`）：共享 LLM 核心不内置用途键，`declare/require/isDeclared/declared` 校验；`GenerateOptions` 构造时对 `purpose` 调 `require`（`null` 透传，未声明/空白抛 `IllegalArgumentException`）；验收：`LlmRequestPurposesTest` 通过 —— `LlmRequestPurposes.java`、`GenerateOptions.java`
+- [x] 生产方声明：`BasicCompactionEngine` 声明 `compaction`、`PlannerService` 声明 `collaboration-planning`（常量 `LlmRequestPurposes.COMPACTION` / `COLLABORATION_PLANNING`）；`DeepSeekAdapter` 改用常量判定 `x-dsh-compact` 头；验收：压缩/规划调用构造通过 —— `BasicCompactionEngine.java`、`PlannerService.java`、`DeepSeekAdapter.java`
+- [x] 受影响测试声明 `"test"` 用途后通过（`LlmStreamWaterfallTest` / `LlmRetryInterceptorTest` / `LlmGenerationServiceTest`）；验收：`mvn test` 全绿
+
+### 14.2 Schedule 工具组（对应 `schedule-agent-tools`）
+
+> 覆盖：spec §7.2 ｜ design §3.2
+
+- [x] 四个工具 `schedule_create`/`schedule_list`/`schedule_view`/`schedule_edit`（替代旧 `Create`/`ListAll`/`Delete`）；创建只收 `title/prompt/rrule/target`，缺参返回 `MISSING_PARAM`；`view` 不存在返回 `NOT_FOUND`；`edit` 统一走 `action=update|delete`；验收：`ScheduleToolsTest` 工具名/参数校验/查看/删除用例通过 —— `ScheduleTools.java`、`AgentToolCatalog.java`
+- [x] 子 agent 拦截：新增 `SubagentSessions.isSubagent(sessionId)`（`child-` 前缀），`SpawnInProcessProvider`/`ForkInProcessProvider` 改用 `SubagentSessions.newSessionId()`；调度工具对子 agent 返回 `subagent_session`；验收：`ScheduleToolsTest.subagentBlocked` 通过 —— `SubagentSessions.java`
+
+### 14.3 Schedule 宿主全域（对应 `schedule-remote-host-tasks`）
+
+> 覆盖：spec §7.3 / §6.8 ｜ design §3.3
+
+- [x] `ScheduleRecord` 改为宿主范围（`id`/`target`/`targetSessionId`/`sourceSessionId`/`nextAt` 等）；`IScheduleService`/`IScheduleRepository`/`InMemoryScheduleRepository` 全部按 `id` 寻址；验收：`ScheduleServiceTest.hostWideVisibility`（跨会话可见）通过 —— `ScheduleRecord.java`、`IScheduleService.java`、`InMemoryScheduleRepository.java`
+- [x] `ScheduleTiming` 带类型（AFTER/AT/EVERY/DAILY/WEEKLY/RRULE）+ `RRule` 解析器（DTSTART/TZID、INTERVAL/BYDAY/BYHOUR/BYMINUTE，显式拒绝 COUNT/UNTIL/BYMONTH）；`ScheduleKind` 由 RRULE 的 FREQ 派生；验收：`RRuleTest` 通过 —— `ScheduleTiming.java`、`RRule.java`、`ScheduleKind.java`
+- [x] `edit` 支持乐观并发（`expectedUpdatedAt` 不一致抛 `ScheduleConflictException`，码 `schedule_conflict`）；`drive(now)` 推进重复任务 `nextAt`、一次性任务 `ended=true`；验收：`ScheduleServiceTest.editConflict` / `driveFiresDueTasks` 通过 —— `ScheduleService.java`

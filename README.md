@@ -28,6 +28,13 @@ DeepSeek Harness Java (dsh-java) 是一个模块化的智能体运行时框架�
 
 [CHANGELOG](./CHANGELOG.md)
 
+### 当前版本：v0.2.2（2026-11-02）
+
+- **飞书 Bot 接入（主线）**：基于飞书官方 SDK 的 WebSocket 长连接接入，支持一键配对（设备授权）、Bot 生命周期管理、IM 会话入站桥接与流式回发、控制台飞书 Bot 管理面板；新增 `feishu_bot` 表（全库共 31 张）。详见 `docs/spec/0.2.2/`。
+- **LLM 请求用途声明（purpose）**：共享 LLM 核心新增 `LlmRequestPurposes` 声明式校验，未声明/空白用途键在 `GenerateOptions` 构造期即拒绝；`BasicCompactionEngine`/`PlannerService` 分别声明压缩与协作规划用途，`DeepSeekAdapter` 据此加 `x-dsh-compact` 头。
+- **调度工具组**：`ScheduleTools` 重构为 `schedule_create`/`schedule_list`/`schedule_view`/`schedule_edit` 四工具（替代旧 `Create`/`ListAll`/`Delete`），新增 `SubagentSessions` 对子 agent 调用调度工具返回 `subagent_session`。
+- **调度宿主全域**：`ScheduleRecord` 改为按 `id` 全域管理、跨会话可见；`ScheduleTiming` 带类型并新增 `RRule` 解析（含边界拒绝）；`ScheduleService` 支持乐观并发与 `drive` 推进。
+
 
 ## 目录
 

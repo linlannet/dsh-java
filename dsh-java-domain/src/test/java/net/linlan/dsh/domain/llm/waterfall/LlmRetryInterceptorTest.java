@@ -4,6 +4,7 @@ import net.linlan.dsh.domain.core.waterfall.model.valobj.WaterfallEvent;
 import net.linlan.dsh.domain.core.waterfall.model.valobj.WaterfallOutcome;
 import net.linlan.dsh.domain.llm.model.valobj.FinishReason;
 import net.linlan.dsh.domain.llm.model.valobj.GenerateOptions;
+import net.linlan.dsh.domain.llm.model.valobj.LlmRequestPurposes;
 import net.linlan.dsh.domain.llm.model.valobj.LlmErrorCodes;
 import net.linlan.dsh.domain.llm.model.valobj.StreamChunk;
 import net.linlan.dsh.domain.llm.retry.model.valobj.LlmRetryPolicy;
@@ -24,6 +25,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("LlmRetryInterceptor LLM 流式重试拦截器")
 class LlmRetryInterceptorTest {
+
+    static {
+        LlmRequestPurposes.declare("test", "LlmRetryInterceptorTest");
+    }
 
     @Test
     @DisplayName("priority 固定返回 10")

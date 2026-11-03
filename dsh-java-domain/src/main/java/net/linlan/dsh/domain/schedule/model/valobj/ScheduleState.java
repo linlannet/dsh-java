@@ -1,12 +1,19 @@
 package net.linlan.dsh.domain.schedule.model.valobj;
 
 /**
- * ScheduleState 定义当前模块中的enum契约与职责。
- * <p>调用流程：创建计划 → 到期扫描 → 执行任务 → 更新状态。</p>
- * <p>示例：设置固定间隔后，调度器到期触发任务并记录结果。</p>
+ * 计划任务在视图上的状态。
+ *
+ * <p>对应参考源的 {@code scheduled / overdue / paused / ended}。</p>
  */
 public enum ScheduleState {
+    /** 未到期。 */
     SCHEDULED,
+    /** 已到期但尚未派发。 */
     OVERDUE,
+    /** 已暂停。 */
+    PAUSED,
+    /** 已结束（一次性任务触发完成）。 */
+    ENDED,
+    /** 已派发（历史状态，保留兼容）。 */
     DISPATCHED
 }

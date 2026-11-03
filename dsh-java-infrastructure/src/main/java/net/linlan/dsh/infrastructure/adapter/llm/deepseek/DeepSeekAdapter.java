@@ -208,7 +208,7 @@ public class DeepSeekAdapter implements LlmAdapter {
         if (genOptions.sessionId() != null) {
             builder.header("x-dsh-session-id", genOptions.sessionId());
         }
-        if ("compaction".equals(genOptions.purpose())) {
+        if (LlmRequestPurposes.COMPACTION.equals(genOptions.purpose())) {
             builder.header("x-dsh-compact", "1");
         }
 

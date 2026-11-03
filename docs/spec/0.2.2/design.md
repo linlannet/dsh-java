@@ -2,7 +2,7 @@
 
 > 版本：`v0.2.2` | 基线：v0.2.1 | 架构：DDD 六边形架构（Maven 多模块 / Spring Boot 3.5.16 / Java 17）
 >
-> 本文档将 `docs/spec/0.2.2/spec.md` 中 **§5.1–§5.9 九大能力领域**与 **§6 数据约束**的 EARS 需求转化为技术实现方案，主线为**飞书（Feishu / Lark）Bot WebSocket 长连接接入与 IM 会话渠道打通**。
+> 本文档将 `docs/spec/0.2.2/spec.md` 中 **§5.1–§5.9 九大能力领域**、**§7 平台能力对齐**与 **§6 数据约束（含 §6.8/§6.9）** 的 EARS 需求转化为技术实现方案，主线为**飞书（Feishu / Lark）Bot WebSocket 长连接接入与 IM 会话渠道打通**；第三章补充与参考源 v0.2.2-alpha.2 升级项对齐的平台能力设计。
 >
 > 约束前提（沿用 spec §1.4 / §4.5 与命名隔离声明）：
 > 1. **不新增 Maven 模块**，飞书相关类全部落在既有 6 个模块（domain / api / case / infrastructure / trigger / app）内，依赖方向保持"基础设施 → 领域"。
@@ -1180,6 +1180,13 @@ CREATE TABLE IF NOT EXISTS feishu_bot (
 | trigger | `net.linlan.dsh.trigger.http` | `BotController` | REST `/api/harness/bots`，委托 `IBotApi` |
 | app | `dsh-java-app/src/main/resources` | `schema.sql`、`db/migration/V20261102__feishu_bot.sql` | 建表脚本（双库幂等） |
 | app | `dsh-java-app/src/main/resources/static` | `index.html`、`app.js`、`app.css` | 控制台飞书 Bot 面板（原生 HTML，无框架） |
+| domain | `net.linlan.dsh.domain.llm.model.valobj` | `LlmRequestPurposes` | 用途声明注册表（`declare`/`require`/`declared`），共享 LLM 核心不内置键 |
+| domain | `net.linlan.dsh.domain.schedule.model.valobj` | `ScheduleRecord`、`ScheduleTiming`、`ScheduleKind`、`ScheduleTarget`、`RRule` | 调度聚合与值对象（宿主范围、timing 带类型、RRULE 解析） |
+| domain | `net.linlan.dsh.domain.schedule.service` | `ScheduleService`（`@Service`） | 调度领域服务：`create/list/view/edit/drive`，按 `id` 寻址、乐观并发 |
+| domain | `net.linlan.dsh.domain.schedule.adapter.repository` | `IScheduleRepository` | 调度持久化端口 |
+| domain | `net.linlan.dsh.domain.tool.schedule` | `ScheduleTools`（Create/ListAll/ViewOne/Edit） | 四个调度工具，注册于 `AgentToolCatalog` |
+| domain | `net.linlan.dsh.domain.agent.service.subagent` | `SubagentSessions` | 子 agent 会话 ID 生成与判定（`child-` 前缀） |
+| infrastructure | `net.linlan.dsh.infrastructure.adapter.schedule` | `InMemoryScheduleRepository` | `IScheduleRepository` 内存实现（`@Bean`） |
 
 **依赖方向校验**：
 - `domain.bot` 不依赖 api/case/infrastructure/trigger，只依赖 `domain.credentials`（复用 `ICredentialProviderPort`/`CredentialRef` 由 case 层调用，领域层不直接依赖）。
@@ -1360,6 +1367,155 @@ CREATE TABLE IF NOT EXISTS feishu_bot (
 | IM 渠道语义误写入 LLM `channel_code` | 模型渠道数据错乱 | 强制命名隔离；code review + 单测断言 `AgentMessageRequestDTO.channelCode` 不被 IM 码污染 | 清理被污染的 `harness_session.channel_code` 数据 |
 
 **总体回退**：飞书接入为**纯增量**（新包、新表、新端点、新配置开关），回退方式为"设 `dsh.feishu.enabled=false` + 丢弃新增包/表/依赖/迁移文件"，对既有功能零影响。
+
+---
+
+# 三、参考源 v0.2.2-alpha.2 升级项对齐设计
+
+> 来源：`refer_source/deepseek-harness/docs/upgrade-guide/v0.2.2-alpha.2/`
+> 本章将参考源的破坏性变更与迁移步骤对照到 `dsh-java` 实现方案。六条升级项中，下述三条适用并已在 v0.2.2 落地；另三条（`context-menu-target` 桌面端插件体系、`forge-git-permissions` Forge 面板、`sdk-run-commands` Python/TS SDK）在本项目无对应模块，不适用。需求基线见 `spec.md` §7 与 §6.8/§6.9，任务拆解见 `tasks.md` 第十四节。
+
+## 3.1 LLM 请求用途声明（对应 `llm-request-purpose-declarations`）
+
+### 3.1.1 设计目标
+
+1. `GenerateOptions.purpose` 由"共享联合字符串"改为"**生产方声明**"的用途键；构造请求时若用途未在生产方声明表中登记，直接拒绝。
+2. 共享 LLM 核心（`domain.llm`）**不内置任何用途键**，键的登记完全由生产方（压缩引擎、协作规划器等）在其类型入口完成。
+3. `null` purpose 透传放行（宿主核心 / 真实对话请求无需声明）。
+
+### 3.1.2 类与接口布局
+
+| 类 | 包路径 | 职责 |
+|----|--------|------|
+| `LlmRequestPurposes` | `net.linlan.dsh.domain.llm.model.valobj` | 用途声明注册表：`declare(purpose, owner)` / `require(purpose)` / `isDeclared(purpose)` / `declared()`；常量 `COMPACTION` / `COLLABORATION_PLANNING` / `SESSION_TITLE` |
+| `GenerateOptions` | `net.linlan.dsh.domain.llm.model.valobj` | 构造时对 `purpose` 调 `LlmRequestPurposes.require(...)`：`null` 透传；空白/未声明抛 `IllegalArgumentException` |
+| `BasicCompactionEngine` | `net.linlan.dsh.domain.llm.service.compaction` | 静态块 `declare("compaction", ...)` |
+| `PlannerService` | `net.linlan.dsh.domain.agent.service.collaboration` | 静态块 `declare("collaboration-planning", ...)` |
+| `DeepSeekAdapter` | `net.linlan.dsh.infrastructure.adapter.llm.deepseek` | 以 `LlmRequestPurposes.COMPACTION` 判定并加 `x-dsh-compact` 头 |
+
+### 3.1.3 关键逻辑
+
+- **声明**：共享 LLM 核心启动时**不预置**任何键；各生产方在类静态初始化块 `declare` 自身键（例：`BasicCompactionEngine`、`PlannerService`）。
+- **校验**：`GenerateOptions` 构造 → `LlmRequestPurposes.require(purpose)`：`null` → 透传；`blank` 或 `!isDeclared` → 抛 `IllegalArgumentException`（携带键名，便于定位未声明生产方）。
+- **冲突**：同键同 owner 重复 `declare` 幂等；同键不同 owner 拒绝（防止用途键被冒用）。
+- **测试侧**：使用 `"test"` 用途的测试类同样需 `declare`（例：`LlmStreamWaterfallTest` 静态块声明 `"test"`），体现"生产方声明"机制对测试一致适用。
+- **后续接入**：会话标题等新增辅助请求的生产方，接入时声明 `LlmRequestPurposes.SESSION_TITLE` 即可。
+
+## 3.2 调度工具组（对应 `schedule-agent-tools`）
+
+### 3.2.1 设计目标
+
+1. 四个工具 `schedule_create` / `schedule_list` / `schedule_view` / `schedule_edit`，替代旧的 `Create`/`ListAll`/`Delete` 组合。
+2. 创建仅收 `title`、`prompt`、`rrule`（一行 `DTSTART` + 一行 `RRULE`）、必填 `target`（`this_session | new_once | new`）；列表返回 `{ items, shown, total, limit, offset }`。
+3. 编辑统一走 `schedule_edit`：`action=update`（改标题/提示词/规则/目标，或暂停/恢复）或 `action=delete`。
+4. 被委派的子 agent 调用调度工具时返回错误码 `subagent_session`。
+
+### 3.2.2 类与接口布局
+
+| 类 | 包路径 | 职责 |
+|----|--------|------|
+| `ScheduleTools.Create` | `net.linlan.dsh.domain.tool.schedule` | 创建：缺 `title/prompt/rrule/target` 任一时返回 `MISSING_PARAM` |
+| `ScheduleTools.ListAll` | 同上 | 列表：返回 `items/shown/total/limit/offset` |
+| `ScheduleTools.ViewOne` | 同上 | 查看：未知 `id` 返回 `NOT_FOUND` |
+| `ScheduleTools.Edit` | 同上 | 编辑：缺 `id/action` 返回 `MISSING_PARAM`；`action=update`→`Schedule updated`，`action=delete`→`Schedule deleted` |
+| `AgentToolCatalog` | `net.linlan.dsh.domain.agent.service.run.tool` | 条件注册四工具（`scheduleService != null`） |
+| `SubagentSessions` | `net.linlan.dsh.domain.agent.service.subagent` | `isSubagent(sessionId)`（`child-` 前缀）/ `newSessionId()` 统一生成子 agent 会话 ID |
+| `SpawnInProcessProvider` / `ForkInProcessProvider` | `net.linlan.dsh.domain.agent.service.subagent` | 改用 `SubagentSessions.newSessionId()` 生成子 agent 会话 |
+
+### 3.2.3 关键逻辑
+
+- **参数校验**：`create` 校验四必填；`edit` 校验 `id` + `action`（且 `action∈{update,delete}`）。
+- **子 agent 拦截**：工具执行入口先判 `SubagentSessions.isSubagent(sessionId)` → 命中即返回 `subagent_session` 错误，不再触达 `IScheduleService`。
+- **注册条件**：`AgentToolCatalog` 仅在 `scheduleService` 非空时注册四工具，保持无调度能力时工具组为空。
+
+## 3.3 调度宿主全域（对应 `schedule-remote-host-tasks`）
+
+### 3.3.1 设计目标
+
+1. 任务不再绑定"调用方会话"，改为**宿主全域按 `id` 管理**：`sourceSessionId` 仅记录创建者；`target` 决定触发后投递目的地。
+2. `timing` 带类型 `ScheduleKind`（`AFTER`/`AT`/`EVERY`/`DAILY`/`WEEKLY`/`RRULE`）；上游 `Cron` 在 Java 侧统一由 `RRULE` 表达。
+3. `edit` 支持乐观并发（`expectedUpdatedAt` 不一致抛 `ScheduleConflictException`，码 `schedule_conflict`）；`drive(now)` 推进重复任务、结束一次性任务。
+4. standalone 模式仍为**内存**实现，无需新增数据库迁移。
+
+### 3.3.2 数据模型
+
+```plantuml
+@startuml
+!theme plain
+skinparam classAttributeIconSize 0
+class ScheduleRecord {
+  - id : String  «宿主全域唯一»
+  - title : String
+  - prompt : String
+  - timing : ScheduleTiming
+  - target : ScheduleTarget
+  - targetSessionId : String «可空»
+  - sourceSessionId : String «仅记录创建者»
+  - paused : boolean
+  - ended : boolean
+  - createdAt : Instant
+  - updatedAt : Instant
+  - lastRunAt : Instant «可空»
+  - nextAt : Instant «可空»
+}
+class ScheduleTiming {
+  - kind : ScheduleKind
+  - afterMs : Long «AFTER»
+  - at : Instant «AT»
+  - rrule : String «EVERY/DAILY/WEEKLY/RRULE»
+  - intervalMs : Long «EVERY»
+  + firstAtOrAfter(from : Instant) : Instant
+  + nextAfter(from : Instant) : Instant
+}
+class ScheduleKind <<enumeration>> {
+  AFTER
+  AT
+  EVERY
+  DAILY
+  WEEKLY
+  RRULE
+}
+class ScheduleTarget <<enumeration>> {
+  THIS_SESSION
+  NEW_ONCE
+  NEW
+}
+class RRule {
+  - start : Instant
+  - freq : String «DAILY/WEEKLY»
+  - interval : int
+  - byDay : Set<DayOfWeek>
+  - byHour : Set<Integer>
+  - byMinute : Set<Integer>
+  + parse(ics : String, fallbackStart : Instant) : RRule
+  + nextAfter(from : Instant) : Instant
+}
+ScheduleRecord "1" o-- "1" ScheduleTiming
+ScheduleTiming ..> ScheduleKind
+ScheduleTiming ..> RRule : RRULE 解析派生
+@enduml
+```
+
+**RRULE 解析约束（与 spec §6.8.8 对齐）**：支持 `DTSTART[;TZID=<tz>]:<datetime>` + `RRULE:FREQ=...`；支持 `INTERVAL`/`BYDAY`/`BYHOUR`/`BYMINUTE`；**显式拒绝** `COUNT`/`UNTIL`/`BYMONTH` 等未实现部件（抛异常，避免静默错误）；未带 `DTSTART` 时回退 `fallbackStart`。`ScheduleKind` 由 `RRULE` 的 `FREQ` 派生（`DAILY`/`WEEKLY`/`RRULE`）。
+
+### 3.3.3 类与接口布局
+
+| 类 | 包路径 | 职责 |
+|----|--------|------|
+| `ScheduleRecord` | `net.linlan.dsh.domain.schedule.model.valobj` | 宿主范围调度记录值对象（含 `nextAt`/`ended`） |
+| `ScheduleTiming` | 同上 | 带类型 timing，`firstAtOrAfter`/`nextAfter` |
+| `RRule` | 同上 | RRULE 解析与展开（`parse`/`nextAfter`） |
+| `IScheduleService` | `net.linlan.dsh.domain.schedule` | `create/list/view/edit/drive`，全部按 `id` 寻址 |
+| `ScheduleService` | `net.linlan.dsh.domain.schedule.service` | `@Service` 实现；乐观并发（`ScheduleConflictException`）、`drive` 推进 |
+| `IScheduleRepository` | `net.linlan.dsh.domain.schedule.adapter.repository` | 持久化端口（宿主范围） |
+| `InMemoryScheduleRepository` | `net.linlan.dsh.infrastructure.adapter.schedule` | 内存实现（`@Bean`） |
+| `ScheduleConflictException` | `net.linlan.dsh.domain.schedule` | `expectedUpdatedAt` 不一致，码 `schedule_conflict` |
+
+### 3.3.4 关键逻辑
+
+- **宿主可见性**：`list` 不再按会话裁剪，所有会话可见宿主全域任务；`sourceSessionId` 仅作来源标注。
+- **乐观并发**：`edit` 若携带 `expectedUpdatedAt` 且与当前 `updatedAt` 不一致，抛 `ScheduleConflictException`（码 `schedule_conflict`），由上层转换为对应错误响应。
+- **驱动推进**：`drive(now)` 扫描 `!ended && !paused && nextAt<=now` 的任务；重复任务（`EVERY`/`DAILY`/`WEEKLY`/`RRULE`）调用 `ScheduleTiming.nextAfter` 推进 `nextAt` 并刷新 `lastRunAt`；一次性任务（`AFTER`/`AT`）置 `ended=true`。
 
 ---
 

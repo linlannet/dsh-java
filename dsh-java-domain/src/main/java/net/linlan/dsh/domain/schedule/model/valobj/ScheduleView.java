@@ -1,25 +1,37 @@
 package net.linlan.dsh.domain.schedule.model.valobj;
 
 import net.linlan.dsh.domain.schedule.model.entity.ScheduleRecord;
+
 import java.time.Instant;
 
 /**
- * ScheduleView 领域值对象。
- * <p>职责：承载领域规则、状态或边界，供上层编排与基础设施适配。</p>
+ * 计划任务视图。
+ *
+ * @param record 任务记录
+ * @param state 视图状态
+ * @param deliveryMode 投递模式
+ * @param nextAt 下一次触发时刻，可空
  */
-public record ScheduleView(ScheduleRecord record, ScheduleState state, String deliveryMode) {
+public record ScheduleView(ScheduleRecord record, ScheduleState state, String deliveryMode, Instant nextAt) {
 
     /**
-     * 创建目标对象。
-     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
-     * @param record record参数。
-     * @param now now参数。
-     * @return 创建的领域对象。
+     * 由记录与当前时刻计算视图。
+     *
+     * @param record 任务记录
+     * @param now 当前时刻
+     * @return 视图
      */
     public static ScheduleView of(ScheduleRecord record, Instant now) {
-        ScheduleState state = record.scheduledAt().isAfter(now)
-                ? ScheduleState.SCHEDULED
-                : ScheduleState.OVERDUE;
-        return new ScheduleView(record, state, "session-local");
+        ScheduleState state;
+        if (record.ended()) {
+            state = ScheduleState.ENDED;
+        } else if (record.paused()) {
+            state = ScheduleState.PAUSED;
+        } else if (record.nextAt() != null && !record.nextAt().isAfter(now)) {
+            state = ScheduleState.OVERDUE;
+        } else {
+            state = ScheduleState.SCHEDULED;
+        }
+        return new ScheduleView(record, state, record.target().deliveryMode(), record.nextAt());
     }
 }

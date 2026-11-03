@@ -1,38 +1,42 @@
 package net.linlan.dsh.domain.tool.schedule;
 
-import net.linlan.dsh.domain.model.valobj.TextBlock;
-import net.linlan.dsh.domain.schedule.IScheduleService;
-import net.linlan.dsh.domain.schedule.model.entity.ScheduleRecord;
-import net.linlan.dsh.domain.schedule.model.valobj.ScheduleView;
+import net.linlan.dsh.domain.agent.service.subagent.SubagentSessions;
 import net.linlan.dsh.domain.model.entity.ToolDefinition;
 import net.linlan.dsh.domain.model.entity.ToolExecutionResult;
 import net.linlan.dsh.domain.model.entity.ToolRunContext;
-import java.time.Duration;
+import net.linlan.dsh.domain.model.valobj.TextBlock;
+import net.linlan.dsh.domain.schedule.IScheduleService;
+import net.linlan.dsh.domain.schedule.model.entity.ScheduleRecord;
+import net.linlan.dsh.domain.schedule.model.exception.ScheduleConflictException;
+import net.linlan.dsh.domain.schedule.model.exception.ScheduleNotFoundException;
+import net.linlan.dsh.domain.schedule.model.valobj.ScheduleCreateRequest;
+import net.linlan.dsh.domain.schedule.model.valobj.ScheduleEditRequest;
+import net.linlan.dsh.domain.schedule.model.valobj.SchedulePage;
+import net.linlan.dsh.domain.schedule.model.valobj.SchedulePatch;
+import net.linlan.dsh.domain.schedule.model.valobj.ScheduleTarget;
+import net.linlan.dsh.domain.schedule.model.valobj.ScheduleView;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * 调度提醒工具组：schedule_create / schedule_list / schedule_delete。
- * <p>
- * Mirrors TS {@code tool-schedule}. 提醒在当前会话内到期后被派发为一条提示。
+ * 调度任务工具组：schedule_create / schedule_list / schedule_view / schedule_edit。
  *
- * <p>调用流程：Agent 发起 tool call → ToolRegistry 查找工具 → Guard 校验 → ToolExecutor 执行 → 结果回填。</p>
- * <p>示例：工具名 fs_read 与 JSON 参数先经过校验，再生成 ToolExecutionResult。</p>
+ * <p>对齐参考源 0.2.2：创建只接受 {@code title}、{@code prompt}、{@code rrule} 与必填 {@code target}；
+ * 列表返回 {@code { items, shown, total, limit, offset }} 并覆盖活动、暂停与已结束任务；
+ * 编辑统一走 {@code schedule_edit}（{@code action=update|delete}）；全部按 id 操作宿主任务。</p>
  *
+ * <p>被委派的子 agent 调用时返回错误码 {@code subagent_session}。</p>
  */
 public final class ScheduleTools {
 
-    /**
-     * 处理调度 Tools。
-     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
-     * @return 方法执行结果。
-     */
-    private ScheduleTools() {}
+    private ScheduleTools() {
+    }
 
     /**
-     * Base 定义当前模块中的class契约与职责。
+     * 工具基类：共享参数解析、结果包装与子 agent 拦截。
      */
     private abstract static class Base implements ToolDefinition {
         final IScheduleService schedules;
@@ -47,36 +51,40 @@ public final class ScheduleTools {
         static Map<String, Object> argMap(Object args) {
             return args instanceof Map ? (Map<String, Object>) args : Map.of();
         }
-        /**
-         * 转换为字符串。
-         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
-         * @param Map<String Map String参数。
-         * @param m m参数。
-         * @param k k参数。
-         * @return 方法执行结果。
-         */
-
 
         static String str(Map<String, Object> m, String k) {
             Object v = m.get(k);
             return v == null ? "" : String.valueOf(v).trim();
         }
-        /**
-         * long Val。
-         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
-         * @param Map<String Map String参数。
-         * @param m m参数。
-         * @param k k参数。
-         * @param def def参数。
-         * @return 方法执行结果。
-         */
 
-
-        static long longVal(Map<String, Object> m, String k, long def) {
+        static Boolean boolVal(Map<String, Object> m, String k) {
             Object v = m.get(k);
-            if (v instanceof Number n) return n.longValue();
-            if (v == null) return def;
-            try { return Long.parseLong(String.valueOf(v)); } catch (NumberFormatException e) { return def; }
+            if (v == null) {
+                return null;
+            }
+            if (v instanceof Boolean b) {
+                return b;
+            }
+            String text = String.valueOf(v).trim();
+            if (text.isEmpty()) {
+                return null;
+            }
+            return Boolean.parseBoolean(text);
+        }
+
+        static int intVal(Map<String, Object> m, String k, int def) {
+            Object v = m.get(k);
+            if (v instanceof Number n) {
+                return n.intValue();
+            }
+            if (v == null) {
+                return def;
+            }
+            try {
+                return Integer.parseInt(String.valueOf(v).trim());
+            } catch (NumberFormatException e) {
+                return def;
+            }
         }
 
         CompletableFuture<ToolExecutionResult> ok(String text) {
@@ -87,132 +95,299 @@ public final class ScheduleTools {
         CompletableFuture<ToolExecutionResult> fail(String msg, String code) {
             return CompletableFuture.completedFuture(ToolExecutionResult.fail(msg, code));
         }
-        /**
-         * record Line。
-         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
-         * @param r r参数。
-         * @return 方法执行结果。
-         */
 
+        /** 子 agent 调用时返回拒绝结果，正常调用返回 null。 */
+        CompletableFuture<ToolExecutionResult> guardSubagent() {
+            return SubagentSessions.isSubagent(sessionId)
+                    ? fail("A delegated subagent cannot use scheduled tasks.", "subagent_session")
+                    : null;
+        }
 
-        static String recordLine(ScheduleRecord r) {
-            return "- " + r.id() + " [" + r.kind() + "] at " + r.scheduledAt() + ": " + r.prompt();
+        static String detail(ScheduleView view) {
+            ScheduleRecord record = view.record();
+            StringBuilder sb = new StringBuilder();
+            sb.append("- id: ").append(record.id()).append('\n');
+            sb.append("  title: ").append(record.title()).append('\n');
+            sb.append("  kind: ").append(record.timing().kind()).append('\n');
+            sb.append("  target: ").append(record.target().name().toLowerCase())
+                    .append(" (").append(view.deliveryMode()).append(")\n");
+            sb.append("  state: ").append(view.state()).append('\n');
+            sb.append("  next: ").append(view.nextAt() == null ? "-" : view.nextAt()).append('\n');
+            sb.append("  paused: ").append(record.paused()).append(", ended: ").append(record.ended()).append('\n');
+            sb.append("  prompt: ").append(record.prompt());
+            return sb.toString();
+        }
+
+        static String line(ScheduleView view) {
+            ScheduleRecord record = view.record();
+            return "- " + record.id() + " [" + record.timing().kind() + "] "
+                    + view.state() + " next=" + (view.nextAt() == null ? "-" : view.nextAt())
+                    + " target=" + record.target().name().toLowerCase()
+                    + ": " + record.title();
         }
     }
 
-        /**
-         * 创建。
-         */
-    /** schedule_create：创建一次性或周期性提醒。 */
+    /** schedule_create：按 RRULE 与 target 创建宿主任务。 */
     public static final class Create extends Base {
         /**
-         * 创建。
+         * 构造创建工具。
+         *
+         * @param schedules 调度服务
+         * @param sessionId 调用方会话 ID
          */
-        public Create(IScheduleService schedules, String sessionId) { super(schedules, sessionId); }
-        @Override public String name() { return "schedule_create"; }
-        @Override public String description() {
-            return "Create a reminder for this session: after N seconds (once), at an ISO instant (once), " +
-                    "or every N seconds (recurring, min 300s). The reminder is delivered into this session when due.";
+        public Create(IScheduleService schedules, String sessionId) {
+            super(schedules, sessionId);
         }
-        @Override public Map<String, Object> parameters() {
+
+        @Override
+        public String name() {
+            return "schedule_create";
+        }
+
+        @Override
+        public String description() {
+            return "Create a scheduled task for this host. Requires title, prompt, rrule (one DTSTART line plus "
+                    + "one RRULE line) and target (this_session | new_once | new). Delivery follows target.";
+        }
+
+        @Override
+        public Map<String, Object> parameters() {
             return Map.of("type", "object", "additionalProperties", false,
                     "properties", Map.of(
-                            "prompt", Map.of("type", "string", "description", "Reminder content delivered when due."),
-                            "after_seconds", Map.of("type", "integer", "description", "One-shot: fire after N seconds."),
-                            "at", Map.of("type", "string", "description", "One-shot: fire at ISO-8601 instant (UTC)."),
-                            "every_seconds", Map.of("type", "integer", "description", "Recurring: fire every N seconds (min 300).")),
-                    "required", List.of("prompt"));
-        /**
-         * 执行工具调用。
-         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
-         * @param args 启动参数。
-         * @param ctx ctx参数。
-         * @return 方法执行结果。
-         */
-
+                            "title", Map.of("type", "string", "description", "Short task title."),
+                            "prompt", Map.of("type", "string",
+                                    "description", "Prompt delivered when the task fires."),
+                            "rrule", Map.of("type", "string",
+                                    "description", "Time rule, e.g. DTSTART;TZID=Asia/Shanghai:20261013T090000\n"
+                                            + "RRULE:FREQ=DAILY"),
+                            "target", Map.of("type", "string",
+                                    "enum", List.of("this_session", "new_once", "new"),
+                                    "description", "Delivery destination of the fired task.")),
+                    "required", List.of("title", "prompt", "rrule", "target"));
         }
-        @Override public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
+
+        @Override
+        public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
+            CompletableFuture<ToolExecutionResult> blocked = guardSubagent();
+            if (blocked != null) {
+                return blocked;
+            }
             Map<String, Object> m = argMap(args);
+            String title = str(m, "title");
             String prompt = str(m, "prompt");
-            if (prompt.isEmpty()) return fail("prompt is required", "MISSING_PARAM");
+            String rrule = str(m, "rrule");
+            String target = str(m, "target");
+            if (title.isEmpty() || prompt.isEmpty() || rrule.isEmpty() || target.isEmpty()) {
+                return fail("title, prompt, rrule and target are required", "MISSING_PARAM");
+            }
             try {
-                ScheduleRecord r;
-                if (m.get("every_seconds") != null) {
-                    r = schedules.createEvery(sessionId, prompt,
-                            Duration.ofSeconds(longVal(m, "every_seconds", 300)));
-                } else if (m.get("at") != null) {
-                    r = schedules.createAt(sessionId, prompt, Instant.parse(str(m, "at")));
-                } else if (m.get("after_seconds") != null) {
-                    r = schedules.createAfter(sessionId, prompt,
-                            Duration.ofSeconds(longVal(m, "after_seconds", 60)));
-                } else {
-                    return fail("one of after_seconds / at / every_seconds is required", "MISSING_PARAM");
-                }
-                return ok("Schedule created:\n" + recordLine(r));
-            } catch (Exception e) {
-                return fail("schedule_create failed: " + e.getMessage(), "EXECUTION_ERROR");
+                ScheduleRecord record = schedules.create(
+                        new ScheduleCreateRequest(title, prompt, rrule, ScheduleTarget.fromWire(target), sessionId));
+                return ok("Schedule created:\n" + detail(ScheduleView.of(record, Instant.now())));
+            } catch (IllegalArgumentException e) {
+                return fail("schedule_create failed: " + e.getMessage(), "INVALID_PARAM");
             }
         }
     }
 
-    /** schedule_list：列出会话内提醒。 */
+    /** schedule_list：分页列出宿主任务。 */
     public static final class ListAll extends Base {
         /**
-         * 列出All。
+         * 构造列表工具。
+         *
+         * @param schedules 调度服务
+         * @param sessionId 调用方会话 ID
          */
-        public ListAll(IScheduleService schedules, String sessionId) { super(schedules, sessionId); }
-        @Override public String name() { return "schedule_list"; }
-        @Override public String description() {
-            return "List active reminders for this session.";
+        public ListAll(IScheduleService schedules, String sessionId) {
+            super(schedules, sessionId);
         }
-        @Override public Map<String, Object> parameters() {
-            return Map.of("type", "object", "additionalProperties", false, "properties", Map.of());
-        }
-        @Override public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
-            List<ScheduleView> views = schedules.list(sessionId);
-            if (views.isEmpty()) return ok("No active reminders.");
-            StringBuilder sb = new StringBuilder("Active reminders:\n");
-            for (ScheduleView v : views) {
-                sb.append(recordLine(v.record())).append(" [").append(v.state()).append("]\n");
-            }
-            return ok(sb.toString());
-        /**
-         * 判断当前状态是否满足条件。
-         * @param args 启动参数。
-         * @return 布尔结果：满足条件为 true，否则 false。
-         */
 
+        @Override
+        public String name() {
+            return "schedule_list";
         }
-        @Override public boolean isConcurrencySafe(Object args) { return true; }
-    }
 
-    /** schedule_delete：删除提醒。 */
-    public static final class Delete extends Base {
-        /**
-         * 删除目标对象。
-         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
-         * @param schedules schedules参数。
-         * @param sessionId 会话 ID。
-         * @return 方法执行结果。
-         */
-        public Delete(IScheduleService schedules, String sessionId) { super(schedules, sessionId); }
-        @Override public String name() { return "schedule_delete"; }
-        @Override public String description() {
-            return "Delete a reminder by id.";
+        @Override
+        public String description() {
+            return "List scheduled tasks of this host, including active, paused and ended ones. "
+                    + "Returns { items, shown, total, limit, offset }.";
         }
-        @Override public Map<String, Object> parameters() {
+
+        @Override
+        public Map<String, Object> parameters() {
             return Map.of("type", "object", "additionalProperties", false,
                     "properties", Map.of(
-                            "id", Map.of("type", "string", "description", "Reminder id.")),
+                            "active", Map.of("type", "boolean",
+                                    "description", "true: only active tasks; false: all tasks."),
+                            "limit", Map.of("type", "integer", "description", "Page size, default 20."),
+                            "offset", Map.of("type", "integer", "description", "Page offset, default 0.")),
+                    "required", List.of());
+        }
+
+        @Override
+        public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
+            CompletableFuture<ToolExecutionResult> blocked = guardSubagent();
+            if (blocked != null) {
+                return blocked;
+            }
+            Map<String, Object> m = argMap(args);
+            try {
+                SchedulePage page = schedules.list(boolVal(m, "active"),
+                        intVal(m, "limit", 20), intVal(m, "offset", 0));
+                StringBuilder sb = new StringBuilder()
+                        .append("Scheduled tasks: shown=").append(page.shown())
+                        .append(" total=").append(page.total())
+                        .append(" limit=").append(page.limit())
+                        .append(" offset=").append(page.offset());
+                if (page.items().isEmpty()) {
+                    return ok(sb.append("\nNo scheduled tasks.").toString());
+                }
+                sb.append('\n');
+                for (ScheduleView view : page.items()) {
+                    sb.append(line(view)).append('\n');
+                }
+                return ok(sb.toString());
+            } catch (IllegalArgumentException e) {
+                return fail("schedule_list failed: " + e.getMessage(), "INVALID_PARAM");
+            }
+        }
+
+        @Override
+        public boolean isConcurrencySafe(Object args) {
+            return true;
+        }
+    }
+
+    /** schedule_view：按 id 读取任务。 */
+    public static final class ViewOne extends Base {
+        /**
+         * 构造查看工具。
+         *
+         * @param schedules 调度服务
+         * @param sessionId 调用方会话 ID
+         */
+        public ViewOne(IScheduleService schedules, String sessionId) {
+            super(schedules, sessionId);
+        }
+
+        @Override
+        public String name() {
+            return "schedule_view";
+        }
+
+        @Override
+        public String description() {
+            return "Read one scheduled task by id.";
+        }
+
+        @Override
+        public Map<String, Object> parameters() {
+            return Map.of("type", "object", "additionalProperties", false,
+                    "properties", Map.of(
+                            "id", Map.of("type", "string", "description", "Task id.")),
                     "required", List.of("id"));
         }
-        @Override public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
+
+        @Override
+        public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
+            CompletableFuture<ToolExecutionResult> blocked = guardSubagent();
+            if (blocked != null) {
+                return blocked;
+            }
             String id = str(argMap(args), "id");
-            if (id.isEmpty()) return fail("id is required", "MISSING_PARAM");
-            boolean removed = schedules.delete(sessionId, id);
-            return removed
-                    ? ok("Reminder " + id + " deleted.")
-                    : fail("reminder not found: " + id, "NOT_FOUND");
+            if (id.isEmpty()) {
+                return fail("id is required", "MISSING_PARAM");
+            }
+            return schedules.view(id)
+                    .map(view -> ok("Schedule:\n" + detail(view)))
+                    .orElseGet(() -> fail("schedule not found: " + id, "NOT_FOUND"));
+        }
+
+        @Override
+        public boolean isConcurrencySafe(Object args) {
+            return true;
+        }
+    }
+
+    /** schedule_edit：更新或删除任务。 */
+    public static final class Edit extends Base {
+        /**
+         * 构造编辑工具。
+         *
+         * @param schedules 调度服务
+         * @param sessionId 调用方会话 ID
+         */
+        public Edit(IScheduleService schedules, String sessionId) {
+            super(schedules, sessionId);
+        }
+
+        @Override
+        public String name() {
+            return "schedule_edit";
+        }
+
+        @Override
+        public String description() {
+            return "Edit a scheduled task by id. action=update changes title, prompt, rrule or target, "
+                    + "or pauses/resumes it; action=delete removes it.";
+        }
+
+        @Override
+        public Map<String, Object> parameters() {
+            return Map.of("type", "object", "additionalProperties", false,
+                    "properties", Map.of(
+                            "id", Map.of("type", "string", "description", "Task id."),
+                            "action", Map.of("type", "string", "enum", List.of("update", "delete"),
+                                    "description", "update or delete."),
+                            "title", Map.of("type", "string", "description", "New title (update)."),
+                            "prompt", Map.of("type", "string", "description", "New prompt (update)."),
+                            "rrule", Map.of("type", "string", "description", "New RRULE rule (update)."),
+                            "target", Map.of("type", "string",
+                                    "enum", List.of("this_session", "new_once", "new"),
+                                    "description", "New delivery target (update)."),
+                            "paused", Map.of("type", "boolean", "description", "Pause or resume (update)."),
+                            "expected_updated_at", Map.of("type", "string",
+                                    "description", "Optimistic concurrency token: last known updatedAt (ISO-8601).")),
+                    "required", List.of("id", "action"));
+        }
+
+        @Override
+        public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
+            CompletableFuture<ToolExecutionResult> blocked = guardSubagent();
+            if (blocked != null) {
+                return blocked;
+            }
+            Map<String, Object> m = argMap(args);
+            String id = str(m, "id");
+            String action = str(m, "action");
+            if (id.isEmpty() || action.isEmpty()) {
+                return fail("id and action are required", "MISSING_PARAM");
+            }
+            String title = str(m, "title");
+            String prompt = str(m, "prompt");
+            String rrule = str(m, "rrule");
+            String target = str(m, "target");
+            String expected = str(m, "expected_updated_at");
+            try {
+                SchedulePatch patch = new SchedulePatch(
+                        title.isEmpty() ? null : title,
+                        prompt.isEmpty() ? null : prompt,
+                        rrule.isEmpty() ? null : rrule,
+                        target.isEmpty() ? null : ScheduleTarget.fromWire(target),
+                        boolVal(m, "paused"));
+                Instant expectedUpdatedAt = expected.isEmpty() ? null : Instant.parse(expected);
+                ScheduleRecord record = schedules.edit(new ScheduleEditRequest(id, action, patch, expectedUpdatedAt));
+                if (ScheduleEditRequest.ACTION_DELETE.equalsIgnoreCase(action)) {
+                    return ok("Schedule deleted: " + record.id());
+                }
+                return ok("Schedule updated:\n" + detail(ScheduleView.of(record, Instant.now())));
+            } catch (ScheduleNotFoundException e) {
+                return fail(e.getMessage(), "NOT_FOUND");
+            } catch (ScheduleConflictException e) {
+                return fail(e.getMessage(), "schedule_conflict");
+            } catch (IllegalArgumentException e) {
+                return fail("schedule_edit failed: " + e.getMessage(), "INVALID_PARAM");
+            }
         }
     }
 }

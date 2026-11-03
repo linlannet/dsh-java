@@ -3,6 +3,7 @@ package net.linlan.dsh.infrastructure.digitalhuman;
 import net.linlan.dsh.domain.agent.model.entity.AgentOptions;
 import net.linlan.dsh.domain.llm.adapter.port.ILlmRuntimePort;
 import net.linlan.dsh.domain.llm.model.valobj.GenerateOptions;
+import net.linlan.dsh.domain.llm.model.valobj.LlmRequestPurposes;
 import net.linlan.dsh.domain.llm.service.LlmGenerationService;
 import net.linlan.dsh.domain.model.entity.Message;
 import net.linlan.dsh.domain.model.entity.MessageSource;
@@ -20,6 +21,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class PlannerService {
     private static final Logger log = LoggerFactory.getLogger(PlannerService.class);
+
+    static {
+        // 生产方声明自己的辅助请求用途，共享 LLM 核心不内置该键
+        LlmRequestPurposes.declare(LlmRequestPurposes.COLLABORATION_PLANNING, "PlannerService");
+    }
     private final ILlmRuntimePort llmRuntimePort;
     private final AgentModelSettingResolver modelSettingResolver;
     private final ObjectMapper objectMapper;
@@ -38,7 +44,7 @@ public class PlannerService {
             AgentOptions agent = this.modelSettingResolver.resolve(null, Integer.valueOf(2048));
             String prompt = this.buildPrompt(objective, participants);
             Message userMessage = Message.createUser(List.of(new TextBlock(prompt)), (MessageSource)new MessageSource.UserSource());
-            GenerateOptions options = new GenerateOptions(agent.provider(), agent.model(), null, List.of(userMessage), "\u4f60\u662f\u591a\u667a\u80fd\u4f53\u534f\u4f5c\u7684\u89c4\u5212\u5668\uff0c\u53ea\u8f93\u51fa\u4e25\u683c JSON\uff0c\u4e0d\u8f93\u51fa\u4efb\u4f55\u89e3\u91ca\u3002", null, Double.valueOf(0.2), Integer.valueOf(2048), null, "planner-" + System.currentTimeMillis(), "collaboration-planning", agent.baseUrl(), agent.apiKey(), agent.protocol());
+            GenerateOptions options = new GenerateOptions(agent.provider(), agent.model(), null, List.of(userMessage), "\u4f60\u662f\u591a\u667a\u80fd\u4f53\u534f\u4f5c\u7684\u89c4\u5212\u5668\uff0c\u53ea\u8f93\u51fa\u4e25\u683c JSON\uff0c\u4e0d\u8f93\u51fa\u4efb\u4f55\u89e3\u91ca\u3002", null, Double.valueOf(0.2), Integer.valueOf(2048), null, "planner-" + System.currentTimeMillis(), LlmRequestPurposes.COLLABORATION_PLANNING, agent.baseUrl(), agent.apiKey(), agent.protocol());
             Message result = (Message)new LlmGenerationService(this.llmRuntimePort).generate(options).join();
             String text = result.content().stream().map(block -> {
                 String string;

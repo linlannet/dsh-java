@@ -4,6 +4,7 @@ import net.linlan.dsh.domain.llm.adapter.LlmAdapter;
 import net.linlan.dsh.domain.llm.adapter.port.ILlmRuntimePort;
 import net.linlan.dsh.domain.llm.model.valobj.FinishReason;
 import net.linlan.dsh.domain.llm.model.valobj.GenerateOptions;
+import net.linlan.dsh.domain.llm.model.valobj.LlmRequestPurposes;
 import net.linlan.dsh.domain.llm.model.valobj.StreamChunk;
 import net.linlan.dsh.domain.model.entity.Message;
 import net.linlan.dsh.domain.model.valobj.ToolSchema;
@@ -20,6 +21,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("LlmStreamWaterfall 流式拦截器链")
 class LlmStreamWaterfallTest {
+
+    static {
+        // 测试作为辅助请求生产方，声明自己使用的用途键
+        LlmRequestPurposes.declare("test", "LlmStreamWaterfallTest");
+    }
 
     @Test
     @DisplayName("无拦截器时直接透传底层流")

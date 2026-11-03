@@ -18,11 +18,21 @@
   - 新增 `FeishuBotUseCase`（Bot 生命周期）、`FeishuPairingUseCase`（一键配对）、`FeishuBotInboundHandler`（入站桥接与流式回发）
 - **dsh-java-domain**：
   - 新增 `domain.bot` 聚合 `FeishuBotAggregate`、值对象、`FeishuEventDeduplicator`、4 端口与仓储接口
+  - 新增 `LlmRequestPurposes` 用途声明值对象（`declare`/`require`/`isDeclared`/`declared`），`GenerateOptions` 构造期对 `purpose` 声明式校验（`null` 透传、未声明/空白抛 `IllegalArgumentException`）
+  - `BasicCompactionEngine`/`PlannerService` 分别声明 `COMPACTION`/`COLLABORATION_PLANNING` 用途键
+  - 调度工具组重构：`ScheduleTools` 由旧 `Create`/`ListAll`/`Delete` 改为 `schedule_create`/`schedule_list`/`schedule_view`/`schedule_edit` 四工具（`AgentToolCatalog` 条件注册）；新增 `SubagentSessions`（`child-` 前缀判定），子 agent 调用调度工具返回 `subagent_session`
+  - 调度宿主全域：`ScheduleRecord` 改为按 `id` 全域管理（`sourceSessionId` 仅来源标注、跨会话可见）；`ScheduleTiming` 带类型（`AFTER`/`AT`/`EVERY`/`DAILY`/`WEEKLY`/`RRULE`）+ `RRule` 解析器（支持 `DTSTART`/`TZID`/`INTERVAL`/`BYDAY`/`BYHOUR`/`BYMINUTE`，显式拒绝 `COUNT`/`UNTIL`/`BYMONTH`）；`ScheduleKind` 由 RRULE `FREQ` 派生
+  - `ScheduleService` 支持 `edit` 乐观并发（`expectedUpdatedAt` 不一致抛 `ScheduleConflictException`，码 `schedule_conflict`），`drive(now)` 推进重复任务 `nextAt`、一次性任务 `ended=true`；`InMemoryScheduleRepository` 按 `id` 寻址（standalone 仍为内存实现，不新增数据库表）
 - **dsh-java-infrastructure**：
   - 新增飞书适配器 `FeishuWsGateway`（WebSocket 长连接）、`FeishuMessagingClient`（IM 出站）、`FeishuPairingClient`（设备授权）、`FeishuBotRepository`/`IFeishuBotDao`/`FeishuBotPO`
   - 新增 `FeishuBeanConfig` 条件装配（`dsh.feishu.enabled`）
   - 引入 `com.larksuite.oapi:oapi-sdk:2.8.3`、`com.larksuite.oapi:larksuite-oapi-shaded-protobuf:2.4.6`
+  - `DeepSeekAdapter` 改用 `LlmRequestPurposes.COMPACTION` 常量判定加 `x-dsh-compact` 头
 - **dsh-java-types**：本版本无变更
+
+- **备注**：
+  - 除飞书主线外，本版本同步对齐参考源 `v0.2.2-alpha.2` 升级指南的平台能力（`llm-request-purpose-declarations` / `schedule-agent-tools` / `schedule-remote-host-tasks`）；另三条升级项（`context-menu-target` / `forge-git-permissions` / `sdk-run-commands`）在本项目无对应体系，不适用。
+  - 平台能力对齐不引入新的第三方依赖，不新增 Maven 模块，不新增数据库表（调度在 standalone 模式仍为内存实现）。
 
 ## 版本号：0.2.1
 - 更新日期：2026-10-12 - 2026-10-16

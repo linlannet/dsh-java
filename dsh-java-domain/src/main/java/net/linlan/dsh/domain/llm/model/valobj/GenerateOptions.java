@@ -33,6 +33,7 @@ public record GenerateOptions(
         messages = List.copyOf(messages);
         tools = tools == null ? null : List.copyOf(tools);
         stop = stop == null ? null : List.copyOf(stop);
+        purpose = LlmRequestPurposes.require(purpose);
     }
 
     /**

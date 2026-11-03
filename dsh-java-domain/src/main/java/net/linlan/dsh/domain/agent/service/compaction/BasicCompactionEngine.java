@@ -5,6 +5,7 @@ import net.linlan.dsh.domain.model.entity.Message;
 import net.linlan.dsh.domain.model.entity.MessageSource;
 import net.linlan.dsh.domain.model.valobj.ContentBlock;
 import net.linlan.dsh.domain.llm.model.valobj.GenerateOptions;
+import net.linlan.dsh.domain.llm.model.valobj.LlmRequestPurposes;
 import net.linlan.dsh.domain.model.valobj.TextBlock;
 import net.linlan.dsh.domain.llm.service.LlmGenerationService;
 import net.linlan.dsh.domain.session.event.model.entity.SessionEvent;
@@ -33,6 +34,11 @@ import org.slf4j.LoggerFactory;
 public class BasicCompactionEngine implements CompactionEngine {
 
     private static final Logger log = LoggerFactory.getLogger(BasicCompactionEngine.class);
+
+    static {
+        // 生产方声明自己的辅助请求用途，共享 LLM 核心不内置该键
+        LlmRequestPurposes.declare(LlmRequestPurposes.COMPACTION, "BasicCompactionEngine");
+    }
 
     private final LlmGenerationService llmGenerationService;
     private final long pressureThresholdTokens;
@@ -154,7 +160,7 @@ public class BasicCompactionEngine implements CompactionEngine {
                 null,
                 null,
                 session.sessionId(),
-                "compaction",
+                LlmRequestPurposes.COMPACTION,
                 options.baseUrl(),
                 options.apiKey(),
                 options.protocol()

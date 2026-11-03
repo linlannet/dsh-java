@@ -3,149 +3,175 @@ package net.linlan.dsh.domain.schedule.service;
 import net.linlan.dsh.domain.schedule.IScheduleService;
 import net.linlan.dsh.domain.schedule.adapter.repository.IScheduleRepository;
 import net.linlan.dsh.domain.schedule.model.entity.ScheduleRecord;
-import net.linlan.dsh.domain.schedule.model.valobj.ScheduleKind;
+import net.linlan.dsh.domain.schedule.model.exception.ScheduleConflictException;
+import net.linlan.dsh.domain.schedule.model.exception.ScheduleNotFoundException;
+import net.linlan.dsh.domain.schedule.model.valobj.ScheduleCreateRequest;
+import net.linlan.dsh.domain.schedule.model.valobj.ScheduleEditRequest;
+import net.linlan.dsh.domain.schedule.model.valobj.SchedulePage;
+import net.linlan.dsh.domain.schedule.model.valobj.SchedulePatch;
+import net.linlan.dsh.domain.schedule.model.valobj.ScheduleTarget;
+import net.linlan.dsh.domain.schedule.model.valobj.ScheduleTiming;
 import net.linlan.dsh.domain.schedule.model.valobj.ScheduleView;
-import java.time.Duration;
+
+import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
- * 会话级持久化提醒服务。
- * <p>职责：创建延时、定时和周期提醒；查询活跃提醒；按 ID 删除；驱动到期任务。</p>
- * <p>流程：创建计划 → 到期扫描 → 执行任务 → 更新状态。</p>
- * <p>示例：设置 300 秒周期提醒后，调度器到期触发任务并记录结果。</p>
+ * 宿主范围计划任务服务。
+ *
+ * <p>职责：按 id 创建、查看、分页列出、编辑与删除宿主的全部计划任务，并驱动到期任务。</p>
+ * <p>流程：创建（RRULE + target）→ 到期扫描 → 计算下一次发生时间 → 记录触发结果。</p>
+ * <p>示例：{@code DTSTART;TZID=Asia/Shanghai:20261013T090000\nRRULE:FREQ=DAILY} 每日 09:00 投递到调用方会话。</p>
  */
 @Service
 public class ScheduleService implements IScheduleService {
 
-    private static final long MIN_EVERY_INTERVAL_SECONDS = 300;
+    /** 默认分页大小。 */
+    private static final int DEFAULT_LIMIT = 20;
+    /** 最大分页大小。 */
+    private static final int MAX_LIMIT = 100;
 
     private final IScheduleRepository repository;
+    private final Clock clock;
 
     /**
-     * 构造调度服务。
+     * 构造计划任务服务（系统时钟）。
      *
-     * @param repository 调度记录仓储。
+     * @param repository 任务仓储
      */
     public ScheduleService(IScheduleRepository repository) {
+        this(repository, Clock.systemUTC());
+    }
+
+    /**
+     * 构造计划任务服务。
+     *
+     * @param repository 任务仓储
+     * @param clock 时钟，便于测试注入
+     */
+    public ScheduleService(IScheduleRepository repository, Clock clock) {
         this.repository = repository;
+        this.clock = clock;
     }
 
     @Override
-    public ScheduleRecord createAfter(String sessionId, String prompt, Duration delay) {
-        if (delay.isNegative() || delay.isZero()) {
-            throw new IllegalArgumentException("after delay must be positive");
-        }
-        Instant target = Instant.now().plus(delay);
+    public ScheduleRecord create(ScheduleCreateRequest request) {
+        Instant now = clock.instant();
+        ScheduleTiming timing = ScheduleTiming.rrule(request.rrule(), now);
+        String targetSessionId = request.target() == ScheduleTarget.THIS_SESSION
+                ? request.sourceSessionId()
+                : null;
         ScheduleRecord record = new ScheduleRecord(
-                allocateId(), ScheduleKind.AFTER, prompt.trim(), delay.getSeconds(), null, target, sessionId);
-        repository.save(record);
-        return record;
-    }
-    /**
-     * 创建一次性定时提醒。
-     *
-     * @param sessionId 会话 ID。
-     * @param prompt 提醒内容。
-     * @param target 目标触发时间。
-     * @return 调度记录。
-     */
-
-
-    @Override
-    public ScheduleRecord createAt(String sessionId, String prompt, Instant target) {
-        if (target.isBefore(Instant.now())) {
-            throw new IllegalArgumentException("at target must be in the future");
-        }
-        ScheduleRecord record = new ScheduleRecord(
-                allocateId(), ScheduleKind.AT, prompt.trim(), null, null, target, sessionId);
-        repository.save(record);
-        return record;
-    }
-    /**
-     * 创建固定周期提醒。
-     *
-     * @param sessionId 会话 ID。
-     * @param prompt 提醒内容。
-     * @param interval 触发间隔。
-     * @return 调度记录。
-     */
-
-
-    @Override
-    public ScheduleRecord createEvery(String sessionId, String prompt, Duration interval) {
-        if (interval.getSeconds() < MIN_EVERY_INTERVAL_SECONDS) {
-            throw new IllegalArgumentException(
-                    "every interval must be >= " + MIN_EVERY_INTERVAL_SECONDS + " seconds");
-        }
-        Instant target = Instant.now().plus(interval);
-        ScheduleRecord record = new ScheduleRecord(
-                allocateId(), ScheduleKind.EVERY, prompt.trim(), null, interval.getSeconds(), target, sessionId);
+                allocateId(),
+                request.title().trim(),
+                request.prompt().trim(),
+                timing,
+                request.target(),
+                targetSessionId,
+                request.sourceSessionId(),
+                false,
+                false,
+                now,
+                now,
+                null,
+                timing.firstAtOrAfter(now));
         repository.save(record);
         return record;
     }
 
     @Override
-    public List<ScheduleView> list(String sessionId) {
-        Instant now = Instant.now();
-        return repository.findBySessionId(sessionId).stream()
-                .map(r -> ScheduleView.of(r, now))
+    public Optional<ScheduleView> view(String id) {
+        Instant now = clock.instant();
+        return repository.findById(id).map(record -> ScheduleView.of(record, now));
+    }
+
+    @Override
+    public SchedulePage list(Boolean active, int limit, int offset) {
+        int effectiveLimit = limit <= 0 ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
+        int effectiveOffset = Math.max(offset, 0);
+        boolean activeOnly = Boolean.TRUE.equals(active);
+        Instant now = clock.instant();
+        List<ScheduleView> items = repository.findPage(activeOnly, effectiveLimit, effectiveOffset).stream()
+                .map(record -> ScheduleView.of(record, now))
                 .toList();
+        return SchedulePage.of(items, repository.count(activeOnly), effectiveLimit, effectiveOffset);
     }
-    /**
-     * 删除目标对象。
-     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
-     * @param sessionId 会话 ID。
-     * @param id id参数。
-     * @return 方法执行结果。
-     */
-
 
     @Override
-    public boolean delete(String sessionId, String id) {
-        return repository.findById(id)
-                .filter(r -> r.sessionId().equals(sessionId))
-                .map(r -> { repository.deleteById(id); return true; })
-                .orElse(false);
-    }
-    /**
-     * 驱动到期提醒并更新一次性任务状态。
-     *
-     * @param sessionId 会话 ID。
-     * @param now 当前时间。
-     * @return 到期提醒记录。
-     */
-
-
-    @Override
-    public List<ScheduleRecord> drive(String sessionId, Instant now) {
-        List<ScheduleRecord> due = repository.findDue(sessionId, now);
-        for (ScheduleRecord record : due) {
-            if (record.kind() == ScheduleKind.EVERY) {
-                // Advance to next anchor-aligned occurrence past now
-                long interval = record.everySeconds();
-                Instant next = record.scheduledAt();
-                while (!next.isAfter(now)) {
-                    next = next.plusSeconds(interval);
-                }
-                ScheduleRecord advanced = new ScheduleRecord(
-                        record.id(), record.kind(), record.prompt(),
-                        record.afterSeconds(), record.everySeconds(), next, record.sessionId());
-                repository.save(advanced);
-            } else {
-                // One-shot: mark as dispatched by deleting
-                repository.deleteById(record.id());
-            }
+    public ScheduleRecord edit(ScheduleEditRequest request) {
+        Instant now = clock.instant();
+        ScheduleRecord existing = repository.findById(request.id())
+                .orElseThrow(() -> new ScheduleNotFoundException(request.id()));
+        if (request.expectedUpdatedAt() != null
+                && !request.expectedUpdatedAt().equals(existing.updatedAt())) {
+            throw new ScheduleConflictException(request.id(), request.expectedUpdatedAt(), existing.updatedAt());
         }
-        return due;
+        if (request.deleteAction()) {
+            repository.deleteById(request.id());
+            return new ScheduleRecord(existing.id(), existing.title(), existing.prompt(), existing.timing(),
+                    existing.target(), existing.targetSessionId(), existing.sourceSessionId(),
+                    existing.paused(), true, existing.createdAt(), now, existing.lastRunAt(), null);
+        }
+
+        SchedulePatch patch = request.patch();
+        String title = patch.title() == null ? null : requireText(patch.title(), "title");
+        String prompt = patch.prompt() == null ? null : requireText(patch.prompt(), "prompt");
+
+        ScheduleTiming timing = existing.timing();
+        Instant nextAt = existing.nextAt();
+        if (patch.rrule() != null) {
+            timing = ScheduleTiming.rrule(patch.rrule(), now);
+            nextAt = timing.firstAtOrAfter(now);
+        }
+        ScheduleTarget target = patch.target() != null ? patch.target() : existing.target();
+        String targetSessionId = target == ScheduleTarget.THIS_SESSION
+                ? existing.sourceSessionId()
+                : null;
+        if (Boolean.TRUE.equals(patch.paused())) {
+            nextAt = null;
+        } else if (Boolean.FALSE.equals(patch.paused())) {
+            nextAt = timing.firstAtOrAfter(now);
+        }
+        ScheduleRecord updated = existing.patched(
+                title, prompt, patch.rrule() != null ? timing : null, patch.target(), targetSessionId,
+                patch.paused(), nextAt, now);
+        repository.save(updated);
+        return updated;
+    }
+
+    @Override
+    public List<ScheduleRecord> drive(Instant now) {
+        List<ScheduleRecord> due = repository.findDue(now);
+        if (due.isEmpty()) {
+            return List.of();
+        }
+        List<ScheduleRecord> fired = new ArrayList<>(due.size());
+        for (ScheduleRecord record : due) {
+            Instant scheduledFor = record.nextAt();
+            Instant next = record.timing().nextAfter(now);
+            ScheduleRecord updated = record.fired(scheduledFor, next, now);
+            repository.save(updated);
+            fired.add(updated);
+        }
+        return List.copyOf(fired);
+    }
+
+    private static String requireText(String value, String field) {
+        if (value.isBlank()) {
+            throw new IllegalArgumentException(field + " must not be blank");
+        }
+        return value.trim();
     }
 
     /**
-     * 生成会话内唯一的调度记录 ID。
+     * 生成宿主内唯一的任务 ID。
      *
-     * @return 调度记录 ID。
+     * @return 任务 ID
      */
     private static String allocateId() {
         return "sch_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);

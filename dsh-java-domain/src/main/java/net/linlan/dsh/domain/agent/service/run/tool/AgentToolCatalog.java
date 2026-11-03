@@ -168,7 +168,8 @@ public final class AgentToolCatalog {
             if (scheduleService != null) {
                 localRegistry.register(new ScheduleTools.Create(scheduleService, context.sessionId()));
                 localRegistry.register(new ScheduleTools.ListAll(scheduleService, context.sessionId()));
-                localRegistry.register(new ScheduleTools.Delete(scheduleService, context.sessionId()));
+                localRegistry.register(new ScheduleTools.ViewOne(scheduleService, context.sessionId()));
+                localRegistry.register(new ScheduleTools.Edit(scheduleService, context.sessionId()));
             }
         }
         if (conversationQueryService != null) {

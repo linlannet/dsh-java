@@ -4,6 +4,8 @@
 >
 > 本规格覆盖 v0.2.2 将飞书接入能力纳入本项目的全部需求领域，源事实来自参考应用 `refer_source/deepseek-harness-java-app`（Spring Boot 3.3.2 fat-jar，业务代码位于 `BOOT-INF/lib/*.jar`，经 `javap` 逐类核验）。
 >
+> **平台能力对齐补充**：除 §5.1–§5.9 飞书主线外，v0.2.2 还包含与参考源 `refer_source/deepseek-harness/docs/upgrade-guide/v0.2.2-alpha.2/` 升级指南对齐的平台能力——**LLM 请求用途声明（purpose）、调度工具组、调度宿主全域**，详见 **§7** 与数据约束 **§6.8 / §6.9**。其中调度在 standalone 模式仍为**内存实现**，无需新增数据库迁移。
+>
 > **版本范围声明**：本次飞书接入的**全部设计与任务**统一纳入 **v0.2.2**，并与本规格同目录归档。四件套内容分别为 `docs/spec/0.2.2/spec.md`（本需求规格）、`design.md`（技术方案，由后续设计阶段产出）、`tasks.md`（任务清单，由后续任务阶段产出）、`release-v0.2.2-development-notes.md`（开发说明，随实现产出）。前端管理界面、客户端契约（`docs/spec/0.2.2/contract/`）与架构图（`docs/spec/0.2.2/dsh-java-architecture.drawio`）同属 v0.2.2 版本范围。
 >
 > **依赖新增声明**：v0.2.2 为飞书接入新增第三方依赖组——`com.larksuite.oapi:oapi-sdk:2.8.3` 与 `com.larksuite.oapi:larksuite-oapi-shaded-protobuf:2.4.6`（两者传递引入 `jackson 2.17.2`、`gson 2.10.1`）。除此之外不引入其他新增第三方依赖，**不新增 Maven 模块**。
@@ -822,6 +824,80 @@ UI --> Ops : 刷新展示
 
 ---
 
+## **6.8 ScheduleRecord / ScheduleTiming / RRule（调度数据约束）**
+
+1. **ScheduleRecord.id**：必填，宿主全域唯一标识，创建时生成，不可变。
+2. **ScheduleRecord.title / prompt**：必填，调度任务的标题与触发后执行的提示词，非空。
+3. **ScheduleRecord.timing**：必填，`ScheduleTiming` 值对象，带类型 `ScheduleKind`（`AFTER`/`AT`/`EVERY`/`DAILY`/`WEEKLY`/`RRULE`）；`RRULE` 类型由 `RRule` 解析 `DTSTART`+`RRULE` 派生 `DAILY`/`WEEKLY`/`RRULE`；提供 `firstAtOrAfter(Instant)` / `nextAfter(Instant)` 计算触发时点。
+4. **ScheduleRecord.target**：必填，`ScheduleTarget` 枚举（`THIS_SESSION`/`NEW_ONCE`/`NEW`），决定触发后投递目的地；`targetSessionId` 为投递目标会话（可空）。
+5. **ScheduleRecord.sourceSessionId**：必填，记录创建者会话，仅作来源标注，不再用于可见性裁剪。
+6. **ScheduleRecord.paused / ended**：必填，布尔；`paused` 暂停触发，`ended` 标记一次性任务已结束。
+7. **ScheduleRecord.createdAt / updatedAt / lastRunAt / nextAt**：必填时间戳；`nextAt` 为下一次可触发时点（重复任务驱动后推进）。
+8. **RRule 解析约束**：必须支持 `DTSTART[;TZID=<tz>]:<datetime>` 与 `RRULE:FREQ=...`；支持 `INTERVAL`/`BYDAY`/`BYHOUR`/`BYMINUTE`；**显式拒绝** `COUNT`/`UNTIL`/`BYMONTH` 等未实现部件（抛异常，避免静默错误）；未带 `DTSTART` 时回退 `fallbackStart`。
+9. **内存实现约束**：standalone 模式 `InMemoryScheduleRepository` 为进程内存储，**不含数据库表**，无新增迁移。
+
+## **6.9 LlmRequestPurposes（用途声明约束）**
+
+1. **声明即注册**：任何"辅助 LLM 请求"的生产方必须先调用 `LlmRequestPurposes.declare(purpose, owner)` 登记用途键；共享 LLM 核心**不内置任何用途键**。
+2. **构造期校验**：`GenerateOptions` 构造时对 `purpose` 调 `require(purpose)`——`null` 透传放行；空白或**未声明**键抛 `IllegalArgumentException`。
+3. **幂等与冲突**：同键同 `owner` 重复声明幂等；同键不同 `owner` 视为冲突，应拒绝并告警（避免用途键被冒用）。
+4. **预置常量**：`LlmRequestPurposes.COMPACTION`（压缩引擎）、`LlmRequestPurposes.COLLABORATION_PLANNING`（协作规划器）、`LlmRequestPurposes.SESSION_TITLE`（会话标题，预留）。
+5. **可观测**：提供 `declared()` 返回当前已登记键集合，供诊断。
+
+---
+
+# **7. 参考源 v0.2.2-alpha.2 升级项（平台能力对齐）**
+
+> 来源：`refer_source/deepseek-harness/docs/upgrade-guide/v0.2.2-alpha.2/`
+> 说明：本节将参考源的破坏性变更与迁移步骤对照到 `dsh-java` 实现，标注适用性并给出需求基线。六条升级项中对齐三条（另三条 `context-menu-target`/`forge-git-permissions`/`sdk-run-commands` 在本项目无对应体系，不适用）；实现落地亦见 `design.md` 第三章与 `tasks.md` 第十四节。
+
+## **7.1 LLM 请求用途声明（对应 `llm-request-purpose-declarations`）**
+
+### **7.1.1 Business Rules**
+
+1. **声明即注册**：任何"辅助 LLM 请求"的生产方必须先通过 `LlmRequestPurposes.declare(purpose, owner)` 登记用途键；未登记的键在构造 `GenerateOptions` 时直接拒绝。
+   a. Acceptance criteria: [构造携带未声明 purpose 的 GenerateOptions] → [抛 IllegalArgumentException]
+2. **null 透传**：`purpose` 为 `null` 时构造放行，兼容宿主核心与真实对话请求。
+   a. Acceptance criteria: [构造 purpose=null 的 GenerateOptions] → [成功，无异常]
+3. **空白拒绝**：`purpose` 为空白字符串视为非法，构造时拒绝。
+   a. Acceptance criteria: [构造 purpose=" " 的 GenerateOptions] → [抛 IllegalArgumentException]
+4. **冲突拒绝**：同一用途键被不同 `owner` 重复声明视为冲突，应拒绝并告警；同 `owner` 重复声明幂等。
+   a. Acceptance criteria: [A 已声明 `x`，B 再次声明 `x`] → [拒绝/告警]
+5. **适配器按用途微调**：`DeepSeekAdapter` 以 `LlmRequestPurposes.COMPACTION` 常量判定压缩请求并加 `x-dsh-compact` 头。
+   a. Acceptance criteria: [compaction 用途请求] → [出站携带 `x-dsh-compact` 头]
+
+## **7.2 调度工具组（对应 `schedule-agent-tools`）**
+
+### **7.2.1 Business Rules**
+
+1. **四工具注册**：`schedule_create` / `schedule_list` / `schedule_view` / `schedule_edit` 注册于 `AgentToolCatalog`（条件：`scheduleService != null`）。
+   a. Acceptance criteria: [catalog 构建] → [含上述四工具，无旧 `Delete`]
+2. **创建必填参数**：创建只接受 `title`、`prompt`、`rrule`（一行 `DTSTART` + 一行 `RRULE`）、必填 `target`；缺任一返回错误码 `MISSING_PARAM`。
+   a. Acceptance criteria: [create 缺 target] → [MISSING_PARAM]
+3. **查看不存在**：`view` 对未知 `id` 返回 `NOT_FOUND`。
+   a. Acceptance criteria: [view 未知 id] → [NOT_FOUND]
+4. **编辑统一入口**：`edit` 以 `action=update`（改标题/提示词/规则/目标，或暂停/恢复）或 `action=delete`；缺 `id`/`action` 返回 `MISSING_PARAM`；更新成功回 `Schedule updated`，删除成功回 `Schedule deleted`。
+   a. Acceptance criteria: [edit action=delete] → [Schedule deleted]
+5. **子 agent 拦截**：被委派的子 agent（会话 ID 以 `child-` 前缀）调用任意调度工具须返回错误码 `subagent_session`。
+   a. Acceptance criteria: [child- 会话调用 schedule_create] → [subagent_session]
+
+## **7.3 调度宿主全域（对应 `schedule-remote-host-tasks`）**
+
+### **7.3.1 Business Rules**
+
+1. **宿主范围按 id 管理**：任务不再绑定"调用方会话"，改为宿主全域按 `id` 管理；`sourceSessionId` 仅记录创建者，列表对所有会话可见。
+   a. Acceptance criteria: [会话 A 创建任务，会话 B 列表] → [可见该任务]
+2. **timing 带类型**：`ScheduleTiming` 带类型 `ScheduleKind`（`AFTER`/`AT`/`EVERY`/`DAILY`/`WEEKLY`/`RRULE`）；上游 `Cron` 类型在 Java 侧统一由 `RRULE` 表达，不单独引入 `ScheduleKind.CRON`。
+   a. Acceptance criteria: [RRULE FREQ=DAILY] → [kind=DAILY]
+3. **rrule 解析边界**：`RRule` 解析须支持 `DTSTART[;TZID=..]` 与 `RRULE:FREQ=..` 及 `INTERVAL`/`BYDAY`/`BYHOUR`/`BYMINUTE`；显式拒绝 `COUNT`/`UNTIL`/`BYMONTH` 等未实现部件。
+   a. Acceptance criteria: [含 COUNT 的 RRULE] → [抛异常]
+4. **乐观并发**：`edit` 携带 `expectedUpdatedAt` 与当前记录不一致时抛 `ScheduleConflictException`，错误码 `schedule_conflict`。
+   a. Acceptance criteria: [版本不一致 edit] → [schedule_conflict]
+5. **驱动推进**：`drive(now)` 扫描到期任务，重复任务推进 `nextAt`，一次性任务结束后 `ended=true`。
+   a. Acceptance criteria: [到期 EVERY 任务 drive] → [nextAt 推进且 lastRunAt 更新]
+
+---
+
 ## **附：v0.2.2 飞书接入能力清单与版本范围汇总**
 
 | 序号 | 能力领域 | 归属环节 | 说明 |
@@ -835,6 +911,9 @@ UI --> Ops : 刷新展示
 | 7 | 凭证引用与密钥保管 | §5.7 | `secret_ref` 格式、本地凭据文件、不明文入库 |
 | 8 | v0.2.2 版本发布与工程治理 | §5.8 | 版本统一 0.2.2、双库幂等迁移、依赖声明、四件套归档 |
 | 9 | 控制台飞书 Bot 管理界面 | §5.9 | 一键扫码绑定、手动配置、列表与启停测试、不引入前端框架 |
+| 10 | LLM 请求用途声明（purpose） | §7.1 / §6.9 | `LlmRequestPurposes` 声明式校验，未声明键构造即拒绝 |
+| 11 | 调度工具组 | §7.2 | `schedule_create/list/view/edit` 四工具、子 agent 拦截 `subagent_session` |
+| 12 | 调度宿主全域 | §7.3 / §6.8 | `ScheduleRecord` 宿主范围按 id 管理、`ScheduleTiming` 带类型、`RRule` 解析 |
 
 > **版本归档约定**：本规格与后续 `design.md`、`tasks.md`、`release-v0.2.2-development-notes.md` 统一归档于 `docs/spec/0.2.2/`，与 `contract/`（客户端契约）及 `dsh-java-architecture.drawio`（架构图）同属 v0.2.2 版本范围。
 >

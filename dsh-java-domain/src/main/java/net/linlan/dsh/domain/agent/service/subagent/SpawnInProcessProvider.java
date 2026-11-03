@@ -12,7 +12,6 @@ import net.linlan.dsh.domain.session.event.model.entity.SessionEvent;
 import net.linlan.dsh.domain.session.event.model.valobj.TurnEndReason;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
@@ -74,7 +73,7 @@ public class SpawnInProcessProvider implements SubagentProvider {
     @Override
     public CompletableFuture<SubagentResult> start(SubagentStartRequest request) {
         return CompletableFuture.supplyAsync(() -> {
-            String childSessionId = "child-" + UUID.randomUUID();
+            String childSessionId = SubagentSessions.newSessionId();
             AgentOptions childOptions = request.options() != null
                     ? request.options()
                     : Objects.requireNonNull(defaultOptionsSupplier.get(), "defaultOptionsSupplier returned null");

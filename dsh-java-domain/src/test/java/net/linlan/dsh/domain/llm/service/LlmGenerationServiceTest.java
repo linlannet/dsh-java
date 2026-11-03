@@ -4,6 +4,7 @@ import net.linlan.dsh.domain.llm.adapter.LlmAdapter;
 import net.linlan.dsh.domain.llm.adapter.port.ILlmRuntimePort;
 import net.linlan.dsh.domain.llm.model.valobj.FinishReason;
 import net.linlan.dsh.domain.llm.model.valobj.GenerateOptions;
+import net.linlan.dsh.domain.llm.model.valobj.LlmRequestPurposes;
 import net.linlan.dsh.domain.llm.model.valobj.StreamChunk;
 import net.linlan.dsh.domain.llm.waterfall.LlmStreamWaterfall;
 import net.linlan.dsh.domain.llm.waterfall.LlmReplayInterceptor;
@@ -22,6 +23,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("LlmGenerationService waterfall 接入")
 class LlmGenerationServiceTest {
+
+    static {
+        LlmRequestPurposes.declare("test", "LlmGenerationServiceTest");
+    }
 
     @Test
     @DisplayName("无拦截器时行为与 v0.1.8 一致：完整流式生成返回正确 Message")
