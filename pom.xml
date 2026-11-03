@@ -65,6 +65,8 @@
         <maven.gpg.version>3.2.8</maven.gpg.version>
         <maven.sonatype.version>0.10.0</maven.sonatype.version>
         <lucene.version>9.11.1</lucene.version>
+        <larksuite.oapi.version>2.8.3</larksuite.oapi.version>
+        <larksuite.oapi.shaded.protobuf.version>2.4.6</larksuite.oapi.shaded.protobuf.version>
     </properties>
 
     <dependencyManagement>
@@ -75,6 +77,17 @@
                 <version>${spring-boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <!-- 飞书 SDK（WebSocket 长连接 + IM），仅在 infrastructure 模块引入 -->
+            <dependency>
+                <groupId>com.larksuite.oapi</groupId>
+                <artifactId>oapi-sdk</artifactId>
+                <version>${larksuite.oapi.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.larksuite.oapi</groupId>
+                <artifactId>larksuite-oapi-shaded-protobuf</artifactId>
+                <version>${larksuite.oapi.shaded.protobuf.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

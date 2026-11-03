@@ -1,0 +1,34 @@
+{
+  "contractVersion": 1,
+  "kind": "approvals-questions",
+  "source": "GET /api/harness/approvals/runtime/pending + GET /api/harness/questions/runtime/pending",
+  "approvals": [
+    {
+      "approvalId": "ap-2001",
+      "sessionId": "s-1001",
+      "toolName": "shell_execute",
+      "displayCommand": "rm -rf build",
+      "arguments": { "cmd": "rm -rf build", "cwd": "/Users/mac/Workspace/linlannet/dsh-java" },
+      "createdAt": "2026-10-29T14:05:00Z"
+    }
+  ],
+  "questions": [
+    {
+      "questionId": "q-3001",
+      "agentId": "agent-mvtoavo",
+      "createdAt": "2026-10-29T14:06:00Z",
+      "questions": [
+        {
+          "id": "qi-1",
+          "question": "这次改动发布到哪个环境？",
+          "header": "环境",
+          "multiSelect": false,
+          "options": [
+            { "label": "预发", "description": "staging，先灰度验证" },
+            { "label": "生产", "description": "prod，直接上线" }
+          ]
+        }
+      ]
+    }
+  ]
+}

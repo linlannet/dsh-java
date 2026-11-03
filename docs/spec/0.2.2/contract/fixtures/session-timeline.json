@@ -1,0 +1,51 @@
+{
+  "contractVersion": 1,
+  "kind": "session-timeline",
+  "source": "GET /api/harness/console/sessions/{sessionId}/messages",
+  "sessionId": "s-1001",
+  "messages": [
+    {
+      "id": "m-1",
+      "role": "user",
+      "content": "把登录模块的表单校验抽成独立方法",
+      "createdAt": "2026-10-29T14:02:00Z"
+    },
+    {
+      "id": "m-2",
+      "role": "assistant",
+      "content": "我先定位 LoginController 里的校验逻辑。",
+      "reasoning": "先读代码再动手，避免改动面扩大。",
+      "createdAt": "2026-10-29T14:02:08Z"
+    },
+    {
+      "id": "m-3",
+      "role": "tool",
+      "toolName": "fs_write",
+      "callId": "c-1",
+      "arguments": { "path": "src/main/java/.../LoginValidator.java", "mode": "overwrite" },
+      "result": "written 128 lines",
+      "status": "done",
+      "durationMs": 1180,
+      "createdAt": "2026-10-29T14:02:20Z",
+      "attribution": {
+        "digitalHumanId": "dh-1",
+        "displayName": "甲",
+        "avatarRef": "🤖",
+        "themeColor": "#123456",
+        "taskLabel": "#T-12 抽取校验逻辑"
+      }
+    },
+    {
+      "id": "m-4",
+      "role": "assistant",
+      "content": "已抽出 LoginValidator，单测补了 3 条。",
+      "createdAt": "2026-10-29T14:03:02Z",
+      "attribution": {
+        "digitalHumanId": "dh-1",
+        "displayName": "甲",
+        "avatarRef": "🤖",
+        "themeColor": "#123456"
+      }
+    }
+  ]
+}

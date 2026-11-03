@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>飞书 Bot 管理 · DeepSeek Harness</title>
+  <style>
+    :root { --bg:#0f1115; --panel:#171a21; --line:#2a2f3a; --fg:#e6e8ee; --muted:#9aa3b2; --brand:#4c7dff; --ok:#2fbf71; --warn:#e0a300; --err:#e5484d; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background:var(--bg); color:var(--fg); }
+    header { padding:18px 24px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:12px; }
+    header h1 { font-size:16px; margin:0; font-weight:600; }
+    header a { color:var(--muted); text-decoration:none; font-size:13px; margin-left:auto; }
+    main { max-width:1080px; margin:0 auto; padding:24px; display:grid; gap:20px; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; }
+    .card h2 { font-size:14px; margin:0 0 14px; font-weight:600; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap:12px; }
+    label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+    input[type=text], input[type=password] { width:100%; padding:9px 10px; border-radius:8px; border:1px solid var(--line); background:#0d0f14; color:var(--fg); font-size:13px; }
+    .check { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); margin-top:22px; }
+    button { padding:9px 14px; border-radius:8px; border:1px solid var(--line); background:#222736; color:var(--fg); font-size:13px; cursor:pointer; }
+    button:hover { border-color:var(--brand); }
+    button.primary { background:var(--brand); border-color:var(--brand); color:#fff; }
+    button.danger:hover { border-color:var(--err); color:var(--err); }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:middle; }
+    th { color:var(--muted); font-weight:500; font-size:12px; }
+    .tag { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; border:1px solid var(--line); }
+    .tag.ok { color:var(--ok); border-color:var(--ok); }
+    .tag.warn { color:var(--warn); border-color:var(--warn); }
+    .tag.err { color:var(--err); border-color:var(--err); }
+    .muted { color:var(--muted); font-size:12px; }
+    .pairing-box { margin-top:14px; padding:12px; border:1px dashed var(--line); border-radius:8px; font-size:13px; display:none; }
+    .pairing-box a { color:var(--brand); word-break:break-all; }
+    #toast { position:fixed; bottom:20px; right:20px; background:#222736; border:1px solid var(--line); padding:12px 16px; border-radius:8px; font-size:13px; display:none; max-width:420px; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>飞书 Bot 管理</h1>
+  <a href="/">← 返回控制台</a>
+</header>
+<main>
+  <section class="card">
+    <h2>一键扫码绑定</h2>
+    <div class="grid">
+      <div><label>Bot 名称</label><input id="pair-name" type="text" placeholder="DeepSeek Bot" /></div>
+      <div><label>Agent 基 ID</label><input id="pair-agent" type="text" placeholder="feishu-agent" /></div>
+    </div>
+    <div class="row" style="margin-top:14px;">
+      <button class="primary" id="pair-start">发起一键绑定</button>
+      <button id="pair-cancel" style="display:none;">取消配对</button>
+    </div>
+    <div class="pairing-box" id="pairing-box"></div>
+  </section>
+
+  <section class="card">
+    <h2>手动配置 Bot</h2>
+    <div class="grid">
+      <div><label>Bot 名称</label><input id="f-name" type="text" placeholder="My Bot" /></div>
+      <div><label>App ID</label><input id="f-appid" type="text" placeholder="cli_xxx" /></div>
+      <div><label>App Secret（留空则不修改）</label><input id="f-secret" type="password" placeholder="app secret" /></div>
+      <div><label>Agent 基 ID</label><input id="f-agent" type="text" placeholder="feishu-agent" /></div>
+      <div><label>工作目录（可选）</label><input id="f-cwd" type="text" placeholder="/path/to/project" /></div>
+      <div class="check"><input id="f-mention" type="checkbox" checked /> <span>群聊需 @ 才回复</span></div>
+    </div>
+    <div class="row" style="margin-top:14px;">
+      <button class="primary" id="f-submit">保存</button>
+      <button id="f-reset">清空</button>
+      <span class="muted" id="f-editing"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Bot 列表</h2>
+    <div class="row" style="margin-bottom:12px;"><button id="reload">刷新</button></div>
+    <table>
+      <thead><tr><th>名称</th><th>App ID</th><th>密钥</th><th>启用</th><th>连接</th><th>最近更新</th><th>操作</th></tr></thead>
+      <tbody id="list-body"><tr><td colspan="7" class="muted">加载中…</td></tr></tbody>
+    </table>
+  </section>
+</main>
+<div id="toast"></div>
+<script>
+  var API = '/api/harness/bots';
+  var editingId = null;
+  var pairingPoll = null;
+
+  function $(id) { return document.getElementById(id); }
+  function toast(msg, isErr) {
+    var t = $('toast'); t.textContent = msg; t.style.display = 'block';
+    t.style.borderColor = isErr ? '#e5484d' : '#2a2f3a';
+    clearTimeout(t._h); t._h = setTimeout(function(){ t.style.display='none'; }, 4000);
+  }
+  async function req(path, options) {
+    var r = await fetch(path, options || {});
+    var p = null; try { p = await r.json(); } catch(e) {}
+    if (!r.ok || !p || p.code !== '00000') { throw new Error((p && p.info) || ('HTTP ' + r.status)); }
+    return p.data;
+  }
+  function stateTag(s) {
+    var online = s === 'CONNECTED';
+    return '<span class="tag ' + (online ? 'ok' : (s === 'ERROR' ? 'err' : 'warn')) + '">' + (s || 'IDLE') + '</span>';
+  }
+  async function load() {
+    try {
+      var bots = await req(API);
+      var body = $('list-body');
+      if (!bots || !bots.length) { body.innerHTML = '<tr><td colspan="7" class="muted">暂无 Bot</td></tr>'; return; }
+      body.innerHTML = bots.map(function(b){
+        return '<tr>'
+          + '<td>' + esc(b.botName) + '</td>'
+          + '<td class="muted">' + esc(b.appId) + '</td>'
+          + '<td>' + (b.secretConfigured ? '<span class="tag ok">已配置</span>' : '<span class="tag warn">未配置</span>') + '</td>'
+          + '<td>' + (b.enabled ? '<span class="tag ok">启用</span>' : '<span class="tag">禁用</span>') + '</td>'
+          + '<td>' + stateTag(b.connectionState) + '</td>'
+          + '<td class="muted">' + esc((b.updatedAt||'').replace('T',' ').slice(0,19)) + '</td>'
+          + '<td><button data-act="enable" data-id="' + b.botId + '">启用</button> '
+          + '<button data-act="disable" data-id="' + b.botId + '">禁用</button> '
+          + '<button data-act="test" data-id="' + b.botId + '">测试</button> '
+          + '<button data-act="edit" data-id="' + b.botId + '">编辑</button> '
+          + '<button class="danger" data-act="del" data-id="' + b.botId + '">删除</button></td>'
+          + '</tr>';
+      }).join('');
+    } catch (e) { toast('加载失败：' + e.message, true); }
+  }
+  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; }); }
+
+  async function act(act, id) {
+    try {
+      if (act === 'del') { if (!confirm('确认删除 Bot ' + id + '？')) return; await req(API + '/' + id, { method:'DELETE' }); toast('已删除'); }
+      else if (act === 'edit') { await startEdit(id); return; }
+      else { await req(API + '/' + id + '/' + act, { method:'POST' }); toast('已' + (act==='enable'?'启用':act==='disable'?'禁用':'测试') ); }
+      await load();
+    } catch (e) { toast('操作失败：' + e.message, true); }
+  }
+
+  async function startEdit(id) {
+    try {
+      var bots = await req(API);
+      var b = bots.filter(function(x){ return x.botId === id; })[0];
+      if (!b) return;
+      editingId = id;
+      $('f-name').value = b.botName || ''; $('f-appid').value = b.appId || '';
+      $('f-secret').value = ''; $('f-agent').value = b.agentBaseId || '';
+      $('f-cwd').value = b.cwd || ''; $('f-mention').checked = !!b.groupRequireMention;
+      $('f-editing').textContent = '正在编辑：' + id;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) { toast('读取失败：' + e.message, true); }
+  }
+
+  async function submit() {
+    var payload = {
+      botName: $('f-name').value.trim() || null,
+      appId: $('f-appid').value.trim() || null,
+      appSecret: $('f-secret').value || null,
+      agentBaseId: $('f-agent').value.trim() || null,
+      cwd: $('f-cwd').value.trim() || null,
+      groupRequireMention: $('f-mention').checked
+    };
+    try {
+      if (editingId) { await req(API + '/' + editingId, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }); }
+      else { await req(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }); }
+      toast('保存成功'); resetForm(); await load();
+    } catch (e) { toast('保存失败：' + e.message, true); }
+  }
+
+  function resetForm() {
+    editingId = null; $('f-editing').textContent = '';
+    ['f-name','f-appid','f-secret','f-agent','f-cwd'].forEach(function(id){ $(id).value=''; });
+    $('f-mention').checked = true;
+  }
+
+  async function startPairing() {
+    try {
+      var d = await req(API + '/pairing', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ botName: $('pair-name').value.trim() || null, agentBaseId: $('pair-agent').value.trim() || null }) });
+      showPairing(d); pollPairing(d.pairingId);
+    } catch (e) { toast('发起配对失败：' + e.message, true); }
+  }
+  function showPairing(d) {
+    var box = $('pairing-box'); box.style.display = 'block';
+    box.innerHTML = '<div>状态：' + esc(d.status) + '</div>'
+      + '<div>用户码：<b>' + esc(d.userCode) + '</b>（剩余 ' + d.expireIn + ' 秒）</div>'
+      + '<div>扫码链接：<a href="' + esc(d.url) + '" target="_blank">' + esc(d.url) + '</a></div>'
+      + (d.error ? '<div style="color:#e5484d">' + esc(d.error) + '</div>' : '');
+    $('pair-cancel').style.display = d.status === 'WAITING' ? 'inline-block' : 'none';
+    $('pair-cancel').dataset.pid = d.pairingId;
+  }
+  function pollPairing(pid) {
+    clearInterval(pairingPoll);
+    pairingPoll = setInterval(async function(){
+      try {
+        var d = await req(API + '/pairing/' + pid);
+        showPairing(d);
+        if (d.status === 'SAVED' || d.status === 'FAILED' || d.status === 'EXPIRED' || d.status === 'CANCELLED') {
+          clearInterval(pairingPoll); await load();
+        }
+      } catch (e) { clearInterval(pairingPoll); }
+    }, 3000);
+  }
+
+  $('reload').onclick = load;
+  $('f-submit').onclick = submit;
+  $('f-reset').onclick = resetForm;
+  $('pair-start').onclick = startPairing;
+  $('pair-cancel').onclick = async function(){
+    var pid = this.dataset.pid;
+    try { await req(API + '/pairing/' + pid, { method:'DELETE' }); toast('已取消'); clearInterval(pairingPoll); $('pairing-box').style.display='none'; }
+    catch (e) { toast('取消失败：' + e.message, true); }
+  };
+  $('list-body').addEventListener('click', function(ev){
+    var t = ev.target; if (t.tagName !== 'BUTTON') return;
+    act(t.dataset.act, t.dataset.id);
+  });
+  load();
+</script>
+</body>
+</html>

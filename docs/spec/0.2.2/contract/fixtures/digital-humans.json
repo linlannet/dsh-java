@@ -1,0 +1,44 @@
+{
+  "contractVersion": 1,
+  "kind": "digital-humans",
+  "source": "GET /api/digital-humans",
+  "humans": [
+    {
+      "id": "dh-1",
+      "displayName": "甲",
+      "avatarRef": "🤖",
+      "purpose": "Java 后端重构与单测补齐",
+      "roleTags": ["java", "refactor", "test"],
+      "themeColor": "#123456",
+      "approvalPolicy": "WRITE_REQUIRES_APPROVAL",
+      "concurrencyLimit": 2,
+      "endpoint": {
+        "type": "remote-dsh",
+        "baseUrl": "http://192.168.1.20:8090",
+        "credentialRef": "keychain:dsh/dh-1",
+        "protocolVersion": "dsh/1",
+        "healthState": "online",
+        "lastCheckedAt": "2026-10-29T15:18:00Z",
+        "latencyMs": 42
+      },
+      "createdAt": "2026-10-29T10:00:00Z",
+      "projectPath": "/Users/mac/Workspace/linlannet/dsh-java"
+    },
+    {
+      "id": "dh-2",
+      "displayName": "乙",
+      "avatarRef": "🧭",
+      "purpose": "前端交互与样式收敛",
+      "roleTags": ["react", "ui"],
+      "themeColor": "#2f6f4f",
+      "approvalPolicy": "AUTO_ALLOW",
+      "concurrencyLimit": 1,
+      "endpoint": {
+        "type": "local-dsh",
+        "protocolVersion": "dsh/1",
+        "healthState": "unknown"
+      },
+      "createdAt": "2026-10-29T10:05:00Z"
+    }
+  ]
+}

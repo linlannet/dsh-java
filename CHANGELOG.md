@@ -2,6 +2,28 @@
 
 > 各版本详情见 `docs/md/release-vX.Y.Z-development-notes.md`；以下按 7 个模块记录包级功能更新。
 
+## 版本号：0.2.2
+- 更新日期：2026-11-02
+- 详情：docs/spec/0.2.2/release-v0.2.2-development-notes.md
+
+- **dsh-java-app**：
+  - 新增 `feishu_bot` 表迁移（`V20261102__feishu_bot.sql`）并同步 `schema.sql`（表数 30 → 31）
+  - `harness.yml` 新增 `dsh.feishu.*` 配置项（启停开关与长连接/流式/配对参数）
+- **dsh-java-trigger**：
+  - 新增 `BotController`（`/api/harness/bots`：list/pairing/save/update/delete/enable/disable/test）
+- **dsh-java-api**：
+  - 新增 `IBotApi` 与 `FeishuBotDTO`/`FeishuBotSaveDTO`/`FeishuPairingDTO`/`FeishuPairingStartDTO`
+  - 新增 `FeishuEnabledCondition` 条件装配开关
+- **dsh-java-case**：
+  - 新增 `FeishuBotUseCase`（Bot 生命周期）、`FeishuPairingUseCase`（一键配对）、`FeishuBotInboundHandler`（入站桥接与流式回发）
+- **dsh-java-domain**：
+  - 新增 `domain.bot` 聚合 `FeishuBotAggregate`、值对象、`FeishuEventDeduplicator`、4 端口与仓储接口
+- **dsh-java-infrastructure**：
+  - 新增飞书适配器 `FeishuWsGateway`（WebSocket 长连接）、`FeishuMessagingClient`（IM 出站）、`FeishuPairingClient`（设备授权）、`FeishuBotRepository`/`IFeishuBotDao`/`FeishuBotPO`
+  - 新增 `FeishuBeanConfig` 条件装配（`dsh.feishu.enabled`）
+  - 引入 `com.larksuite.oapi:oapi-sdk:2.8.3`、`com.larksuite.oapi:larksuite-oapi-shaded-protobuf:2.4.6`
+- **dsh-java-types**：本版本无变更
+
 ## 版本号：0.2.1
 - 更新日期：2026-10-12 - 2026-10-16
 - 详情：docs/spec/0.2.1/release-v0.2.1-development-notes.md

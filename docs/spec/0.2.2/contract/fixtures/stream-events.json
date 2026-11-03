@@ -1,0 +1,17 @@
+{
+  "contractVersion": 1,
+  "kind": "stream-events",
+  "source": "POST /api/agent/stream (SSE)",
+  "sessionId": "s-1001",
+  "events": [
+    { "seq": 1, "type": "meta", "payload": { "sessionId": "s-1001", "modelCode": "Deepseek-V4.1-Flash" } },
+    { "seq": 2, "type": "reasoning", "payload": { "text": "先定位入口文件" } },
+    { "seq": 3, "type": "tool", "payload": { "callId": "c-1", "toolName": "fs_write", "status": "running" } },
+    { "seq": 4, "type": "tool_result", "payload": { "callId": "c-1", "toolName": "fs_write", "status": "done", "result": "written 128 lines", "durationMs": 1180 } },
+    { "seq": 5, "type": "chunk", "payload": { "text": "已抽出 " } },
+    { "seq": 6, "type": "chunk", "payload": { "text": "LoginValidator。" } },
+    { "seq": 7, "type": "step_break", "payload": { "step": 1 } },
+    { "seq": 8, "type": "finish", "payload": { "finishReason": "stop" } },
+    { "seq": 9, "type": "done", "payload": { "usage": { "inputTokens": 1204, "outputTokens": 386 } } }
+  ]
+}

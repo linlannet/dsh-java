@@ -201,7 +201,7 @@ java -jar dsh-java-app/target/dsh-java-app.jar \
 
 #### 导入 MySQL 库表
 
-推荐直接导入仓库内的 MySQL 8 dump，它包含 30 张表（其中 `harness_*` 相关 12 张）：
+推荐直接导入仓库内的 MySQL 8 dump，它包含 31 张表（其中 `harness_*` 相关 12 张）：
 
 ```bash
 mysql -u root -p < docs/dev-ops/mysql/sql/dsh_java.sql
@@ -1183,7 +1183,7 @@ flowchart TD
 
 ## 11. 持久化模型
 
-`schema.sql` 当前初始化的主要表（共 30 张）包括：
+`schema.sql` 当前初始化的主要表（共 31 张）包括：
 
 | 表 | 用途 |
 | --- | --- |
@@ -1217,13 +1217,14 @@ flowchart TD
 | `agent_team` | 多代理团队花名册（实验性） |
 | `team_task` | 团队共享任务板（实验性） |
 | `team_message` | 团队内代理消息（实验性） |
+| `feishu_bot` | 飞书 Bot 配置与启停状态（实验性） |
 
 MySQL 承载结构化状态和事件（默认 profile）；standalone profile 使用 H2 文件库（`MODE=MySQL` 兼容模式），两者共用同一套 schema，`sql.init.mode=always` 幂等重跑。
 
 ### 表结构来源与维护约定
 
 - **生效脚本**：应用启动时由 Spring SQL Init（`sql.init.mode=always`）执行 `dsh-java-app/src/main/resources/schema.sql`，它是默认 profile 与 standalone profile 共同生效的建表脚本。
-- **事实来源**：表结构以 `db/migration/*.sql` 与 `schema.sql` 的并集为唯一口径（当前共 30 张表）；`db/migration/*.sql` 仅作为只读对照来源，不在启动时执行。
+- **事实来源**：表结构以 `db/migration/*.sql` 与 `schema.sql` 的并集为唯一口径（当前共 31 张表）；`db/migration/*.sql` 仅作为只读对照来源，不在启动时执行。
 - **兜底逻辑**：`SchemaMigrationRunner` 仅在启动期幂等补齐个别列/表（如 `token_snapshot`），属演进兜底，不作为表集合的权威定义。
 - **维护约定**：新增/变更表时应同步 `schema.sql`、`db/migration/*.sql` 与 `docs/dev-ops/mysql/sql/dsh_java.sql`，提交前请执行 `scripts/check-sql-parity.sh` 校验三方表集合一致。
 

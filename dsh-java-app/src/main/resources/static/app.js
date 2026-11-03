@@ -628,6 +628,9 @@ function renderSidebar() {
   expandSection.appendChild(sessionList);
 
   const footer = el('div', { class: 'sidebar-footer' });
+  const botsBtn = el('button', { class: 'sidebar-settings-link', onclick: function() { window.location.href = '/bots.html'; }, title: '飞书 Bot' });
+  botsBtn.appendChild(el('span', null, '飞书 Bot'));
+  footer.appendChild(botsBtn);
   const settingsBtn = el('button', { class: 'sidebar-settings-link', onclick: function() { openSettingsPage(); }, title: '设置' });
   settingsBtn.appendChild(icon('settings', 'sidebar-settings-icon'));
   settingsBtn.appendChild(el('span', null, '设置'));

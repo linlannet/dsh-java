@@ -193,7 +193,7 @@ java -jar dsh-java-app/target/dsh-java-app.jar \
 
 #### Import the MySQL Schema
 
-Recommended: directly import the MySQL 8 dump from the repository, which contains 30 tables (12 of them are `harness_*` related):
+Recommended: directly import the MySQL 8 dump from the repository, which contains 31 tables (12 of them are `harness_*` related):
 
 ```bash
 mysql -u root -p < docs/dev-ops/mysql/sql/dsh_java.sql
@@ -1175,7 +1175,7 @@ The repository includes a Baidu AI Search example skill: `skills/baidu-ai-search
 
 ## 11. Persistence Model
 
-The main tables currently initialized by `schema.sql` (30 in total) include:
+The main tables currently initialized by `schema.sql` (31 in total) include:
 
 | Table | Purpose |
 | --- | --- |
@@ -1209,13 +1209,14 @@ The main tables currently initialized by `schema.sql` (30 in total) include:
 | `agent_team` | multi-agent team roster (experimental) |
 | `team_task` | team shared task board (experimental) |
 | `team_message` | team agent message (experimental) |
+| `feishu_bot` | Feishu bot config and enabled state (experimental) |
 
 MySQL carries structured state and events (default profile); standalone profile uses H2 file database (`MODE=MySQL` compatibility mode), both share the same schema, `sql.init.mode=always` idempotent rerun.
 
 ### Schema Source and Maintenance Convention
 
 - **Effective script**: at startup Spring SQL Init (`sql.init.mode=always`) executes `dsh-java-app/src/main/resources/schema.sql`, the script effective for both the default profile and the standalone profile.
-- **Source of truth**: the table set is defined by the union of `db/migration/*.sql` and `schema.sql` (30 tables currently); `db/migration/*.sql` is a read-only reference and is not executed at startup.
+- **Source of truth**: the table set is defined by the union of `db/migration/*.sql` and `schema.sql` (31 tables currently); `db/migration/*.sql` is a read-only reference and is not executed at startup.
 - **Fallback logic**: `SchemaMigrationRunner` only backfills a few columns/tables idempotently at startup (e.g. `token_snapshot`); it is an evolution fallback, not the authoritative table set.
 - **Maintenance convention**: when adding or changing tables, keep `schema.sql`, `db/migration/*.sql` and `docs/dev-ops/mysql/sql/dsh_java.sql` in sync, and run `scripts/check-sql-parity.sh` before committing to verify the three table sets match.
 

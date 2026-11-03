@@ -102,3 +102,31 @@ harness:
           source-path: ./plugins/sample-tools-plugin-1.0.0.jar
           entrypoint: sample-tools-plugin-1.0.0.jar
           auto-start: true
+
+# 飞书（Feishu / Lark）Bot 接入
+dsh:
+  feishu:
+    # 接入总开关：false 时不装配任何飞书 Bean
+    enabled: true
+    # 事件去重窗口（固定 2000，仅文档化对齐）
+    dedup:
+      max-size: 2000
+    # 流式回发参数
+    stream:
+      flush-interval-ms: 1500
+      preview-limit: 4000
+      final-in-place-limit: 4000
+      card-limit: 28000
+    # 出站消息上限
+    messaging:
+      max-text: 20000
+      max-card-markdown: 28000
+    # 长连接参数
+    ws:
+      await-ready-ms: 15000
+      auto-reconnect: true
+    # 一键配对参数
+    pairing:
+      max-network-errors: 20
+      default-bot-name: DeepSeek Bot
+      default-agent-base-id: feishu-agent

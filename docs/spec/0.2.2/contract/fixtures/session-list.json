@@ -1,0 +1,27 @@
+{
+  "contractVersion": 1,
+  "kind": "session-list",
+  "source": "GET /api/harness/console/sessions?limit=50&offset=0",
+  "sessions": [
+    {
+      "agentId": "agent-mvtoavo",
+      "sessionId": "s-1001",
+      "title": "重构登录模块",
+      "lastMessage": "已完成分支切换，等待评审",
+      "modelCode": "Deepseek-V4.1-Flash",
+      "updatedAt": "2026-10-29T15:20:00Z",
+      "createdAt": "2026-10-29T14:02:00Z",
+      "workspaceId": "/Users/mac/Workspace/linlannet/dsh-java"
+    },
+    {
+      "agentId": "agent-9fk2ls",
+      "sessionId": "s-1002",
+      "title": "排查 SSE 断流",
+      "lastMessage": "复现成功，日志已归档",
+      "modelCode": "Deepseek-V4.1-Flash",
+      "updatedAt": "2026-10-29T15:05:00Z",
+      "createdAt": "2026-10-29T13:40:00Z",
+      "workspaceId": "/Users/mac/Workspace/linlannet/dsh-java-desktop"
+    }
+  ]
+}
