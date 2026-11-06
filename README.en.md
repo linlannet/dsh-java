@@ -24,14 +24,7 @@ The project is currently in **developer preview**. Its APIs and plugin protocols
 
 ## Version History
 
-[CHANGELOG](./CHANGELOG.md)
-
-### Current Release: v0.2.2 (2026-11-02)
-
-- **Feishu Bot integration (main line)**: WebSocket long-connection access via the official Feishu SDK, with one-click pairing (device authorization), Bot lifecycle management, IM inbound bridging and streaming reply, and a console Feishu Bot management panel; adds the `feishu_bot` table (31 tables in total). See `docs/spec/0.2.2/`.
-- **LLM request purpose declarations (purpose)**: the shared LLM core adds `LlmRequestPurposes` declarative validation; undeclared/blank purpose keys are rejected at `GenerateOptions` construction; `BasicCompactionEngine`/`PlannerService` declare compaction and collaboration-planning purposes respectively, and `DeepSeekAdapter` adds the `x-dsh-compact` header accordingly.
-- **Schedule tool group**: `ScheduleTools` is refactored into `schedule_create`/`schedule_list`/`schedule_view`/`schedule_edit` (replacing the old `Create`/`ListAll`/`Delete`); a new `SubagentSessions` returns `subagent_session` when a child agent calls schedule tools.
-- **Schedule host-wide scope**: `ScheduleRecord` is now managed host-wide by `id` and visible across sessions; `ScheduleTiming` is typed and adds `RRule` parsing (with boundary rejections); `ScheduleService` supports optimistic concurrency and `drive` advancement.
+All version changes and revisions are recorded in [CHANGELOG](./CHANGELOG.md). This README keeps only stable architecture and usage documentation and is not updated with per-release change details.
 
 
 ## Table of Contents

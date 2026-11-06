@@ -27,6 +27,13 @@ public class RemoteAgentGateway {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
     private final Set<String> cancelled = ConcurrentHashMap.newKeySet();
+    // 本地 agent 回流地址；由 Spring Bean 在启动时按真实监听端口注入，
+    // 避免 System.getProperty("server.port") 取不到（未以 -Dserver.port 传入）时回退到错误的 8080。
+    private volatile String localAgentBaseUrl;
+
+    public void setLocalAgentBaseUrl(String baseUrl) {
+        this.localAgentBaseUrl = baseUrl;
+    }
 
     public RemoteAgentGateway() {
         this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15L)).build();
@@ -254,8 +261,9 @@ public class RemoteAgentGateway {
     }
 
     public void runLocal(String taskKey, String instruction, String channelCode, String approvalMode, EventSink sink, String cwd, List<String> sandboxRoots) throws Exception {
-        String port = System.getProperty("server.port", "8080");
-        String url = "http://127.0.0.1:" + port + "/api/agent/stream";
+        String url = this.localAgentBaseUrl != null && !this.localAgentBaseUrl.isBlank()
+                ? this.localAgentBaseUrl
+                : ("http://127.0.0.1:" + System.getProperty("server.port", "8080") + "/api/agent/stream");
         HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).timeout(Duration.ofMinutes(10L)).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(this.buildBody(instruction, channelCode, approvalMode, cwd, sandboxRoots))).build();
         this.stream(request, sink, taskKey);
     }

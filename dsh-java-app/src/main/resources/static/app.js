@@ -163,6 +163,16 @@ const state = {
   sidebarSessionLimit: 10,
   hasMoreSessions: true,
   loadingMoreSessions: false,
+  // 侧边栏（对齐 dsh-java-desktop）：列表模式 / 搜索 / 筛选 / 置顶 / 自定义标题 / 本地隐藏
+  sidebarListMode: localStorage.getItem('dshSidebarListMode') || 'all',
+  sidebarSearchOpen: false,
+  sidebarSearchText: '',
+  sidebarFilterOpen: false,
+  sidebarStatusFilter: 'all',
+  sidebarTimeFilter: 'all',
+  pinnedSessionIds: JSON.parse(localStorage.getItem('dshPinnedSessions') || '[]'),
+  hiddenSessionIds: JSON.parse(localStorage.getItem('dshHiddenSessions') || '[]'),
+  customSessionTitles: JSON.parse(localStorage.getItem('dshSessionTitles') || '{}'),
   workspaces: JSON.parse(localStorage.getItem('workspaces') || '[]'),
   currentWorkspace: localStorage.getItem('currentWorkspace') || '',
   modelSettings: [],
@@ -271,10 +281,18 @@ function icon(name, className) {
     pencil: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3Z' stroke='currentColor' stroke-width='1.7' stroke-linejoin='round'/><path d='M14.5 7.5l3 3' stroke='currentColor' stroke-width='1.7' stroke-linecap='round'/></svg>",
     trash: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M5 7h14M10 7V5h4v2M6.5 7l.7 12a2 2 0 0 0 2 1.9h5.6a2 2 0 0 0 2-1.9L17.5 7' stroke='currentColor' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/></svg>",
     users: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><circle cx='9' cy='9' r='3.2' stroke='currentColor' stroke-width='1.6'/><path d='M3.5 19c.6-3 2.8-4.6 5.5-4.6S14 16 14.6 19' stroke='currentColor' stroke-width='1.6' stroke-linecap='round'/><path d='M15.5 7.2a3 3 0 0 1 0 5.6M17 14.6c2 .7 3.3 2.2 3.7 4.4' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' opacity='.7'/></svg>",
+    bot: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><rect x='4.5' y='8' width='15' height='11' rx='2.5' stroke='currentColor' stroke-width='1.6'/><path d='M12 8V4.5M9 13h.01M15 13h.01M9.5 16.2h5' stroke='currentColor' stroke-width='1.6' stroke-linecap='round'/><circle cx='12' cy='3.5' r='1' stroke='currentColor' stroke-width='1.2'/></svg>",
     plugin: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M10 4.5a2 2 0 1 1 4 0V6h3a1.5 1.5 0 0 1 1.5 1.5v3h-1.5a2 2 0 1 0 0 4h1.5v3A1.5 1.5 0 0 1 17 19h-3v-1.5a2 2 0 1 0-4 0V19H7a1.5 1.5 0 0 1-1.5-1.5v-3H7a2 2 0 1 0 0-4H5.5v-3A1.5 1.5 0 0 1 7 6h3V4.5Z' stroke='currentColor' stroke-width='1.5' stroke-linejoin='round'/></svg>",
     shield: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M12 3.5 19 6v5.2c0 4.3-2.8 7.3-7 9.3-4.2-2-7-5-7-9.3V6l7-2.5Z' stroke='currentColor' stroke-width='1.6' stroke-linejoin='round'/><path d='m9.2 11.8 2 2 3.6-3.8' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>",
     file: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M7.5 3.5h5.7L18 8.3V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5a1.5 1.5 0 0 1 1.5-1.5Z' stroke='currentColor' stroke-width='1.6' stroke-linejoin='round'/><path d='M13 3.8v4.7h4.7' stroke='currentColor' stroke-width='1.6' stroke-linejoin='round'/></svg>",
     star: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='m12 4 2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4-3.9-3.8 5.4-.8L12 4Z' stroke='currentColor' stroke-width='1.5' stroke-linejoin='round'/></svg>",
+    bolt: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M13 3 5.5 13.5H11L10 21l7.5-10.5H12L13 3Z' stroke='currentColor' stroke-width='1.6' stroke-linejoin='round'/></svg>",
+    server: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><rect x='4.5' y='4.5' width='15' height='6' rx='1.5' stroke='currentColor' stroke-width='1.6'/><rect x='4.5' y='13.5' width='15' height='6' rx='1.5' stroke='currentColor' stroke-width='1.6'/><path d='M8 7.5h.01M8 16.5h.01' stroke='currentColor' stroke-width='1.8' stroke-linecap='round'/></svg>",
+    terminal: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><rect x='3.5' y='4.5' width='17' height='15' rx='2' stroke='currentColor' stroke-width='1.6'/><path d='m7 9.5 3 2.5-3 2.5M12.5 15h4.5' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>",
+    pin: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M9.5 4.5h5M10.5 4.5v4.2L7.5 11.5v2h9v-2l-3-2.8V4.5' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/><path d='M12 13.5v6.5' stroke='currentColor' stroke-width='1.6' stroke-linecap='round'/></svg>",
+    close: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='m6.5 6.5 11 11M17.5 6.5l-11 11' stroke='currentColor' stroke-width='1.7' stroke-linecap='round'/></svg>",
+    filter: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M4.5 6h15M7.5 12h9M10.5 18h3' stroke='currentColor' stroke-width='1.7' stroke-linecap='round'/></svg>",
+    chat: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M4.5 7a2.5 2.5 0 0 1 2.5-2.5h10A2.5 2.5 0 0 1 19.5 7v7a2.5 2.5 0 0 1-2.5 2.5H9l-4.5 3.5V7Z' stroke='currentColor' stroke-width='1.6' stroke-linejoin='round'/><path d='M9 10.5h.01M12 10.5h.01M15 10.5h.01' stroke='currentColor' stroke-width='2' stroke-linecap='round'/></svg>",
   };
   return el('span', { class: 'icon' + (className ? ' ' + className : ''), html: icons[name] || '' });
 }
@@ -299,6 +317,7 @@ function saveSessionsToStorage() {
         displayName: s.displayName,
         lastMessage: s.lastMessage,
         createdAt: s.createdAt,
+        updatedAt: s.updatedAt || null,
         workspace: s.workspace,
         messages: (s.messages || []).map(function(m) {
           return {
@@ -337,6 +356,7 @@ function loadSessionsFromStorage() {
       sess.displayName = s.displayName || sess.title;
       sess.lastMessage = s.lastMessage || '';
       sess.createdAt = s.createdAt || new Date().toISOString();
+      sess.updatedAt = s.updatedAt || null;
       sess.workspace = (s.workspace === 'default') ? '' : (s.workspace || '');
       sess.messages = (s.messages || []).map(function(m) {
         m.streaming = false;
@@ -441,14 +461,217 @@ function renderLayout() {
   return app;
 }
 
-// ── 侧边栏 ─────────────────────────────────
+// ── 侧边栏（对齐 dsh-java-desktop 主界面）──
+function persistSidebarPref(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) { /* ignore */ }
+}
+
+function sessionAliasIds(sess) {
+  const ids = [];
+  if (sess.agentId) ids.push(sess.agentId);
+  if (sess.sessionId && ids.indexOf(sess.sessionId) === -1) ids.push(sess.sessionId);
+  return ids;
+}
+
+function sessionIdOf(sess) { return sess.agentId || sess.sessionId || ''; }
+
+function isSessionHiddenId(id) { return state.hiddenSessionIds.indexOf(id) !== -1; }
+
+function isSessionHidden(sess) { return sessionAliasIds(sess).some(isSessionHiddenId); }
+
+function isSessionPinned(sess) {
+  return sessionAliasIds(sess).some(function(id) { return state.pinnedSessionIds.indexOf(id) !== -1; });
+}
+
+function togglePinSession(sess) {
+  const alias = sessionAliasIds(sess);
+  if (isSessionPinned(sess)) {
+    state.pinnedSessionIds = state.pinnedSessionIds.filter(function(id) { return alias.indexOf(id) === -1; });
+    persistSidebarPref('dshPinnedSessions', state.pinnedSessionIds);
+    showToast('已取消置顶');
+  } else {
+    state.pinnedSessionIds = alias.concat(state.pinnedSessionIds.filter(function(id) { return alias.indexOf(id) === -1; }));
+    persistSidebarPref('dshPinnedSessions', state.pinnedSessionIds);
+    showToast('已置顶');
+  }
+  render();
+}
+
+function sidebarSessionTitle(sess) {
+  for (const id of sessionAliasIds(sess)) {
+    if (state.customSessionTitles[id]) return state.customSessionTitles[id];
+  }
+  return sess.title || sess.lastMessage || sess.displayName || '新对话';
+}
+
+function sessionUpdatedAt(sess) { return sess.updatedAt || sess.createdAt || ''; }
+
+function sidebarFilterSessions(sessions) {
+  const query = (state.sidebarSearchText || '').trim().toLowerCase();
+  const now = Date.now();
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  return sessions.filter(function(sess) {
+    if (isSessionHidden(sess)) return false;
+    if (query) {
+      const hay = [sidebarSessionTitle(sess), sess.lastMessage || '', sess.agentId || ''].join(' ').toLowerCase();
+      if (hay.indexOf(query) === -1) return false;
+    }
+    if (state.sidebarStatusFilter === 'pinned' && !isSessionPinned(sess)) return false;
+    if (state.sidebarTimeFilter !== 'all') {
+      const t = new Date(sessionUpdatedAt(sess)).getTime();
+      if (Number.isNaN(t)) return false;
+      if (state.sidebarTimeFilter === 'today' && t < todayStart.getTime()) return false;
+      if (state.sidebarTimeFilter === '7d' && t < now - 7 * 86400000) return false;
+      if (state.sidebarTimeFilter === '30d' && t < now - 30 * 86400000) return false;
+    }
+    return true;
+  });
+}
+
+function renderSessionRow(sess, showTime) {
+  const id = sessionIdOf(sess);
+  const title = sidebarSessionTitle(sess);
+  const active = sess.agentId === state.currentSessionId || (sess.sessionId && sess.sessionId === state.currentSessionId);
+  const pinned = isSessionPinned(sess);
+  const item = el('div', { class: 'session-item' + (active ? ' active' : ''), 'data-session-id': id });
+  const main = el('button', { class: 'session-main', title: title, onclick: function() { selectSession(sess.agentId); } });
+  main.appendChild(el('span', { class: 'session-title' }, title));
+  item.appendChild(main);
+  if (showTime) {
+    item.appendChild(el('span', { class: 'session-time' }, formatSessionTime(sessionUpdatedAt(sess))));
+  }
+  const actions = el('span', { class: 'session-item-actions' });
+  const pinBtn = el('button', {
+    class: 'session-action-btn pin' + (pinned ? ' pinned' : ''),
+    title: pinned ? '取消置顶' : '置顶',
+    'aria-label': (pinned ? '取消置顶 ' : '置顶 ') + title,
+    onclick: function(e) { e.stopPropagation(); togglePinSession(sess); }
+  });
+  pinBtn.appendChild(icon('pin'));
+  actions.appendChild(pinBtn);
+  const renameBtn = el('button', {
+    class: 'session-action-btn', title: '重命名对话', 'aria-label': '重命名 ' + title,
+    onclick: function(e) { e.stopPropagation(); renameSession(sess); }
+  });
+  renameBtn.appendChild(icon('pencil'));
+  actions.appendChild(renameBtn);
+  const delBtn = el('button', {
+    class: 'session-action-btn danger', title: '删除对话', 'aria-label': '删除 ' + title,
+    onclick: function(e) { e.stopPropagation(); confirmDeleteSession(sess); }
+  });
+  delBtn.appendChild(icon('close'));
+  actions.appendChild(delBtn);
+  item.appendChild(actions);
+  return item;
+}
+
+function renderSectionHeading(iconName, label, count) {
+  const row = el('div', { class: 'section-heading-row' });
+  const heading = el('div', { class: 'section-heading section-heading-label' });
+  heading.appendChild(icon(iconName));
+  heading.appendChild(el('span', null, label));
+  if (count != null) heading.appendChild(el('span', { class: 'section-count' }, String(count)));
+  row.appendChild(heading);
+  return row;
+}
+
+function buildSidebarListArea() {
+  const area = el('div', { class: 'sidebar-scroll', id: 'sidebar-list-area' });
+  const filtered = sidebarFilterSessions(state.sessions.slice());
+
+  // 置顶区（按置顶顺序展示）
+  const pinnedOrdered = [];
+  for (const id of state.pinnedSessionIds) {
+    const found = filtered.find(function(s) { return sessionAliasIds(s).indexOf(id) !== -1; });
+    if (found && pinnedOrdered.indexOf(found) === -1) pinnedOrdered.push(found);
+  }
+  area.appendChild(renderSectionHeading('pin', '置顶', pinnedOrdered.length));
+  const pinnedList = el('div', { class: 'pinned-list' });
+  if (pinnedOrdered.length === 0) {
+    pinnedList.appendChild(el('div', { class: 'empty-note' }, '把对话行上的图钉点亮，即可置顶到这里。'));
+  } else {
+    for (const sess of pinnedOrdered) pinnedList.appendChild(renderSessionRow(sess, true));
+  }
+  area.appendChild(pinnedList);
+
+  const filtersActive = (state.sidebarSearchText || '').trim() !== ''
+    || state.sidebarStatusFilter !== 'all' || state.sidebarTimeFilter !== 'all';
+  const emptyText = filtersActive ? '没有符合搜索/筛选条件的对话。' : '还没有对话，点上方「新对话」开始。';
+
+  if (state.sidebarListMode === 'projects') {
+    // 项目模式：按工作区分组展示
+    area.appendChild(renderSectionHeading('folder', '项目', null));
+    const projectList = el('div', { class: 'project-list' });
+    const groups = [];
+    const groupMap = {};
+    for (const w of state.workspaces) {
+      const p = wsEntryPath(w);
+      if (!p || groupMap[p]) continue;
+      const g = { path: p, name: wsEntryName(w) || p.split('/').filter(Boolean).pop() || p, sessions: [] };
+      groupMap[p] = g;
+      groups.push(g);
+    }
+    const defaultGroup = { path: '', name: '默认工作区', sessions: [] };
+    for (const sess of filtered) {
+      const key = sess.workspace || sess.workspaceId || '';
+      if (key && groupMap[key]) groupMap[key].sessions.push(sess);
+      else defaultGroup.sessions.push(sess);
+    }
+    const visibleGroups = groups.filter(function(g) { return g.sessions.length > 0; });
+    if (defaultGroup.sessions.length > 0) visibleGroups.push(defaultGroup);
+    if (visibleGroups.length === 0) {
+      projectList.appendChild(el('div', { class: 'empty-note' }, emptyText));
+    } else {
+      for (const g of visibleGroups) {
+        const group = el('div', { class: 'project-group' });
+        const header = el('div', { class: 'project-group-header', title: g.path || '默认工作区' });
+        header.appendChild(icon('folder'));
+        header.appendChild(el('span', { class: 'project-group-name' }, g.name));
+        header.appendChild(el('span', { class: 'project-group-count' }, String(g.sessions.length)));
+        group.appendChild(header);
+        const sessWrap = el('div', { class: 'project-group-sessions' });
+        for (const sess of g.sessions) sessWrap.appendChild(renderSessionRow(sess, true));
+        group.appendChild(sessWrap);
+        projectList.appendChild(group);
+      }
+    }
+    area.appendChild(projectList);
+  } else {
+    // 对话模式：平铺，按更新时间倒序
+    const flat = filtered.slice().sort(function(a, b) {
+      return new Date(sessionUpdatedAt(b)) - new Date(sessionUpdatedAt(a));
+    });
+    area.appendChild(renderSectionHeading('chat', '对话', flat.length));
+    const list = el('div', { class: 'pinned-list' });
+    if (flat.length === 0) {
+      list.appendChild(el('div', { class: 'empty-note' }, emptyText));
+    } else {
+      const display = flat.slice(0, state.sidebarSessionLimit);
+      for (const sess of display) list.appendChild(renderSessionRow(sess, true));
+      if (flat.length > state.sidebarSessionLimit || state.hasMoreSessions) {
+        list.appendChild(el('button', {
+          class: 'load-more-sessions',
+          disabled: state.loadingMoreSessions ? 'disabled' : null,
+          onclick: loadMoreSessions
+        }, state.loadingMoreSessions ? '加载中…' : '加载更多'));
+      }
+    }
+    area.appendChild(list);
+  }
+  return area;
+}
+
+function refreshSidebarList() {
+  const current = $('#sidebar-list-area');
+  if (current) current.replaceWith(buildSidebarListArea());
+  else render();
+}
+
 function renderSidebar() {
   const sidebar = el('aside', { class: 'sidebar' + (state.sidebarCollapsed ? ' collapsed' : '') });
-  const firstWs = state.workspaces[0];
-  const currentWorkspace = state.currentWorkspace || wsEntryPath(firstWs) || '';
-  const currentWsObj = state.workspaces.find(function(w) { return wsEntryPath(w) === currentWorkspace; }) || firstWs;
-  const workspaceName = currentWorkspace ? wsEntryName(currentWsObj) || currentWorkspace.split('/').filter(Boolean).pop() : '切换工作区';
 
+  // 折叠态图标栏
   const collapsedBar = el('div', { class: 'sidebar-collapsed-bar' });
   collapsedBar.appendChild(icon('brand', 'c-logo'));
   const expandBtn = el('button', { class: 'c-btn', onclick: toggleSidebar, title: '展开侧边栏' });
@@ -456,14 +679,10 @@ function renderSidebar() {
   expandBtn.appendChild(el('span', { class: 'c-tooltip' }, '展开'));
   collapsedBar.appendChild(expandBtn);
   collapsedBar.appendChild(el('div', { class: 'c-divider' }));
-  const newChatRound = el('button', { class: 'c-btn', onclick: newChat, title: '新会话' });
+  const newChatRound = el('button', { class: 'c-btn', onclick: newChat, title: '新对话' });
   newChatRound.appendChild(icon('plusPlain'));
-  newChatRound.appendChild(el('span', { class: 'c-tooltip' }, '新会话'));
+  newChatRound.appendChild(el('span', { class: 'c-tooltip' }, '新对话'));
   collapsedBar.appendChild(newChatRound);
-  const wsRound = el('button', { class: 'c-btn', title: workspaceName, onclick: function() { showDirectoryPicker(function(path) { state.currentWorkspace = path; localStorage.setItem('currentWorkspace', path); render(); }); } });
-  wsRound.appendChild(icon('folder'));
-  wsRound.appendChild(el('span', { class: 'c-tooltip' }, workspaceName));
-  collapsedBar.appendChild(wsRound);
   const settingsRound = el('button', { class: 'c-btn', onclick: function() { openSettingsPage(); }, title: '设置' });
   settingsRound.appendChild(icon('settings'));
   settingsRound.appendChild(el('span', { class: 'c-tooltip' }, '设置'));
@@ -474,165 +693,134 @@ function renderSidebar() {
 
   const expandSection = el('div', { class: 'sidebar-expand-section' });
 
-  const header = el('div', { class: 'sidebar-header' });
-  const brand = el('div', { class: 'sidebar-brand' });
-  brand.appendChild(icon('brand', 'sidebar-logo'));
-  const wordmark = el('div', { class: 'sidebar-wordmark' });
-  wordmark.appendChild(el('span', { class: 'sidebar-title' }, 'deepseek'));
-  wordmark.appendChild(el('span', { class: 'sidebar-badge' }, 'HARNESS'));
-  wordmark.appendChild(el('span', { class: 'sidebar-java-tag' }, 'Java'));
-  brand.appendChild(wordmark);
-  header.appendChild(brand);
-  const toggleBtn = el('button', { class: 'sidebar-toggle', onclick: toggleSidebar, title: '收起侧边栏' });
+  // 品牌头：DSH + 版本徽章 + 副标题 + 收起按钮
+  const brandRow = el('div', { class: 'brand-row' });
+  const brand = el('div', { class: 'brand', title: 'DSH Java Console' });
+  brand.appendChild(icon('brand', 'brand-mark'));
+  const brandCopy = el('div', { class: 'brand-copy' });
+  const brandTitle = el('div', { class: 'brand-title' }, 'DSH');
+  brandTitle.appendChild(el('span', { class: 'brand-version' }, 'v0.2.2'));
+  brandCopy.appendChild(brandTitle);
+  brandCopy.appendChild(el('div', { class: 'brand-subtitle' }, 'Java Console'));
+  brand.appendChild(brandCopy);
+  brandRow.appendChild(brand);
+  const toggleBtn = el('button', { class: 'sidebar-collapse-toggle', onclick: toggleSidebar, title: '收起侧边栏', 'aria-label': '收起侧边栏' });
   toggleBtn.appendChild(icon('panel'));
-  header.appendChild(toggleBtn);
-  expandSection.appendChild(header);
+  brandRow.appendChild(toggleBtn);
+  expandSection.appendChild(brandRow);
 
-  const newBtn = el('button', { class: 'sidebar-new-btn', onclick: newChat });
-  newBtn.appendChild(icon('plus', 'sidebar-new-btn-icon'));
-  newBtn.appendChild(el('span', null, '新会话'));
+  // 新对话
+  const newBtn = el('button', { class: 'new-chat-button', onclick: newChat, title: '开始新对话', 'aria-label': '开始新对话' });
+  newBtn.appendChild(icon('plusPlain'));
+  newBtn.appendChild(el('span', null, '新对话'));
   expandSection.appendChild(newBtn);
 
-  // Workspace action toolbar
-  const wsToolbar = el('div', { class: 'ws-toolbar' });
-  const pickBtn = el('button', {
-    class: 'workspace-action-btn',
-    title: '切换工作区',
-    onclick: function() {
-      showDirectoryPicker(function(path) {
-        state.currentWorkspace = path;
-        localStorage.setItem('currentWorkspace', path);
+  // 工具行：搜索 / 筛选 / 对话·项目 Tab
+  const tools = el('div', { class: 'sidebar-tools' });
+  if (state.sidebarSearchOpen) {
+    const searchBox = el('div', { class: 'sidebar-search' });
+    searchBox.appendChild(icon('search'));
+    const searchInput = el('input', { value: state.sidebarSearchText || '', placeholder: '搜索对话', 'aria-label': '搜索对话' });
+    searchInput.oninput = function() {
+      state.sidebarSearchText = searchInput.value;
+      refreshSidebarList();
+    };
+    searchInput.onkeydown = function(e) {
+      if (e.key === 'Escape') {
+        state.sidebarSearchText = '';
+        state.sidebarSearchOpen = false;
         render();
-      });
-    }
-  });
-  pickBtn.appendChild(icon('search'));
-  wsToolbar.appendChild(pickBtn);
-  const filterBtn = el('button', { class: 'workspace-action-btn', title: '设置', onclick: function() { openSettingsPage(); } });
-  filterBtn.appendChild(icon('sliders'));
-  wsToolbar.appendChild(filterBtn);
-  const clearBtn = el('button', {
-    class: 'workspace-action-btn danger',
-    title: '清空对话',
-    disabled: state.sessions.length === 0 ? 'disabled' : null,
-    onclick: confirmClearSessions
-  });
-  clearBtn.appendChild(icon('trash'));
-  wsToolbar.appendChild(clearBtn);
-  expandSection.appendChild(wsToolbar);
-
-  // Unified workspace + session list
-  const sessionList = el('div', { class: 'session-list' });
-  let dragSrcName = null;
-
-  function renderSessionsForWorkspace(wsPath) {
-    const wsSessions = state.sessions.filter(function(sess) {
-      return (sess.workspace || '') === wsPath;
-    });
-    const group = el('div', { class: 'ws-session-group' });
-    if (wsSessions.length === 0) {
-      group.appendChild(el('div', { class: 'ws-session-empty' }, '暂无对话'));
-    } else {
-      const display = wsSessions.slice(0, state.sidebarSessionLimit);
-      for (const sess of display) {
-        group.appendChild(renderSessionItem(sess));
       }
-      const hidden = wsSessions.length - state.sidebarSessionLimit;
-      if (hidden > 0 || state.hasMoreSessions) {
-        group.appendChild(el('button', {
-          class: 'session-expand-btn',
-          disabled: state.loadingMoreSessions ? 'disabled' : null,
-          onclick: loadMoreSessions
-        }, state.loadingMoreSessions ? '加载中…' : '加载更多'));
-      }
+    };
+    searchBox.appendChild(searchInput);
+    if (state.sidebarSearchText) {
+      searchBox.appendChild(el('button', {
+        class: 'sidebar-search-clear', title: '清空搜索', 'aria-label': '清空搜索',
+        onclick: function() { state.sidebarSearchText = ''; render(); }
+      }, '×'));
     }
-    return group;
+    tools.appendChild(searchBox);
+    setTimeout(function() {
+      const active = $('.sidebar-search input');
+      if (active) { active.focus(); active.setSelectionRange(active.value.length, active.value.length); }
+    }, 0);
   }
-
-  function renderWorkspaceRow(p, n, isActive) {
-    const wrap = el('div', { class: 'ws-session-wrap' + (isActive ? ' active' : '') });
-    const header = el('div', { class: 'ws-session-header', draggable: 'true', title: p });
-    header.appendChild(icon('folder', 'ws-session-header-icon'));
-    header.appendChild(el('span', { class: 'ws-session-header-name' }, n));
-    const wsCount = state.sessions.filter(function(s) { return (s.workspace || '') === p; }).length;
-    header.appendChild(el('span', { class: 'ws-session-header-count' }, String(wsCount)));
-    // rename + delete actions
-    const actions = el('div', { class: 'ws-session-header-actions' });
-    const newChatBtn = el('button', { class: 'workspace-item-btn', title: '在此空间新建对话', onclick: function(e) {
-      e.stopPropagation();
-      state.currentWorkspace = p;
-      localStorage.setItem('currentWorkspace', p);
-      newChat();
-    } });
-    newChatBtn.appendChild(icon('addWorkspace', 'workspace-item-btn-icon'));
-    actions.appendChild(newChatBtn);
-    const renameBtn = el('button', { class: 'workspace-item-btn', title: '重命名', onclick: function(e) { e.stopPropagation(); showRenameWorkspaceForm(n); } });
-    renameBtn.appendChild(icon('pencil', 'workspace-item-btn-icon'));
-    actions.appendChild(renameBtn);
-    const delBtn = el('button', { class: 'workspace-item-btn', title: '删除', onclick: function(e) { e.stopPropagation(); confirmDeleteWorkspace(n); } });
-    delBtn.appendChild(icon('trash', 'workspace-item-btn-icon'));
-    actions.appendChild(delBtn);
-    header.appendChild(actions);
-    header.onclick = function() {
-      state.currentWorkspace = p;
-      localStorage.setItem('currentWorkspace', p);
+  const toolsRow = el('div', { class: 'sidebar-tools-row' });
+  const searchBtn = el('button', {
+    class: 'sidebar-tool-btn' + (state.sidebarSearchOpen ? ' active' : ''),
+    title: '搜索对话', 'aria-label': '搜索对话',
+    onclick: function() {
+      state.sidebarSearchOpen = !state.sidebarSearchOpen;
+      if (!state.sidebarSearchOpen) state.sidebarSearchText = '';
       render();
-    };
-    header.ondragstart = function(e) { dragSrcName = n; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', n); } catch (_) {} };
-    header.ondragover = function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; header.classList.add('drag-over'); };
-    header.ondragleave = function() { header.classList.remove('drag-over'); };
-    header.ondrop = function(e) {
-      e.preventDefault();
-      header.classList.remove('drag-over');
-      var src = dragSrcName;
-      dragSrcName = null;
-      if (!src || src === n) return;
-      reorderWorkspaces(src, n);
-    };
-    wrap.appendChild(header);
-    if (isActive) {
-      wrap.appendChild(renderSessionsForWorkspace(p));
     }
-    return wrap;
-  }
+  });
+  searchBtn.appendChild(icon('search'));
+  toolsRow.appendChild(searchBtn);
+  const filtersActiveNow = state.sidebarStatusFilter !== 'all' || state.sidebarTimeFilter !== 'all';
+  const filterBtn = el('button', {
+    class: 'sidebar-tool-btn' + (filtersActiveNow || state.sidebarFilterOpen ? ' active' : ''),
+    title: '筛选对话', 'aria-label': '筛选对话',
+    onclick: function() { state.sidebarFilterOpen = !state.sidebarFilterOpen; render(); }
+  });
+  filterBtn.appendChild(icon('filter'));
+  toolsRow.appendChild(filterBtn);
+  const modeTabs = el('div', { class: 'sidebar-mode-tabs', role: 'tablist', 'aria-label': '列表模式' });
+  modeTabs.appendChild(el('button', {
+    class: state.sidebarListMode === 'all' ? 'active' : '',
+    role: 'tab', title: '平铺展示全部对话',
+    onclick: function() { state.sidebarListMode = 'all'; localStorage.setItem('dshSidebarListMode', 'all'); render(); }
+  }, '对话'));
+  modeTabs.appendChild(el('button', {
+    class: state.sidebarListMode === 'projects' ? 'active' : '',
+    role: 'tab', title: '按项目分组展示',
+    onclick: function() { state.sidebarListMode = 'projects'; localStorage.setItem('dshSidebarListMode', 'projects'); render(); }
+  }, '项目'));
+  toolsRow.appendChild(modeTabs);
+  tools.appendChild(toolsRow);
 
-  if (state.workspaces.length === 0) {
-    const allSessions = state.sessions.slice();
-    if (allSessions.length === 0) {
-      sessionList.appendChild(el('div', { class: 'empty' }, '暂无对话'));
-    } else {
-      const display = allSessions.slice(0, state.sidebarSessionLimit);
-      for (const sess of display) {
-        sessionList.appendChild(renderSessionItem(sess));
-      }
-      if (allSessions.length > state.sidebarSessionLimit || state.hasMoreSessions) {
-        sessionList.appendChild(el('button', {
-          class: 'session-expand-btn',
-          disabled: state.loadingMoreSessions ? 'disabled' : null,
-          onclick: loadMoreSessions
-        }, state.loadingMoreSessions ? '加载中…' : '加载更多'));
-      }
+  if (state.sidebarFilterOpen) {
+    tools.appendChild(el('div', { class: 'sidebar-filter-backdrop', onclick: function() { state.sidebarFilterOpen = false; render(); } }));
+    const popover = el('div', { class: 'sidebar-filter-popover' });
+    popover.appendChild(el('div', { class: 'filter-group-title' }, '状态'));
+    const STATUS_OPTIONS = [
+      { value: 'all', label: '全部状态' },
+      { value: 'pinned', label: '已置顶' },
+    ];
+    for (const opt of STATUS_OPTIONS) {
+      popover.appendChild(el('button', {
+        class: 'filter-option' + (state.sidebarStatusFilter === opt.value ? ' selected' : ''),
+        onclick: function() { state.sidebarStatusFilter = opt.value; render(); }
+      }, el('span', null, opt.label), state.sidebarStatusFilter === opt.value ? el('span', { class: 'filter-check' }, '✓') : null));
     }
-  } else {
-    for (const w of state.workspaces) {
-      const p = wsEntryPath(w);
-      if (!p) continue;
-      const n = wsEntryName(w);
-      sessionList.appendChild(renderWorkspaceRow(p, n, p === currentWorkspace));
+    popover.appendChild(el('div', { class: 'filter-group-title filter-group-gap' }, '筛选时间'));
+    const TIME_OPTIONS = [
+      { value: 'all', label: '全部时间' },
+      { value: 'today', label: '今天' },
+      { value: '7d', label: '最近 7 天' },
+      { value: '30d', label: '最近 30 天' },
+    ];
+    for (const opt of TIME_OPTIONS) {
+      popover.appendChild(el('button', {
+        class: 'filter-option' + (state.sidebarTimeFilter === opt.value ? ' selected' : ''),
+        onclick: function() { state.sidebarTimeFilter = opt.value; render(); }
+      }, el('span', null, opt.label), state.sidebarTimeFilter === opt.value ? el('span', { class: 'filter-check' }, '✓') : null));
     }
-    const orphanSessions = state.sessions.filter(function(s) { return !s.workspace; });
-    if (orphanSessions.length > 0) {
-      sessionList.appendChild(renderWorkspaceRow('', '默认', !currentWorkspace));
-    }
+    popover.appendChild(el('button', {
+      class: 'filter-reset',
+      onclick: function() { state.sidebarStatusFilter = 'all'; state.sidebarTimeFilter = 'all'; render(); }
+    }, '重置筛选条件'));
+    tools.appendChild(popover);
   }
-  expandSection.appendChild(sessionList);
+  expandSection.appendChild(tools);
 
+  // 会话列表（置顶区 + 对话/项目）
+  expandSection.appendChild(buildSidebarListArea());
+
+  // 底部：设置
   const footer = el('div', { class: 'sidebar-footer' });
-  const botsBtn = el('button', { class: 'sidebar-settings-link', onclick: function() { window.location.href = '/bots.html'; }, title: '飞书 Bot' });
-  botsBtn.appendChild(el('span', null, '飞书 Bot'));
-  footer.appendChild(botsBtn);
-  const settingsBtn = el('button', { class: 'sidebar-settings-link', onclick: function() { openSettingsPage(); }, title: '设置' });
-  settingsBtn.appendChild(icon('settings', 'sidebar-settings-icon'));
+  const settingsBtn = el('button', { class: 'footer-link', onclick: function() { openSettingsPage(); }, title: '设置' });
+  settingsBtn.appendChild(icon('settings'));
   settingsBtn.appendChild(el('span', null, '设置'));
   footer.appendChild(settingsBtn);
   expandSection.appendChild(footer);
@@ -642,63 +830,7 @@ function renderSidebar() {
 }
 
 function renderSessionItem(sess) {
-  const item = el('div', {
-    class: 'session-item' + (sess.agentId === state.currentSessionId ? ' active' : ''),
-    role: 'button',
-    tabindex: '0',
-    onclick: function() { selectSession(sess.agentId); },
-    onkeydown: function(e) {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectSession(sess.agentId); }
-    }
-  });
-  const row = el('div', { class: 'session-item-row' });
-  row.appendChild(el('div', {
-    class: 'session-item-title',
-    title: sess.title || sess.lastMessage || sess.displayName || '新会话'
-  }, sess.title || sess.lastMessage || sess.displayName || '新会话'));
-  row.appendChild(el('span', { class: 'session-item-time' }, formatSessionAge(sess.createdAt)));
-  const actions = el('div', { class: 'session-item-actions' });
-  actions.appendChild(el('button', {
-    class: 'session-item-menu-btn',
-    title: '会话操作',
-    'aria-label': '会话操作',
-    onclick: function(e) {
-      e.stopPropagation();
-      showSessionMenu(e, sess);
-    }
-  }, el('span', { class: 'session-item-dots' })));
-  row.appendChild(actions);
-  item.appendChild(row);
-  return item;
-}
-
-function showSessionMenu(event, sess) {
-  closeSessionMenu();
-  const menu = el('div', { class: 'session-context-menu' });
-  menu.appendChild(el('button', { class: 'session-context-item', onclick: function() {
-    closeSessionMenu();
-    renameSession(sess);
-  } }, '✎ 重命名'));
-  menu.appendChild(el('button', { class: 'session-context-item danger', onclick: function() {
-    closeSessionMenu();
-    confirmDeleteSession(sess);
-  } }, '🗑 删除'));
-  document.body.appendChild(menu);
-  const item = event.currentTarget;
-  const rect = item.getBoundingClientRect();
-  const width = menu.offsetWidth || 152;
-  const left = Math.max(8, Math.min(window.innerWidth - width - 8, rect.right - width));
-  const top = Math.min(window.innerHeight - menu.offsetHeight - 8, rect.bottom + 6);
-  menu.style.left = left + 'px';
-  menu.style.top = top + 'px';
-  setTimeout(function() {
-    document.addEventListener('click', closeSessionMenu, { once: true });
-  }, 0);
-}
-
-function closeSessionMenu() {
-  const menu = $('.session-context-menu');
-  if (menu) menu.remove();
+  return renderSessionRow(sess, true);
 }
 
 function renameSession(sess) {
@@ -726,6 +858,9 @@ function renameSession(sess) {
     if (!value) { showToast('名称不能为空'); return; }
     sess.title = value;
     sess.displayName = value;
+    // 自定义标题持久化：sessionId 回流后仍保留
+    for (const id of sessionAliasIds(sess)) state.customSessionTitles[id] = value;
+    persistSidebarPref('dshSessionTitles', state.customSessionTitles);
     saveSessionsToStorage();
     overlay.remove();
     render();
@@ -758,6 +893,14 @@ function confirmDeleteSession(sess) {
   const footer = el('div', { class: 'modal-footer' });
   footer.appendChild(el('button', { class: 'btn btn-secondary', onclick: function() { overlay.remove(); } }, '取消'));
   footer.appendChild(el('button', { class: 'btn btn-danger', onclick: function() {
+    // 桌面端同款"隐藏列表"方案：本地隐藏，避免后端会话历史回流复活
+    const alias = sessionAliasIds(sess);
+    state.hiddenSessionIds = state.hiddenSessionIds.concat(alias.filter(function(id) {
+      return state.hiddenSessionIds.indexOf(id) === -1;
+    }));
+    persistSidebarPref('dshHiddenSessions', state.hiddenSessionIds);
+    state.pinnedSessionIds = state.pinnedSessionIds.filter(function(id) { return alias.indexOf(id) === -1; });
+    persistSidebarPref('dshPinnedSessions', state.pinnedSessionIds);
     state.sessions = state.sessions.filter(function(item) { return item.agentId !== sess.agentId; });
     if (state.currentSessionId === sess.agentId) {
       state.currentSessionId = state.sessions[0] ? state.sessions[0].agentId : null;
@@ -1535,6 +1678,8 @@ async function buildMentionItems(query) {
 
   const skills = await loadSkillOptions();
   skills.forEach(function (skill) {
+    // 飞书机器人由后端作为技能下发，这里从 @ 提及菜单中隐藏
+    if (/飞书|feishu/i.test((skill.name || '') + ' ' + (skill.description || ''))) return;
     if (!hit(skill.name) && !hit(skill.description)) return;
     if (used(function (r) { return r.kind === 'skill' && r.name === skill.name; })) return;
     items.push({
@@ -3295,8 +3440,12 @@ function renderSettingsPage() {
     { label: 'AI 能力', items: [
       { id: 'models', label: '模型', desc: '接入、默认模型与 API', icon: 'sliders', countKey: 'models' },
       { id: 'digital-humans', label: '数字人', desc: '档案、端点与并发策略', icon: 'users', countKey: 'dh' },
+      { id: 'feishu-bots', label: '飞书Bot', desc: '飞书机器人配置与配对', icon: 'bot' },
     ] },
     { label: '扩展', items: [
+      { id: 'skills', label: 'Skills 技能', desc: '技能目录注入 Agent，启用后可通过 skill 工具加载', icon: 'bolt' },
+      { id: 'mcp', label: 'MCP 服务', desc: '连接外部 MCP server，远端工具以 mcp__服务名__工具名 注册', icon: 'server' },
+      { id: 'cli', label: 'CLI 子智能体', desc: '配置外部 CLI 命令（claude、codex）供 subagent 工具调度', icon: 'terminal' },
       { id: 'plugins', label: '插件', desc: '安装、启停与参数配置', icon: 'plugin', countKey: 'plugins' },
     ] },
     { label: '系统', items: [
@@ -3344,6 +3493,10 @@ function renderSettingsPage() {
     case 'models': renderModelSettings(body, null); break;
     case 'plugins': renderPluginSettings(body, null); break;
     case 'digital-humans': renderDigitalHumanSettings(body, null); break;
+    case 'feishu-bots': renderFeishuBotsSettings(body, null); break;
+    case 'skills': renderSkillsSettings(body, null); break;
+    case 'mcp': renderMcpSettings(body, null); break;
+    case 'cli': renderCliSettings(body, null); break;
     case 'presets': renderPresetSettings(body, null); break;
     case 'permissions': renderPermissionSettings(body, null); break;
   }
@@ -3675,6 +3828,470 @@ function wrapInput(key, label, placeholder) {
   group.appendChild(el('label', { class: 'form-label' }, label));
   group.appendChild(el('input', { class: 'form-input', 'data-key': key, placeholder: placeholder }));
   return group;
+}
+
+
+// ── 扩展：Skills 技能（对齐桌面端 SkillsSettings） ──
+function renderSkillsSettings(body, footer) {
+  const SKILL_API = '/api/harness/extensions/skills';
+
+  function wrapField(label, input) {
+    const g = el('div', { class: 'form-group' });
+    g.appendChild(el('label', { class: 'form-label' }, label));
+    g.appendChild(input);
+    return g;
+  }
+
+  const panel = el('section', { class: 'settings-panel' });
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, '已安装技能'),
+      el('p', { class: 'settings-panel-desc' }, '技能目录会注入 Agent，启用后可通过 skill 工具加载。')),
+    el('div', { class: 'settings-panel-actions' },
+      (function () { const b = el('button', { class: 'btn btn-secondary btn-sm' }, '刷新'); b.onclick = load; return b; })(),
+      (function () { const b = el('button', { class: 'btn btn-primary btn-sm' }, '＋ 添加技能'); b.onclick = openInstallModal; return b; })()
+    )
+  ));
+  const listWrap = el('div', { class: 'dh-list' });
+  listWrap.appendChild(el('div', { class: 'dh-empty' }, '加载中…'));
+  panel.appendChild(listWrap);
+  body.appendChild(panel);
+
+  async function load() {
+    try {
+      const skills = await apiRequest(SKILL_API) || [];
+      listWrap.innerHTML = '';
+      if (!skills.length) {
+        listWrap.appendChild(el('div', { class: 'dh-empty' }, '暂无技能。点击右上角「添加技能」安装，安装后可在对话中通过 skill 工具加载。'));
+        return;
+      }
+      for (const skill of skills) listWrap.appendChild(renderSkillCard(skill));
+    } catch (e) {
+      listWrap.innerHTML = '';
+      listWrap.appendChild(el('div', { class: 'dh-empty' }, '加载失败：' + (e && e.message ? e.message : e)));
+    }
+  }
+
+  function renderSkillCard(skill) {
+    const card = el('div', { class: 'model-card' });
+    const head = el('div', { class: 'model-card-header' });
+    const titleWrap = el('div', { class: 'dh-title-wrap' });
+    titleWrap.appendChild(el('div', { class: 'model-card-name' }, skill.name || '未命名'));
+    titleWrap.appendChild(el('div', { class: 'dh-subtitle' }, skill.source || ''));
+    head.appendChild(titleWrap);
+    head.appendChild(el('span', { class: 'dh-health ' + (skill.enabled ? 'dh-health-online' : 'dh-health-unknown') }, skill.enabled ? '启用' : '停用'));
+    card.appendChild(head);
+    if (skill.description || skill.path) {
+      card.appendChild(el('div', { class: 'dh-subtitle' }, skill.description || skill.path));
+    }
+    const actions = el('div', { class: 'dh-actions' });
+    const toggleBtn = el('button', { class: 'btn btn-secondary btn-sm' }, skill.enabled ? '停用' : '启用');
+    toggleBtn.onclick = async function () {
+      toggleBtn.disabled = true;
+      try {
+        await apiRequest(SKILL_API + '/' + encodeURIComponent(skill.name) + '/enabled', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: !skill.enabled })
+        });
+        showToast('技能 ' + skill.name + ' 已' + (skill.enabled ? '停用' : '启用'));
+        load();
+      } catch (e) { showToast('操作失败: ' + e.message); toggleBtn.disabled = false; }
+    };
+    actions.appendChild(toggleBtn);
+    if (skill.removable) {
+      const delBtn = el('button', { class: 'btn btn-danger btn-sm' }, '删除');
+      delBtn.onclick = async function () {
+        if (!window.confirm('确定删除技能「' + skill.name + '」？该操作会从磁盘移除技能目录。')) return;
+        try {
+          await apiRequest(SKILL_API + '/' + encodeURIComponent(skill.name), { method: 'DELETE' });
+          showToast('技能 ' + skill.name + ' 已删除');
+          load();
+        } catch (e) { showToast('删除失败: ' + e.message); }
+      };
+      actions.appendChild(delBtn);
+    }
+    card.appendChild(actions);
+    return card;
+  }
+
+  // 添加技能弹窗：压缩包上传 / Git 仓库两种方式
+  function openInstallModal() {
+    const overlay = el('div', { class: 'modal-overlay' });
+    overlay.onclick = function (e) { if (e.target === overlay) overlay.remove(); };
+    const modal = el('div', { class: 'modal' });
+    modal.appendChild(el('div', { class: 'modal-header' },
+      el('h3', null, '添加技能'),
+      (function () { const c = el('button', { class: 'modal-close' }, '×'); c.onclick = function () { overlay.remove(); }; return c; })()
+    ));
+    const modalBody = el('div', { class: 'modal-body' });
+    modal.appendChild(modalBody);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    const tabBar = el('div', { class: 'dh-actions', style: 'margin-bottom:12px' });
+    const zipTab = el('button', { class: 'btn btn-primary btn-sm' }, '压缩包上传');
+    const gitTab = el('button', { class: 'btn btn-secondary btn-sm' }, 'Git 仓库');
+    tabBar.appendChild(zipTab);
+    tabBar.appendChild(gitTab);
+    modalBody.appendChild(tabBar);
+
+    const zipSubdir = el('input', { class: 'form-input', placeholder: '留空自动搜索 SKILL.md' });
+    const zipName = el('input', { class: 'form-input', placeholder: 'kebab-case，留空自动命名' });
+    const zipFile = el('input', { class: 'form-input', type: 'file', accept: '.zip,application/zip' });
+    const zipForm = el('div', null,
+      wrapField('压缩包内子目录（可选）', zipSubdir),
+      wrapField('技能名（可选）', zipName),
+      wrapField('压缩包文件（.zip，内需含 SKILL.md）', zipFile));
+
+    const gitUrl = el('input', { class: 'form-input', placeholder: 'https://github.com/user/awesome-skill.git' });
+    const gitSubdir = el('input', { class: 'form-input', placeholder: '仓库内技能目录，留空自动搜索 SKILL.md' });
+    const gitName = el('input', { class: 'form-input', placeholder: 'kebab-case，留空自动命名' });
+    const gitForm = el('div', null,
+      wrapField('Git 仓库地址', gitUrl),
+      wrapField('子目录（可选）', gitSubdir),
+      wrapField('技能名（可选）', gitName));
+    gitForm.style.display = 'none';
+
+    const hint = el('div', { class: 'dh-subtitle', style: 'margin-top:8px' });
+    const actions = el('div', { class: 'dh-actions' });
+    modalBody.appendChild(zipForm);
+    modalBody.appendChild(gitForm);
+    modalBody.appendChild(hint);
+    modalBody.appendChild(actions);
+
+    function setMode(mode) {
+      zipForm.style.display = mode === 'zip' ? 'block' : 'none';
+      gitForm.style.display = mode === 'git' ? 'block' : 'none';
+      zipTab.className = 'btn btn-sm ' + (mode === 'zip' ? 'btn-primary' : 'btn-secondary');
+      gitTab.className = 'btn btn-sm ' + (mode === 'git' ? 'btn-primary' : 'btn-secondary');
+      hint.textContent = mode === 'zip'
+        ? '选择 .zip 后立即上传安装；安装完成后出现在上方列表。'
+        : '对话里也可以直接说「帮我装一个 xx 技能」让 Agent 自行拉取安装。';
+      actions.innerHTML = '';
+      if (mode !== 'git') return;
+      const installBtn = el('button', { class: 'btn btn-primary btn-sm' }, '从 Git 安装');
+      installBtn.onclick = async function () {
+        if (!gitUrl.value.trim()) return;
+        installBtn.disabled = true;
+        installBtn.textContent = '拉取安装中…';
+        try {
+          const r = await apiRequest(SKILL_API + '/install', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              gitUrl: gitUrl.value.trim(),
+              subdir: gitSubdir.value.trim() || undefined,
+              name: gitName.value.trim() || undefined
+            })
+          });
+          showToast((r && r.message) || '安装完成');
+          overlay.remove();
+          load();
+        } catch (e) {
+          showToast('安装失败: ' + e.message);
+          installBtn.disabled = false;
+          installBtn.textContent = '从 Git 安装';
+        }
+      };
+      actions.appendChild(installBtn);
+    }
+    zipTab.onclick = function () { setMode('zip'); };
+    gitTab.onclick = function () { setMode('git'); };
+    zipFile.onchange = async function () {
+      const file = zipFile.files && zipFile.files[0];
+      if (!file) return;
+      const form = new FormData();
+      form.append('file', file);
+      if (zipSubdir.value.trim()) form.append('subdir', zipSubdir.value.trim());
+      if (zipName.value.trim()) form.append('name', zipName.value.trim());
+      showToast('上传安装中…');
+      try {
+        const r = await apiRequest(SKILL_API + '/upload', { method: 'POST', body: form });
+        showToast((r && r.message) || '安装完成');
+        overlay.remove();
+        load();
+      } catch (e) { showToast('上传失败: ' + e.message); }
+    };
+    setMode('zip');
+  }
+
+  load();
+}
+
+// ── 扩展：MCP 服务（对齐桌面端 McpSettings） ──
+function renderMcpSettings(body, footer) {
+  const MCP_API = '/api/harness/extensions/mcp/servers';
+
+  function parseKeyValueText(text) {
+    const result = {};
+    for (const line of String(text || '').split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const colon = trimmed.indexOf(':');
+      const eq = trimmed.indexOf('=');
+      const splitAt = colon >= 0 && (eq < 0 || colon < eq) ? colon : eq;
+      if (splitAt <= 0) continue;
+      const key = trimmed.slice(0, splitAt).trim();
+      const value = trimmed.slice(splitAt + 1).trim();
+      if (key) result[key] = value;
+    }
+    return result;
+  }
+  function wrapField(label, input) {
+    const g = el('div', { class: 'form-group' });
+    g.appendChild(el('label', { class: 'form-label' }, label));
+    g.appendChild(input);
+    return g;
+  }
+
+  const panel = el('section', { class: 'settings-panel' });
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, 'MCP 服务'),
+      el('p', { class: 'settings-panel-desc' }, '连接后远端工具以 mcp__服务名__工具名 注册，对话中直接使用。保存前会自动测试连通性。')),
+    el('div', { class: 'settings-panel-actions' },
+      (function () { const b = el('button', { class: 'btn btn-primary btn-sm' }, '＋ 添加 MCP 服务'); b.onclick = function () { openDraft(null); }; return b; })()
+    )
+  ));
+  const draftWrap = el('div', null);
+  const listWrap = el('div', { class: 'dh-list' });
+  listWrap.appendChild(el('div', { class: 'dh-empty' }, '加载中…'));
+  panel.appendChild(draftWrap);
+  panel.appendChild(listWrap);
+  body.appendChild(panel);
+
+  async function load() {
+    try {
+      const servers = await apiRequest(MCP_API) || [];
+      listWrap.innerHTML = '';
+      if (!servers.length) {
+        listWrap.appendChild(el('div', { class: 'dh-empty' }, '暂无 MCP 服务配置。'));
+        return;
+      }
+      for (const server of servers) listWrap.appendChild(renderServerCard(server));
+    } catch (e) {
+      listWrap.innerHTML = '';
+      listWrap.appendChild(el('div', { class: 'dh-empty' }, '加载失败：' + (e && e.message ? e.message : e)));
+    }
+  }
+
+  function renderServerCard(server) {
+    const card = el('div', { class: 'model-card' });
+    const head = el('div', { class: 'model-card-header' });
+    const titleWrap = el('div', { class: 'dh-title-wrap' });
+    titleWrap.appendChild(el('div', { class: 'model-card-name' }, server.name || '未命名'));
+    titleWrap.appendChild(el('div', { class: 'dh-subtitle' },
+      server.transport + ' · ' + (server.presetSource === 'preset' ? '内置预置' : '自定义')));
+    head.appendChild(titleWrap);
+    head.appendChild(el('span', { class: 'dh-health dh-health-unknown' }, server.transport));
+    card.appendChild(head);
+    const detail = server.transport === 'stdio'
+      ? [server.command].concat(server.args || []).filter(Boolean).join(' ')
+      : server.url;
+    if (detail) card.appendChild(el('div', { class: 'dh-subtitle' }, detail));
+    const actions = el('div', { class: 'dh-actions' });
+    const editBtn = el('button', { class: 'btn btn-secondary btn-sm' }, '编辑');
+    editBtn.onclick = function () { openDraft(server); };
+    const delBtn = el('button', { class: 'btn btn-danger btn-sm' }, '移除');
+    delBtn.onclick = async function () {
+      if (!window.confirm('确定移除 MCP server「' + server.name + '」？其工具会立即注销。')) return;
+      try {
+        await apiRequest(MCP_API + '/' + encodeURIComponent(server.name), { method: 'DELETE' });
+        showToast('MCP server ' + server.name + ' 已移除');
+        load();
+      } catch (e) { showToast('移除失败: ' + e.message); }
+    };
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+    card.appendChild(actions);
+    return card;
+  }
+
+  function openDraft(server) {
+    const draft = {
+      editingName: server ? server.name : null,
+      name: server ? server.name : '',
+      transport: (server && server.transport) || 'stdio',
+      command: (server && server.command) || '',
+      argsText: server && server.args ? server.args.join(' ') : '',
+      url: (server && server.url) || '',
+      headersText: server && server.headers
+        ? Object.keys(server.headers).map(function (k) { return k + ': ' + server.headers[k]; }).join('\n')
+        : ''
+    };
+
+    function buildPayload() {
+      return {
+        name: draft.name.trim(),
+        transport: draft.transport,
+        command: draft.transport === 'stdio' ? draft.command.trim() : undefined,
+        args: draft.transport === 'stdio' && draft.argsText.trim() ? draft.argsText.trim().split(/\s+/) : undefined,
+        url: draft.transport !== 'stdio' ? draft.url.trim() : undefined,
+        headers: draft.transport !== 'stdio' && draft.headersText.trim() ? parseKeyValueText(draft.headersText) : undefined
+      };
+    }
+
+    draftWrap.innerHTML = '';
+    const box = el('div', { class: 'model-card' });
+    const grid = el('div', { class: 'settings-form-grid' });
+    const nameInput = el('input', { class: 'form-input', value: draft.name, placeholder: '例如：filesystem' });
+    if (draft.editingName) nameInput.disabled = 'disabled';
+    nameInput.oninput = function () { draft.name = nameInput.value; };
+    grid.appendChild(wrapField('名称', nameInput));
+
+    const transportSel = el('select', { class: 'form-input' },
+      el('option', { value: 'stdio' }, 'stdio（本地进程）'),
+      el('option', { value: 'sse' }, 'SSE（远程）'),
+      el('option', { value: 'streamable-http' }, 'Streamable HTTP（远程）'));
+    transportSel.value = draft.transport;
+    grid.appendChild(wrapField('传输方式', transportSel));
+
+    const commandInput = el('input', { class: 'form-input', value: draft.command, placeholder: '例如：npx' });
+    commandInput.oninput = function () { draft.command = commandInput.value; };
+    const argsInput = el('input', { class: 'form-input', value: draft.argsText, placeholder: '-y @modelcontextprotocol/server-filesystem /tmp' });
+    argsInput.oninput = function () { draft.argsText = argsInput.value; };
+    const stdioFields = el('div', null, wrapField('启动命令', commandInput), wrapField('参数（空格分隔）', argsInput));
+
+    const urlInput = el('input', { class: 'form-input', value: draft.url, placeholder: 'https://example.com/mcp' });
+    urlInput.oninput = function () { draft.url = urlInput.value; };
+    const headersInput = el('textarea', { class: 'form-input', placeholder: 'Authorization: Bearer sk-...', style: 'min-height:64px' });
+    headersInput.value = draft.headersText;
+    headersInput.oninput = function () { draft.headersText = headersInput.value; };
+    const remoteFields = el('div', null, wrapField('URL', urlInput), wrapField('请求头（每行 key: value）', headersInput));
+
+    grid.appendChild(stdioFields);
+    grid.appendChild(remoteFields);
+    box.appendChild(grid);
+
+    const resultBox = el('div', null);
+    const row = el('div', { class: 'dh-actions' });
+    const testBtn = el('button', { class: 'btn btn-secondary btn-sm' }, '测试连接');
+    const cancelBtn = el('button', { class: 'btn btn-secondary btn-sm' }, '取消');
+    const saveBtn = el('button', { class: 'btn btn-primary btn-sm' }, '保存并连接');
+    row.appendChild(testBtn);
+    row.appendChild(cancelBtn);
+    row.appendChild(saveBtn);
+    box.appendChild(row);
+    box.appendChild(resultBox);
+    draftWrap.appendChild(box);
+
+    function syncTransport() {
+      draft.transport = transportSel.value;
+      stdioFields.style.display = draft.transport === 'stdio' ? 'block' : 'none';
+      remoteFields.style.display = draft.transport === 'stdio' ? 'none' : 'block';
+    }
+    transportSel.onchange = syncTransport;
+    syncTransport();
+
+    cancelBtn.onclick = function () { draftWrap.innerHTML = ''; };
+    testBtn.onclick = async function () {
+      if (!draft.name.trim()) { showToast('请先填写名称'); return; }
+      testBtn.disabled = true; saveBtn.disabled = true; testBtn.textContent = '连接中…';
+      resultBox.innerHTML = '';
+      try {
+        const r = await apiRequest(MCP_API + '/test', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildPayload())
+        });
+        resultBox.appendChild(el('div', { class: 'dh-subtitle', style: r && r.success ? 'color:#1a7f37' : 'color:#c0392b' },
+          (r && r.message || '') + (r && r.tools && r.tools.length ? '（工具：' + r.tools.join('、') + '）' : '')));
+      } catch (e) {
+        resultBox.appendChild(el('div', { class: 'dh-subtitle', style: 'color:#c0392b' }, '测试失败：' + e.message));
+      }
+      testBtn.disabled = false; saveBtn.disabled = false; testBtn.textContent = '测试连接';
+    };
+    saveBtn.onclick = async function () {
+      if (!draft.name.trim()) { showToast('请先填写名称'); return; }
+      testBtn.disabled = true; saveBtn.disabled = true; saveBtn.textContent = '处理中…';
+      resultBox.innerHTML = '';
+      try {
+        const r = await apiRequest(MCP_API, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildPayload())
+        });
+        if (r && r.success) {
+          showToast('MCP server ' + (r.name || draft.name) + '：' + (r.message || '已连接'));
+          draftWrap.innerHTML = '';
+          load();
+          return;
+        }
+        resultBox.appendChild(el('div', { class: 'dh-subtitle', style: 'color:#c0392b' }, (r && r.message) || '保存失败'));
+      } catch (e) {
+        resultBox.appendChild(el('div', { class: 'dh-subtitle', style: 'color:#c0392b' }, '保存失败：' + e.message));
+      }
+      testBtn.disabled = false; saveBtn.disabled = false; saveBtn.textContent = '保存并连接';
+    };
+  }
+
+  load();
+}
+
+// ── 扩展：CLI 子智能体（对齐桌面端 CliSettings） ──
+function renderCliSettings(body, footer) {
+  const CLI_API = '/api/harness/extensions/cli';
+
+  function wrapField(label, input) {
+    const g = el('div', { class: 'form-group' });
+    g.appendChild(el('label', { class: 'form-label' }, label));
+    g.appendChild(input);
+    return g;
+  }
+
+  const panel = el('section', { class: 'settings-panel' });
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, 'CLI 子智能体'),
+      el('p', { class: 'settings-panel-desc' }, '配置外部 CLI 命令（如 claude、codex），Agent 可通过 subagent 工具调度它们执行任务。'))
+  ));
+  const formWrap = el('div', null, el('div', { class: 'dh-empty' }, '加载中…'));
+  panel.appendChild(formWrap);
+  body.appendChild(panel);
+
+  async function load() {
+    try {
+      const config = await apiRequest(CLI_API) || {};
+      formWrap.innerHTML = '';
+      const grid = el('div', { class: 'settings-form-grid' });
+      function field(label, key, placeholder) {
+        const input = el('input', { class: 'form-input', value: config[key] || '', placeholder: placeholder });
+        input.oninput = function () { config[key] = input.value; };
+        grid.appendChild(wrapField(label, input));
+      }
+      field('claude 命令', 'claudeCommand', 'claude');
+      field('codex 命令', 'codexCommand', 'codex');
+      field('ACP 子智能体命令', 'acpSubagentCommand', '例如：acp-cli --stdio');
+      field('ACP 主通道命令', 'acpCommand', '留空使用内置通道（修改需重启服务）');
+      formWrap.appendChild(grid);
+
+      const actions = el('div', { class: 'dh-actions' });
+      const saveBtn = el('button', { class: 'btn btn-primary btn-sm' }, '保存 CLI 配置');
+      saveBtn.onclick = async function () {
+        saveBtn.disabled = true;
+        saveBtn.textContent = '保存中…';
+        try {
+          const saved = await apiRequest(CLI_API, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config)
+          });
+          showToast((saved && saved.effectiveNotice) || 'CLI 配置已保存');
+          load();
+        } catch (e) {
+          showToast('保存失败: ' + e.message);
+          saveBtn.disabled = false;
+          saveBtn.textContent = '保存 CLI 配置';
+        }
+      };
+      actions.appendChild(saveBtn);
+      formWrap.appendChild(actions);
+      if (config.effectiveNotice) {
+        formWrap.appendChild(el('div', { class: 'dh-subtitle', style: 'margin-top:8px' }, config.effectiveNotice));
+      }
+    } catch (e) {
+      formWrap.innerHTML = '';
+      formWrap.appendChild(el('div', { class: 'dh-empty' }, '加载失败：' + (e && e.message ? e.message : e)));
+    }
+  }
+
+  load();
 }
 
 // ── 插件管理 ───────────────────────────────
@@ -4543,6 +5160,217 @@ async function loadCollabHumans() {
   return collabHumansCache;
 }
 
+// ── 飞书 Bot 设置（内嵌面板，对齐桌面端 BotsSettings） ──
+function renderFeishuBotsSettings(body, footer) {
+  const API = '/api/harness/bots';
+  let editingId = null;
+  let pairingPoll = null;
+
+  const panel = el('section', { class: 'settings-panel' });
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, '飞书 Bot'),
+      el('p', { class: 'settings-panel-desc' }, '一键绑定飞书，管理 Bot 连接、启停与测试。')),
+    el('div', { class: 'settings-panel-actions' },
+      (function () { const b = el('button', { class: 'btn btn-secondary btn-sm' }, '刷新'); b.onclick = load; return b; })()
+    )
+  ));
+
+  // 一键扫码绑定
+  const pairCard = el('div', { class: 'bots-card' });
+  pairCard.appendChild(el('h3', { class: 'bots-card-title' }, '一键扫码绑定'));
+  const pairGrid = el('div', { class: 'settings-form-grid' });
+  const pairNameInput = el('input', { class: 'form-input', placeholder: 'DeepSeek Bot' });
+  const pairAgentInput = el('input', { class: 'form-input', placeholder: 'feishu-agent' });
+  pairGrid.appendChild(wrapField('Bot 名称', pairNameInput));
+  pairGrid.appendChild(wrapField('Agent 基 ID', pairAgentInput));
+  pairCard.appendChild(pairGrid);
+  const pairRow = el('div', { class: 'bots-actions' });
+  const pairStart = el('button', { class: 'btn btn-primary btn-sm' }, '发起一键绑定');
+  const pairCancel = el('button', { class: 'btn btn-secondary btn-sm', style: 'display:none' }, '取消配对');
+  pairRow.appendChild(pairStart);
+  pairRow.appendChild(pairCancel);
+  pairCard.appendChild(pairRow);
+  const pairingBox = el('div', { class: 'pairing-box' });
+  pairCard.appendChild(pairingBox);
+  panel.appendChild(pairCard);
+
+  // 手动配置 Bot
+  const formCard = el('div', { class: 'bots-card' });
+  formCard.appendChild(el('h3', { class: 'bots-card-title' }, '手动配置 Bot'));
+  const formGrid = el('div', { class: 'settings-form-grid' });
+  const fName = el('input', { class: 'form-input', placeholder: 'My Bot' });
+  const fAppid = el('input', { class: 'form-input', placeholder: 'cli_xxx' });
+  const fSecret = el('input', { class: 'form-input', type: 'password', placeholder: 'app secret（留空则不修改）' });
+  const fAgent = el('input', { class: 'form-input', placeholder: 'feishu-agent' });
+  const fCwd = el('input', { class: 'form-input', placeholder: '/path/to/project' });
+  formGrid.appendChild(wrapField('Bot 名称', fName));
+  formGrid.appendChild(wrapField('App ID', fAppid));
+  formGrid.appendChild(wrapField('App Secret', fSecret));
+  formGrid.appendChild(wrapField('Agent 基 ID', fAgent));
+  formGrid.appendChild(wrapField('工作目录（可选）', fCwd));
+  formCard.appendChild(formGrid);
+  const mentionWrap = el('label', { class: 'bots-check' });
+  const fMention = el('input', { type: 'checkbox' });
+  fMention.checked = true;
+  mentionWrap.appendChild(fMention);
+  mentionWrap.appendChild(el('span', null, '群聊需 @ 才回复'));
+  formCard.appendChild(mentionWrap);
+  const formRow = el('div', { class: 'bots-actions' });
+  const fSubmit = el('button', { class: 'btn btn-primary btn-sm' }, '保存');
+  const fReset = el('button', { class: 'btn btn-secondary btn-sm' }, '清空');
+  const fEditing = el('span', { class: 'bots-editing' });
+  formRow.appendChild(fSubmit);
+  formRow.appendChild(fReset);
+  formRow.appendChild(fEditing);
+  formCard.appendChild(formRow);
+  panel.appendChild(formCard);
+
+  // Bot 列表
+  const listCard = el('div', { class: 'bots-card' });
+  listCard.appendChild(el('h3', { class: 'bots-card-title' }, 'Bot 列表'));
+  const table = el('table', { class: 'bots-table' });
+  table.appendChild(el('thead', null, el('tr', null,
+    el('th', null, '名称'), el('th', null, 'App ID'), el('th', null, '密钥'),
+    el('th', null, '启用'), el('th', null, '连接'), el('th', null, '最近更新'), el('th', null, '操作'))));
+  const tbody = el('tbody');
+  table.appendChild(tbody);
+  listCard.appendChild(table);
+  panel.appendChild(listCard);
+
+  body.appendChild(panel);
+
+  function wrapField(label, input) {
+    const g = el('div', { class: 'form-group' });
+    g.appendChild(el('label', { class: 'form-label' }, label));
+    g.appendChild(input);
+    return g;
+  }
+  function stateTag(s) {
+    const online = s === 'CONNECTED';
+    return el('span', { class: 'bots-tag ' + (online ? 'ok' : (s === 'ERROR' ? 'err' : 'warn')) }, s || 'IDLE');
+  }
+  function mkBtn(label, act, id, danger) {
+    return el('button', { class: 'btn btn-sm ' + (danger ? 'btn-danger' : 'btn-secondary'), 'data-act': act, 'data-id': id }, label);
+  }
+  async function load() {
+    try {
+      const bots = (await apiRequest(API)) || [];
+      tbody.innerHTML = '';
+      if (!bots.length) {
+        tbody.appendChild(el('tr', null, el('td', { colspan: '7', class: 'muted' }, '暂无 Bot。可在上方「一键扫码绑定」或「手动配置 Bot」新增。')));
+        return;
+      }
+      for (const b of bots) {
+        tbody.appendChild(el('tr', null,
+          el('td', null, b.botName || ''),
+          el('td', { class: 'muted' }, b.appId || ''),
+          el('td', null, b.secretConfigured ? el('span', { class: 'bots-tag ok' }, '已配置') : el('span', { class: 'bots-tag warn' }, '未配置')),
+          el('td', null, b.enabled ? el('span', { class: 'bots-tag ok' }, '启用') : el('span', { class: 'bots-tag' }, '禁用')),
+          el('td', null, stateTag(b.connectionState)),
+          el('td', { class: 'muted' }, (b.updatedAt || '').replace('T', ' ').slice(0, 19)),
+          el('td', null, el('div', { class: 'row-actions' },
+            mkBtn('启用', 'enable', b.botId),
+            mkBtn('禁用', 'disable', b.botId),
+            mkBtn('测试', 'test', b.botId),
+            mkBtn('编辑', 'edit', b.botId),
+            mkBtn('删除', 'del', b.botId, true)
+          ))
+        ));
+      }
+    } catch (e) { showToast('加载失败：' + e.message); }
+  }
+  async function act(act, id) {
+    try {
+      if (act === 'del') { if (!confirm('确认删除 Bot ' + id + '？')) return; await apiRequest(API + '/' + id, { method: 'DELETE' }); showToast('已删除'); }
+      else if (act === 'edit') { await startEdit(id); return; }
+      else { await apiRequest(API + '/' + id + '/' + act, { method: 'POST' }); showToast('已' + (act === 'enable' ? '启用' : act === 'disable' ? '禁用' : '测试')); }
+      await load();
+    } catch (e) { showToast('操作失败：' + e.message); }
+  }
+  async function startEdit(id) {
+    try {
+      const bots = await apiRequest(API);
+      const b = (bots || []).filter(function (x) { return x.botId === id; })[0];
+      if (!b) return;
+      editingId = id;
+      fName.value = b.botName || '';
+      fAppid.value = b.appId || '';
+      fSecret.value = '';
+      fAgent.value = b.agentBaseId || '';
+      fCwd.value = b.cwd || '';
+      fMention.checked = !!b.groupRequireMention;
+      fEditing.textContent = '正在编辑：' + id;
+      formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (e) { showToast('读取失败：' + e.message); }
+  }
+  async function submit() {
+    const payload = {
+      botName: fName.value.trim() || null,
+      appId: fAppid.value.trim() || null,
+      appSecret: fSecret.value || null,
+      agentBaseId: fAgent.value.trim() || null,
+      cwd: fCwd.value.trim() || null,
+      groupRequireMention: fMention.checked
+    };
+    try {
+      if (editingId) await apiRequest(API + '/' + editingId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      else await apiRequest(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      showToast('保存成功'); resetForm(); await load();
+    } catch (e) { showToast('保存失败：' + e.message); }
+  }
+  function resetForm() {
+    editingId = null;
+    fEditing.textContent = '';
+    [fName, fAppid, fSecret, fAgent, fCwd].forEach(function (i) { i.value = ''; });
+    fMention.checked = true;
+  }
+  async function startPairing() {
+    try {
+      const d = await apiRequest(API + '/pairing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ botName: pairNameInput.value.trim() || null, agentBaseId: pairAgentInput.value.trim() || null }) });
+      showPairing(d); pollPairing(d.pairingId);
+    } catch (e) { showToast('发起配对失败：' + e.message); }
+  }
+  function showPairing(d) {
+    pairingBox.style.display = 'block';
+    pairingBox.innerHTML = '';
+    pairingBox.appendChild(el('div', null, '状态：' + (d.status || '')));
+    pairingBox.appendChild(el('div', null, '用户码：', el('b', null, d.userCode || ''), '（剩余 ' + (d.expireIn || 0) + ' 秒）'));
+    if (d.url) pairingBox.appendChild(el('div', null, '扫码链接：', el('a', { href: d.url, target: '_blank', class: 'pairing-link' }, d.url)));
+    if (d.error) pairingBox.appendChild(el('div', { class: 'pairing-error' }, d.error));
+    pairCancel.style.display = d.status === 'WAITING' ? 'inline-block' : 'none';
+    pairCancel.dataset.pid = d.pairingId;
+  }
+  function pollPairing(pid) {
+    clearInterval(pairingPoll);
+    pairingPoll = setInterval(async function () {
+      try {
+        const d = await apiRequest(API + '/pairing/' + pid);
+        showPairing(d);
+        if (['SAVED', 'FAILED', 'EXPIRED', 'CANCELLED'].indexOf(d.status) !== -1) {
+          clearInterval(pairingPoll); await load();
+        }
+      } catch (e) { clearInterval(pairingPoll); }
+    }, 3000);
+  }
+
+  pairStart.onclick = startPairing;
+  pairCancel.onclick = async function () {
+    const pid = this.dataset.pid;
+    try { await apiRequest(API + '/pairing/' + pid, { method: 'DELETE' }); showToast('已取消'); clearInterval(pairingPoll); pairingBox.style.display = 'none'; }
+    catch (e) { showToast('取消失败：' + e.message); }
+  };
+  fSubmit.onclick = submit;
+  fReset.onclick = resetForm;
+  tbody.addEventListener('click', function (ev) {
+    const t = ev.target;
+    if (t.tagName !== 'BUTTON') return;
+    act(t.dataset.act, t.dataset.id);
+  });
+
+  load();
+}
+
 // 设置页导航数量徽标：模型渠道数 / 已安装插件数 / 数字人数
 async function refreshSettingsNavCounts() {
   collabHumansCache = null;
@@ -4992,6 +5820,20 @@ function formatSessionAge(iso) {
     const days = Math.max(0, Math.floor((todayStart - targetStart) / 86400000));
     if (days === 0) return '今天';
     return days + '天';
+  } catch (_) { return ''; }
+}
+
+// 侧边栏会话行时间：MM/DD HH:mm（对齐桌面端）
+function formatSessionTime(iso) {
+  try {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const M = String(d.getMonth() + 1).padStart(2, '0');
+    const D = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    return M + '/' + D + ' ' + h + ':' + m;
   } catch (_) { return ''; }
 }
 
@@ -5942,12 +6784,16 @@ async function loadSessionHistory() {
       state.hasMoreSessions = page.length === limit;
       // P1: 将历史会话恢复到 state.sessions 中
       for (const hist of page) {
+        // 本地删除（隐藏）过的历史会话不再回流
+        if (isSessionHiddenId(hist.agentId) || (hist.sessionId && isSessionHiddenId(hist.sessionId))) continue;
         // 避免重复添加已存在的会话
         const existing = state.sessions.find(s => s.agentId === hist.agentId || s.agentId === hist.sessionId);
         if (!existing) {
           const sess = new ChatSession(hist.agentId || hist.sessionId || ('agent-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6)));
           sess.sessionId = hist.sessionId || null;
           sess.title = hist.title || hist.lastMessage || '历史对话';
+          const customTitle = state.customSessionTitles[hist.agentId || hist.sessionId];
+          if (customTitle) sess.title = customTitle;
           sess.lastMessage = hist.lastMessage || '';
           sess.createdAt = hist.createdAt || hist.startTime || new Date().toISOString();
           // 契约 v1 session-list：updatedAt / workspaceId / modelCode
@@ -5982,7 +6828,6 @@ async function loadMoreSessions() {
 document.addEventListener('keydown', function(e) {
   // Esc 关闭模态框
   if (e.key === 'Escape') {
-    closeSessionMenu();
     const overlay = $('.modal-overlay');
     if (overlay) { overlay.remove(); return; }
     const slash = $('#slash-suggestions');

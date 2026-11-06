@@ -34,6 +34,19 @@
   - 除飞书主线外，本版本同步对齐参考源 `v0.2.2-alpha.2` 升级指南的平台能力（`llm-request-purpose-declarations` / `schedule-agent-tools` / `schedule-remote-host-tasks`）；另三条升级项（`context-menu-target` / `forge-git-permissions` / `sdk-run-commands`）在本项目无对应体系，不适用。
   - 平台能力对齐不引入新的第三方依赖，不新增 Maven 模块，不新增数据库表（调度在 standalone 模式仍为内存实现）。
 
+### 修订记录（2026-11-05 ~ 2026-11-06）
+
+- **移除移动端设备配对功能**（功能未上线，整体下线）：
+  - **dsh-java-api**：删除 `IDeviceApi`、`DeviceDTO`、`DevicePairingCodeDTO`、`DevicePairRequest`、`DevicePairResult`
+  - **dsh-java-trigger**：删除 `DeviceController`（`/api/devices/*` 全部端点）
+  - **dsh-java-case**：删除 `DevicePairingUseCase`
+  - **dsh-java-infrastructure**：删除 `InMemoryDeviceRepository`
+  - **dsh-java-domain**：删除 `DeviceCredential`、`IDeviceRepository`
+  - **dsh-java-trigger**：`ApiKeyAuthInterceptor` 同步移除 `devt_` 前缀设备 Token 校验分支（改为无参构造）
+- **架构修复**：`FeishuInboundConfig#feishuInboundHandler` 返回类型由 domain 端口 `IFeishuInboundHandler` 改为 case 层 `FeishuBotInboundHandler`（实现该端口），消除 trigger→domain 分层违规，修复 ArchUnit `triggerMustOnlyDependOnApiAndCase` 测试失败
+- **发布配置**：`plugins/dsh-plugin-archetype` 增加 `skipPublishing=true`，`mvn deploy` 不再发布该模块（`central-publishing-maven-plugin` 0.10.0 忽略 `maven.deploy.skip`，必须用其自身的 `skipPublishing` 排除）
+- **SQL 脚本**：`lead` 关键字调整为 `leader`；0.2.1 设计文件更新并标记完成
+
 ## 版本号：0.2.1
 - 更新日期：2026-10-12 - 2026-10-16
 - 详情：docs/spec/0.2.1/release-v0.2.1-development-notes.md

@@ -28,7 +28,7 @@ public class SampleToolsPlugin extends AbstractHarnessPlugin {
     private final AtomicInteger hookInvocationCount = new AtomicInteger();
 
     public SampleToolsPlugin() {
-        super("sample-tools");
+        super("sample-tools-plugin");
     }
 
     @Override
@@ -47,12 +47,12 @@ public class SampleToolsPlugin extends AbstractHarnessPlugin {
         super.configure(context);
 
         context.registerSystemPrompt("capabilities", 10,
-                "## Plugin capabilities\n- sample-tools provides weather_query and file_summary tools.\n"
+                "## Plugin capabilities\n- sample-tools-plugin provides weather_query and file_summary tools.\n"
                 + "- A PRE_TOOL_USE hook audits every shell_execute call.\n"
                 + "- Plugin config key 'audit-enabled' controls hook behavior.");
 
         context.subscribe("tool.called", event ->
-                log.info("[sample-tools] received event: source={}, payload={}",
+                log.info("[sample-tools-plugin] received event: source={}, payload={}",
                         event.source(), event.payload()));
 
         context.registerHook("PRE_TOOL_USE", (toolName, payloadJson) -> {
@@ -65,14 +65,14 @@ public class SampleToolsPlugin extends AbstractHarnessPlugin {
                 return null;
             }
             int count = hookInvocationCount.incrementAndGet();
-            log.info("[sample-tools] PRE_TOOL_USE audit #{}, tool={}, payload={}",
+            log.info("[sample-tools-plugin] PRE_TOOL_USE audit #{}, tool={}, payload={}",
                     count, toolName, payloadJson);
             return PluginHookResult.context(
-                    "Audit notice: shell_execute call #" + count + " audited by sample-tools plugin.");
+                    "Audit notice: shell_execute call #" + count + " audited by sample-tools-plugin plugin.");
         });
 
         context.registerHook("POST_TOOL_USE", (toolName, payloadJson) -> {
-            if (toolName != null && toolName.startsWith("plugin__sample-tools__")) {
+            if (toolName != null && toolName.startsWith("plugin__sample-tools-plugin__")) {
                 context.emit("tool.called", Map.of(
                         "tool", toolName,
                         "payload", payloadJson == null ? "" : payloadJson
@@ -81,8 +81,8 @@ public class SampleToolsPlugin extends AbstractHarnessPlugin {
             return null;
         });
 
-        String greeting = context.getConfig("greeting", "Hello from sample-tools!");
-        log.info("[sample-tools] configure() called, greeting='{}'", greeting);
+        String greeting = context.getConfig("greeting", "Hello from sample-tools-plugin!");
+        log.info("[sample-tools-plugin] configure() called, greeting='{}'", greeting);
         context.emit("plugin.custom-event", greeting);
     }
 }

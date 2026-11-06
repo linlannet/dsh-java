@@ -50,15 +50,6 @@ public class ApiKeyAuthInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 未配置密钥时全部放行，用于本地开发模式
-        if (configuredKeys == null || configuredKeys.isBlank()) {
-            if (gatewayStreamRequest) {
-                log.info("[GatewayStream] HTTP 请求认证放行，本地未配置 API Key，method={}，path={}",
-                        request.getMethod(), path);
-            }
-            return true;
-        }
-
         // 校验 X-API-Key 或 Authorization 请求头
         String provided = request.getHeader("X-API-Key");
         if (provided == null || provided.isBlank()) {
@@ -66,6 +57,15 @@ public class ApiKeyAuthInterceptor implements HandlerInterceptor {
             if (auth != null && auth.startsWith("Bearer ")) {
                 provided = auth.substring(7);
             }
+        }
+
+        // 未配置主密钥时全部放行，用于本地开发模式
+        if (configuredKeys == null || configuredKeys.isBlank()) {
+            if (gatewayStreamRequest) {
+                log.info("[GatewayStream] HTTP 请求认证放行，本地未配置 API Key，method={}，path={}",
+                        request.getMethod(), path);
+            }
+            return true;
         }
 
         if (provided != null) {

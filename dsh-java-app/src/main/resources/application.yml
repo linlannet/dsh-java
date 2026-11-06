@@ -8,6 +8,20 @@ logging:
 spring:
   application:
     name: dsh-java
+  # Web 端附件上传（POST /api/agent/attachments）与插件 JAR 分析共用 multipart；
+  # 默认 1MB 会直接拒掉常规文件，放宽到 30MB（服务端控制器另有二次校验）
+  servlet:
+    multipart:
+      max-file-size: 30MB
+      max-request-size: 35MB
+  # 静态资源禁启发式缓存：Spring 默认只发 Last-Modified，浏览器会按启发式规则
+  # 缓存 index.html / app.js 数小时，导致改了前端代码刷新后仍加载旧版本
+  # （曾引发"附件选完不显示"等假象）。强制每次校验，保证拿到最新静态资源。
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          no-cache: true
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/dsh_java?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: lldba
@@ -38,3 +52,16 @@ mybatis:
     map-underscore-to-camel-case: true
     default-fetch-size: 100
     default-statement-timeout: 30
+
+# 运维健康检查：仅暴露 health/info，避免泄漏运行时细节
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+  health:
+    db:
+      enabled: true

@@ -94,9 +94,9 @@
 
 ### 1.1.4 参考源实现逐一对位映射（总览）
 
-参考源 `refer_source/deepseek-harness-java-app`（v0.1.9，包名 `cn.xiaofuge.deepseek.harness.*`，业务类在 `BOOT-INF/lib/*.jar`，经 `javap -p` 逐类核验）为飞书接入的原始实现。下表给出**参考源类 → 本项目落位类**的逐一对位，作为后续实现的权威映射基线。
+参考源 `refer_source/deepseek-harness-java-app`
 
-| 参考源类（cn.xiaofuge.deepseek.harness.*） | 参考源所在层 | 本项目落位类 | 本项目包路径 |
+| 参考源类  | 参考源所在层 | 本项目落位类 | 本项目包路径 |
 |---------|---------|---------|---------|
 | `trigger.http.BotController` | trigger | `BotController` | `net.linlan.dsh.trigger.http` |
 | `api.IBotApi` | api | `IBotApi` | `net.linlan.dsh.api` |
@@ -141,7 +141,7 @@
 
 #### 1.1.5.1 trigger 层：BotController
 
-- 对位类：`cn.xiaofuge.deepseek.harness.trigger.http.BotController` → `net.linlan.dsh.trigger.http.BotController`。
+- 对位类：`net.linlan.dsh.trigger.http.BotController`。
 
 **字段映射（1 项）**
 

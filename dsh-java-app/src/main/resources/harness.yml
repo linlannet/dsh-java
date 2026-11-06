@@ -24,6 +24,8 @@ harness:
 
   agent:
     default-cwd: ${HARNESS_AGENT_CWD:${user.dir}}
+    # 单个工具调用最大执行时长（毫秒），超时后记为 TOOL_TIMEOUT 失败，不再无限阻塞回合；<=0 表示不设超时
+    tool-timeout-ms: 300000
     compaction:
       pressure-threshold-tokens: 100000
       min-messages-to-compact: 6
@@ -95,7 +97,7 @@ harness:
           source-path: ./plugins/dsh-demo-plugin
           entrypoint: index.js
           auto-start: true
-        - plugin-id: sample-tools
+        - plugin-id: sample-tools-plugin
           display-name: Sample Tools Plugin
           plugin-version: 1.0.0
           runtime-type: JAVA_NATIVE

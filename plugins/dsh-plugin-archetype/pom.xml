@@ -50,5 +50,19 @@
                 <version>3.3.0</version>
             </extension>
         </extensions>
+        <plugins>
+            <!-- archetype 仅本地使用（生成插件工程骨架），不参与 Maven Central 发布。
+                 注意：central-publishing-maven-plugin 不识别 maven.deploy.skip，
+                 必须用其自身的 skipPublishing 配置才能排除模块。 -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.10.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <skipPublishing>true</skipPublishing>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 </project>

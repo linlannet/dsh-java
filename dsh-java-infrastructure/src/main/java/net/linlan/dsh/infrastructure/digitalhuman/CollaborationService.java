@@ -38,6 +38,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -63,13 +64,14 @@ public class CollaborationService implements ICollaborationService {
     private static final Pattern ASK_PATTERN = Pattern.compile("\\[\\[ASK:@([^\\]]+)\\]\\s*([^\\]]*)]");
     private static final long SSE_HEARTBEAT_INTERVAL_MS = 15000L;
 
-    public CollaborationService(ICollaborationDao collaborationDao, IDigitalHumanDao humanDao, IDigitalHumanEndpointDao endpointDao, PlannerService plannerService, RemoteEndpointCredentialRegistry remoteCredentials) {
+    public CollaborationService(ICollaborationDao collaborationDao, IDigitalHumanDao humanDao, IDigitalHumanEndpointDao endpointDao, PlannerService plannerService, RemoteEndpointCredentialRegistry remoteCredentials, @Value("${server.port:8090}") String serverPort) {
         this.collaborationDao = collaborationDao;
         this.humanDao = humanDao;
         this.endpointDao = endpointDao;
         this.plannerService = plannerService;
         this.remoteCredentials = remoteCredentials;
         this.gateway = new RemoteAgentGateway();
+        this.gateway.setLocalAgentBaseUrl("http://127.0.0.1:" + serverPort + "/api/agent/stream");
         this.objectMapper = new ObjectMapper();
         this.executor = Executors.newCachedThreadPool(runnable -> {
             Thread thread = new Thread(runnable, "collab-worker");

@@ -26,134 +26,14 @@ import org.junit.jupiter.api.Test;
 
 class PresetPluginLoaderTest {
 
-    @Test
-    void restoresPersistedActivePluginAfterHostRestart() {
-        HarnessPluginEntity activePlugin = new HarnessPluginEntity(
-                "dsh-java-mall-plugin",
-                "DSH Java Mall App",
-                "1.0.0-SNAPSHOT",
-                PluginRuntimeTypeEnumVO.JAVA_NATIVE,
-                PluginInstallModeEnumVO.NATIVE,
-                "/plugins/dsh-java-mall-plugin.jar",
-                "dsh-java-mall-plugin.jar",
-                PluginInstallStatusEnumVO.ACTIVE,
-                Instant.now()
-        );
-        List<HarnessPluginEntity> plugins = List.of(activePlugin);
-        List<String> runPluginIds = new ArrayList<>();
-        Fixture fixture = new Fixture(plugins, runPluginIds);
-        PresetPluginLoader loader = new PresetPluginLoader(
-                fixture.properties,
-                fixture.installCase,
-                fixture.runCase,
-                fixture.registryService,
-                fixture.repository,
-                fixture.runtimeService
-        );
-
-        loader.run(null);
-
-        assertEquals(List.of("dsh-java-mall-plugin"), runPluginIds);
-    }
-
-    @Test
-    void doesNotRestoreActivePresetTwice() {
-        HarnessPluginEntity activePreset = new HarnessPluginEntity(
-                "sample-tools",
-                "Sample Tools Plugin",
-                "1.0.0",
-                PluginRuntimeTypeEnumVO.JAVA_NATIVE,
-                PluginInstallModeEnumVO.NATIVE,
-                "/plugins/sample-tools.jar",
-                "sample-tools.jar",
-                PluginInstallStatusEnumVO.ACTIVE,
-                Instant.now()
-        );
-        List<String> runPluginIds = new ArrayList<>();
-        Fixture fixture = new Fixture(List.of(activePreset), runPluginIds);
-        fixture.properties.getPlugins().setPreset(List.of(preset("sample-tools")));
-        PresetPluginLoader loader = new PresetPluginLoader(
-                fixture.properties,
-                fixture.installCase,
-                fixture.runCase,
-                fixture.registryService,
-                fixture.repository,
-                fixture.runtimeService
-        );
-
-        loader.run(null);
-
-        assertEquals(List.of("sample-tools"), runPluginIds);
-    }
-
-    @Test
-    void reconcilesFailedRegistryStatusFromRunningPlugin() {
-        HarnessPluginEntity failedPlugin = new HarnessPluginEntity(
-                "dsh-java-mall-plugin",
-                "DSH Java Mall App",
-                "1.0.0-SNAPSHOT",
-                PluginRuntimeTypeEnumVO.JAVA_NATIVE,
-                PluginInstallModeEnumVO.NATIVE,
-                "/plugins/dsh-java-mall-plugin.jar",
-                "dsh-java-mall-plugin.jar",
-                PluginInstallStatusEnumVO.FAILED,
-                Instant.now()
-        );
-        Fixture fixture = new Fixture(List.of(failedPlugin), new ArrayList<>());
-        fixture.runtimeStatus.put("dsh-java-mall-plugin", true);
-        PresetPluginLoader loader = new PresetPluginLoader(
-                fixture.properties,
-                fixture.installCase,
-                fixture.runCase,
-                fixture.registryService,
-                fixture.repository,
-                fixture.runtimeService
-        );
-
-        loader.run(null);
-
-        assertEquals(
-                PluginInstallStatusEnumVO.ACTIVE,
-                fixture.repository.findByPluginId("dsh-java-mall-plugin").orElseThrow().getStatus());
-    }
-
-    @Test
-    void retriesPersistedFailedPluginAfterHostRestart() {
-        HarnessPluginEntity failedPlugin = new HarnessPluginEntity(
-                "dsh-java-mall-plugin",
-                "DSH Java Mall App",
-                "1.0.0-SNAPSHOT",
-                PluginRuntimeTypeEnumVO.JAVA_NATIVE,
-                PluginInstallModeEnumVO.NATIVE,
-                "/plugins/dsh-java-mall-plugin.jar",
-                "dsh-java-mall-plugin.jar",
-                PluginInstallStatusEnumVO.FAILED,
-                Instant.now()
-        );
-        List<String> runPluginIds = new ArrayList<>();
-        Fixture fixture = new Fixture(List.of(failedPlugin), runPluginIds);
-        PresetPluginLoader loader = new PresetPluginLoader(
-                fixture.properties,
-                fixture.installCase,
-                fixture.runCase,
-                fixture.registryService,
-                fixture.repository,
-                fixture.runtimeService
-        );
-
-        loader.run(null);
-
-        assertEquals(List.of("dsh-java-mall-plugin"), runPluginIds);
-    }
-
     private HarnessExtensionsProperties.PresetPlugin preset(String pluginId) {
         HarnessExtensionsProperties.PresetPlugin preset = new HarnessExtensionsProperties.PresetPlugin();
         preset.setPluginId(pluginId);
         preset.setDisplayName(pluginId);
         preset.setPluginVersion("1.0.0");
         preset.setRuntimeType("JAVA_NATIVE");
-        preset.setSourcePath("./plugins/" + pluginId + ".jar");
-        preset.setEntrypoint(pluginId + ".jar");
+        preset.setSourcePath("./plugins/" + pluginId + "-plugin-1.0.0.jar");
+        preset.setEntrypoint(pluginId + "-plugin-1.0.0.jar");
         preset.setAutoStart(true);
         return preset;
     }

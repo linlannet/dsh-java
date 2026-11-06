@@ -11,6 +11,8 @@ import net.linlan.dsh.domain.plugin.registry.adapter.repository.IHarnessPluginRe
 import net.linlan.dsh.domain.plugin.registry.model.entity.HarnessPluginEntity;
 import net.linlan.dsh.domain.plugin.registry.model.valobj.PluginInstallStatusEnumVO;
 import net.linlan.dsh.infrastructure.config.HarnessExtensionsProperties;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -90,7 +92,37 @@ public class PresetPluginLoader implements ApplicationRunner {
         Optional<HarnessPluginEntity> existing = pluginRegistryService.loadPluginOptional(preset.getPluginId());
         if (existing.isPresent()) {
             HarnessPluginEntity plugin = existing.get();
-            if (preset.isAutoStart() && plugin.getStatus() == PluginInstallStatusEnumVO.DISABLED) {
+            if (presetConfigDrifted(plugin, preset)) {
+                // 升级/配置变更后登记信息过期（如工件更名、路径迁移）：
+                // 按最新预置配置重新安装，登记路径由安装管线规范化刷新，避免按失效路径启动。
+                log.info("Preset plugin '{}' drifted from config (recorded entrypoint '{}'), re-installing",
+                        preset.getPluginId(), plugin.getEntrypoint());
+                installCase.execute(new InstallPluginRequestDTO(
+                        preset.getPluginId(),
+                        preset.getDisplayName(),
+                        preset.getPluginVersion(),
+                        preset.getRuntimeType(),
+                        preset.getSourcePath(),
+                        preset.getEntrypoint()
+                ));
+            }
+            else if (plugin.getStatus() != PluginInstallStatusEnumVO.ACTIVE
+                    && plugin.getStatus() != PluginInstallStatusEnumVO.UNINSTALLED
+                    && !Files.exists(Path.of(plugin.getSourcePath()))) {
+                // 已登记但登记的工件已失效（如旧机器绝对路径升级后不存在）：
+                // 按最新预置配置重新安装，刷新登记路径以指向当前有效位置。
+                log.info("Preset plugin '{}' artifact missing (recorded '{}'), re-installing",
+                        preset.getPluginId(), plugin.getSourcePath());
+                installCase.execute(new InstallPluginRequestDTO(
+                        preset.getPluginId(),
+                        preset.getDisplayName(),
+                        preset.getPluginVersion(),
+                        preset.getRuntimeType(),
+                        preset.getSourcePath(),
+                        preset.getEntrypoint()
+                ));
+            }
+            else if (preset.isAutoStart() && plugin.getStatus() == PluginInstallStatusEnumVO.DISABLED) {
                 pluginRegistryService.enablePlugin(preset.getPluginId());
                 log.info("Preset plugin '{}' re-enabled", preset.getPluginId());
             }
@@ -117,6 +149,21 @@ public class PresetPluginLoader implements ApplicationRunner {
         } else {
             log.warn("Preset plugin '{}' failed to restore: {}", preset.getPluginId(), result.message());
         }
+    }
+
+    /**
+     * 判断已登记插件与最新预置配置是否漂移。
+     * <p>仅比较影响启动的字段（入口、版本、运行时类型）；
+     * sourcePath 登记的是规范化后的绝对路径、displayName 仅为展示名，均不参与比较。
+     *
+     * @param plugin 已登记插件
+     * @param preset 最新预置配置
+     * @return 配置漂移时返回 true，需要按预置配置重新安装
+     */
+    private boolean presetConfigDrifted(HarnessPluginEntity plugin, HarnessExtensionsProperties.PresetPlugin preset) {
+        return !preset.getEntrypoint().equals(plugin.getEntrypoint())
+                || !preset.getPluginVersion().equals(plugin.getPluginVersion())
+                || !preset.getRuntimeType().equals(plugin.getRuntimeType().name());
     }
 
     /**

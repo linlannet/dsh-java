@@ -85,9 +85,7 @@ CREATE TABLE harness_plugin_installation (
 INSERT INTO harness_plugin_installation (plugin_id, display_name, plugin_version, runtime_type, install_mode, source_path, entrypoint, status, installed_at)
 VALUES
 	('dsh-demo-plugin','DSH Demo Plugin','1.0.0','DSH_NODE_BRIDGE','NODE_BRIDGE','/Users/mac/coding/github/dsh/dsh-java/plugins/dsh-demo-plugin','index.js','ACTIVE','2026-09-12 07:17:10.902'),
-	('dsh-java-mysql-plugin','DSH MySQL Plugin','0.1.0','JAVA_NATIVE','NATIVE','/Users/mac/coding/github/dsh/dsh-java/plugins/dsh-java-mysql-plugin.jar','dsh-java-mysql-plugin.jar','ACTIVE','2026-09-12 14:51:03.950'),
-	('dsh-java-mall-plugin','DSH Java Mall App','1.0.0','JAVA_NATIVE','NATIVE','/Users/mac/coding/github/dsh/dsh-java/plugins/dsh-java-mall-plugin.jar','dsh-java-mall-plugin.jar','ACTIVE','2026-09-12 14:53:57.130'),
-	('sample-tools','Sample Tools Plugin','1.0.0','JAVA_NATIVE','NATIVE','/Users/mac/coding/github/dsh/dsh-java/plugins/sample-tools.jar','sample-tools.jar','ACTIVE','2026-09-12 07:17:07.776');
+	('sample-tools-plugin','Sample Tools Plugin','1.0.0','JAVA_NATIVE','NATIVE','/Users/mac/coding/github/dsh/dsh-java/plugins/sample-tools-plugin.jar','sample-tools-plugin.jar','ACTIVE','2026-09-12 07:17:07.776');
 
 
 -- 转储表 harness_plugin_runtime_binding
@@ -111,9 +109,7 @@ CREATE TABLE harness_plugin_runtime_binding (
 INSERT INTO harness_plugin_runtime_binding (plugin_id, package_type, manifest_path, working_directory, runtime_command, bridge_ready, message, checked_at)
 VALUES
 	('dsh-demo-plugin','DSH_PACKAGE','/Users/mac/coding/github/dsh/dsh-java/plugins/dsh-demo-plugin/package.json','/Users/mac/coding/github/dsh/dsh-java/plugins/dsh-demo-plugin','node /Users/mac/coding/github/dsh/dsh-java/plugins/dsh-demo-plugin/index.js',1,'dsh package detected with executable Node entrypoint','2026-09-12 14:34:21.474'),
-	('dsh-java-mysql-plugin','DSH_PACKAGE','/Users/mac/coding/github/dsh/dsh-java/plugins/dsh-java-mysql-plugin.jar','/Users/mac/coding/github/dsh/dsh-java/plugins','java-in-process:dsh-java-mysql-plugin',1,'java-native plugin JAR ready for in-process loading','2026-09-12 14:51:03.958'),
-	('dsh-java-mall-plugin','DSH_PACKAGE','/Users/mac/coding/github/dsh/dsh-java/plugins/dsh-java-mall-plugin.jar','/Users/mac/coding/github/dsh/dsh-java/plugins','java-in-process:dsh-java-mall-plugin',1,'java-native plugin JAR ready for in-process loading','2026-09-12 14:53:57.139'),
-	('sample-tools','DSH_PACKAGE','/Users/mac/coding/github/dsh/dsh-java/plugins/sample-tools.jar','/Users/mac/coding/github/dsh/dsh-java/plugins','java-in-process:sample-tools',1,'java-native plugin JAR ready for in-process loading','2026-09-12 14:35:21.516');
+	('sample-tools-plugin','DSH_PACKAGE','/Users/mac/coding/github/dsh/dsh-java/plugins/sample-tools-plugin.jar','/Users/mac/coding/github/dsh/dsh-java/plugins','java-in-process:sample-tools',1,'java-native plugin JAR ready for in-process loading','2026-09-12 14:35:21.516');
 
 
 -- 转储表 harness_session

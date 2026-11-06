@@ -1,6 +1,5 @@
 package net.linlan.dsh.cases.bot;
 
-import net.linlan.dsh.api.condition.FeishuEnabledCondition;
 import net.linlan.dsh.api.dto.AgentMessageRequestDTO;
 import net.linlan.dsh.api.dto.AgentMessageResponseDTO;
 import net.linlan.dsh.api.dto.AgentToolCallEventResponseDTO;
@@ -16,14 +15,12 @@ import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Conditional;
-import org.springframework.stereotype.Service;
 
 /**
  * 飞书入站桥接处理器：将入站消息投递到 Agent 会话，并把流式增量回发为飞书消息。
+ * <p>由 {@code FeishuBeanConfig#feishuInboundHandler()} 在飞书开关
+ * （{@code dsh.feishu.enabled}，缺省 true）开启时显式装配。
  */
-@Service
-@Conditional(FeishuEnabledCondition.class)
 public class FeishuBotInboundHandler implements IFeishuInboundHandler {
 
     private static final Logger log = LoggerFactory.getLogger(FeishuBotInboundHandler.class);
