@@ -3,7 +3,7 @@
 > 各版本详情见 `docs/md/release-vX.Y.Z-development-notes.md`；以下按 7 个模块记录包级功能更新。
 ## 版本号：0.2.3
 - 更新日期：2026-11-08
-- 详情：docs/spec/0.2.2/release-v0.2.3-development-notes.md
+- 详情：docs/spec/0.2.3/release-v0.2.3-development-notes.md
 
 - **新增**：
   - **dsh-java-api**：新增 `IMiniAppApi`（微信小程序登录用例接口）与 `MiniAppLoginRequestDTO`/`MiniAppLoginResponseDTO`
