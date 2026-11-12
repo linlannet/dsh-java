@@ -175,6 +175,8 @@ const state = {
   customSessionTitles: JSON.parse(localStorage.getItem('dshSessionTitles') || '{}'),
   workspaces: JSON.parse(localStorage.getItem('workspaces') || '[]'),
   currentWorkspace: localStorage.getItem('currentWorkspace') || '',
+  // 登录账号（POST /api/auth/login 颁发；null = 未登录，侧边栏底部显示默认头像 + 未登录）
+  authUser: JSON.parse(localStorage.getItem('dsh-auth-user') || 'null'),
   modelSettings: [],
   availableModels: [],
   currentChannel: localStorage.getItem('currentChannel') || DEFAULT_CHANNEL,
@@ -278,6 +280,8 @@ function icon(name, className) {
     sliders: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M5 7h6M15 7h4M5 17h4M13 17h6M5 12h10M19 12h0' stroke='currentColor' stroke-width='1.7' stroke-linecap='round'/><circle cx='13' cy='7' r='2' stroke='currentColor' stroke-width='1.5'/><circle cx='10' cy='17' r='2' stroke='currentColor' stroke-width='1.5'/><circle cx='18' cy='12' r='2' stroke='currentColor' stroke-width='1.5'/></svg>",
     addWorkspace: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M13.5 6.5h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3' stroke='currentColor' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/><path d='M15.5 5.5v6M12.5 8.5h6' stroke='currentColor' stroke-width='1.7' stroke-linecap='round'/></svg>",
     settings: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M12 8.7a3.3 3.3 0 1 0 0 6.6 3.3 3.3 0 0 0 0-6.6Z' stroke='currentColor' stroke-width='1.7'/><path d='M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7.5 7.5 0 0 0-1.7-1l-.3-2.5h-4l-.3 2.5a7.5 7.5 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7.5 7.5 0 0 0 1.7 1l.3 2.5h4l.3-2.5a7.5 7.5 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5c.1-.3.1-.7.1-1Z' stroke='currentColor' stroke-width='1.4' stroke-linejoin='round'/></svg>",
+    user: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><circle cx='12' cy='8.2' r='3.4' stroke='currentColor' stroke-width='1.6'/><path d='M4.8 19.4c.9-3.6 3.7-5.6 7.2-5.6s6.3 2 7.2 5.6' stroke='currentColor' stroke-width='1.6' stroke-linecap='round'/></svg>",
+    chevronRight: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='m9.5 6.5 5 5.5-5 5.5' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/></svg>",
     pencil: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3Z' stroke='currentColor' stroke-width='1.7' stroke-linejoin='round'/><path d='M14.5 7.5l3 3' stroke='currentColor' stroke-width='1.7' stroke-linecap='round'/></svg>",
     trash: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M5 7h14M10 7V5h4v2M6.5 7l.7 12a2 2 0 0 0 2 1.9h5.6a2 2 0 0 0 2-1.9L17.5 7' stroke='currentColor' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/></svg>",
     users: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><circle cx='9' cy='9' r='3.2' stroke='currentColor' stroke-width='1.6'/><path d='M3.5 19c.6-3 2.8-4.6 5.5-4.6S14 16 14.6 19' stroke='currentColor' stroke-width='1.6' stroke-linecap='round'/><path d='M15.5 7.2a3 3 0 0 1 0 5.6M17 14.6c2 .7 3.3 2.2 3.7 4.4' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' opacity='.7'/></svg>",
@@ -817,16 +821,132 @@ function renderSidebar() {
   // 会话列表（置顶区 + 对话/项目）
   expandSection.appendChild(buildSidebarListArea());
 
-  // 底部：设置
+  // 底部：账号入口 + 登录入口（开启且已配置 URI 时显示）+ 设置（对齐豆包侧边栏底部布局）
   const footer = el('div', { class: 'sidebar-footer' });
-  const settingsBtn = el('button', { class: 'footer-link', onclick: function() { openSettingsPage(); }, title: '设置' });
+  footer.appendChild(buildAccountEntry());
+  const acfg = loadAuthConfig();
+  if (acfg.enabled && acfg.uri) {
+    const loginEntry = el('button', { class: 'footer-link footer-login', onclick: onAccountClick, title: '登录', 'aria-label': '登录' });
+    loginEntry.appendChild(icon('user'));
+    footer.appendChild(loginEntry);
+  }
+  const settingsBtn = el('button', { class: 'footer-link footer-gear', onclick: function() { openSettingsPage(); }, title: '设置', 'aria-label': '设置' });
   settingsBtn.appendChild(icon('settings'));
-  settingsBtn.appendChild(el('span', null, '设置'));
   footer.appendChild(settingsBtn);
   expandSection.appendChild(footer);
 
   sidebar.appendChild(expandSection);
   return sidebar;
+}
+
+// ── 账号入口（对齐豆包底部布局：头像 + 昵称/未登录 + 箭头） ─────────────
+function saveAuthUser(user) {
+  state.authUser = user || null;
+  if (user) localStorage.setItem('dsh-auth-user', JSON.stringify(user));
+  else localStorage.removeItem('dsh-auth-user');
+}
+
+function buildAccountEntry() {
+  const user = state.authUser;
+  const name = user ? (user.nickName || user.userName || '已登录') : '未登录';
+  const btn = el('button', { class: 'footer-account', onclick: onAccountClick, title: user ? name : '登录' });
+  const avatar = el('span', { class: 'footer-avatar' });
+  if (user && user.avatarUrl) {
+    avatar.appendChild(el('img', { src: user.avatarUrl, alt: '' }));
+  } else if (user) {
+    avatar.classList.add('initial');
+    avatar.appendChild(document.createTextNode((user.nickName || user.userName || 'U').charAt(0).toUpperCase()));
+  } else {
+    avatar.classList.add('default');
+    avatar.appendChild(icon('user'));
+  }
+  btn.appendChild(avatar);
+  btn.appendChild(el('span', { class: 'footer-account-name' }, name));
+  btn.appendChild(icon('chevronRight', 'footer-account-chevron'));
+  return btn;
+}
+
+function onAccountClick() {
+  if (state.authUser) openAccountMenu();
+  else openLoginModal();
+}
+
+function openAccountMenu() {
+  const existing = $('.account-menu-overlay');
+  if (existing) { existing.remove(); return; }
+  const overlay = el('div', { class: 'account-menu-overlay', onclick: function(e) { if (e.target === overlay) overlay.remove(); } });
+  const menu = el('div', { class: 'account-menu' });
+  menu.appendChild(el('div', { class: 'account-menu-name' }, state.authUser.nickName || state.authUser.userName || ''));
+  menu.appendChild(el('button', {
+    class: 'account-menu-item',
+    onclick: function() { overlay.remove(); saveAuthUser(null); render(); }
+  }, '退出登录'));
+  overlay.appendChild(menu);
+  document.body.appendChild(overlay);
+}
+
+function openLoginModal() {
+  const existing = $('.login-modal');
+  if (existing) existing.remove();
+  const overlay = el('div', { class: 'modal-overlay login-modal', onclick: function(e) { if (e.target === overlay) overlay.remove(); } });
+  const modal = el('div', { class: 'modal' });
+  modal.appendChild(el('h3', null, '登录'));
+  modal.appendChild(el('p', null, '登录后同步你的对话与偏好设置'));
+  const fields = el('div', { class: 'login-fields' });
+  const userInput = el('input', { class: 'form-input', placeholder: '用户名', 'aria-label': '用户名' });
+  const passInput = el('input', { class: 'form-input', type: 'password', placeholder: '密码', 'aria-label': '密码' });
+  fields.appendChild(userInput);
+  fields.appendChild(passInput);
+  modal.appendChild(fields);
+  const errEl = el('div', { class: 'login-error' });
+  modal.appendChild(errEl);
+  const actions = el('div', { class: 'login-actions' });
+  actions.appendChild(el('button', { class: 'login-btn', onclick: function() { overlay.remove(); } }, '取消'));
+  const submitBtn = el('button', { class: 'login-btn primary', onclick: doLogin }, '登录');
+  actions.appendChild(submitBtn);
+  modal.appendChild(actions);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  userInput.focus();
+  overlay.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doLogin();
+    if (e.key === 'Escape') overlay.remove();
+  });
+
+  async function doLogin() {
+    const userName = userInput.value.trim();
+    const password = passInput.value;
+    if (!userName || !password) { errEl.textContent = '请输入用户名和密码'; return; }
+    submitBtn.disabled = true;
+    errEl.textContent = '';
+    try {
+      const cfg = loadAuthConfig();
+      const base = (cfg.uri || localStorage.getItem('dsh-auth-api') || '').replace(/\/+$/, '');
+      const resp = await fetch(base + '/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userName: userName, password: password })
+      });
+      const payload = await resp.json().catch(function() { return null; });
+      if (!resp.ok) {
+        if (resp.status === 404 && !base) {
+          errEl.textContent = '登录失败（404）：同源没有 /api/auth/login，请到 设置→个人登录 填写登录 URI（如 http://127.0.0.1:8080）';
+        } else {
+          errEl.textContent = (payload && (payload.message || payload.msg)) || ('登录失败（' + resp.status + '）');
+        }
+        return;
+      }
+      cfg.uri = base;
+      persistAuthConfig(cfg);
+      saveAuthUser(parseLoginPayload(payload, userName));
+      overlay.remove();
+      render();
+    } catch (e) {
+      errEl.textContent = '无法连接认证服务：' + (e && e.message ? e.message : e);
+    } finally {
+      submitBtn.disabled = false;
+    }
+  }
 }
 
 function renderSessionItem(sess) {
@@ -3449,6 +3569,7 @@ function renderSettingsPage() {
       { id: 'plugins', label: '插件', desc: '安装、启停与参数配置', icon: 'plugin', countKey: 'plugins' },
     ] },
     { label: '系统', items: [
+      { id: 'account', label: '个人登录', desc: '配置登录服务、账号密码与角色，支持测试验证与模拟登录', icon: 'user' },
       { id: 'presets', label: '预设', desc: '会话默认行为', icon: 'panel' },
       { id: 'permissions', label: '权限', desc: '工具审批边界', icon: 'shield' },
     ] },
@@ -3499,11 +3620,241 @@ function renderSettingsPage() {
     case 'cli': renderCliSettings(body, null); break;
     case 'presets': renderPresetSettings(body, null); break;
     case 'permissions': renderPermissionSettings(body, null); break;
+    case 'account': renderAccountSettings(body, null); break;
   }
   main.appendChild(body);
   page.appendChild(nav);
   page.appendChild(main);
   return page;
+}
+
+// ── 个人登录（系统分组：URI/账号/角色配置，测试验证与模拟登录） ──
+const AUTH_ROLE_OPTIONS = [
+  { value: 0, label: '0 · 主任（超管）' },
+  { value: 1, label: '1 · 管理员' },
+  { value: 2, label: '2 · 普通用户' },
+  { value: 3, label: '3 · 访客' },
+];
+
+function loadAuthConfig() {
+  try {
+    const c = JSON.parse(localStorage.getItem('dsh-auth-config') || 'null');
+    if (!c) return { uri: '', userName: '', password: '', roleLevel: 2, enabled: false };
+    return Object.assign({ uri: '', userName: '', password: '', roleLevel: 2, enabled: false }, c);
+  } catch (e) {
+    return { uri: '', userName: '', password: '', roleLevel: 2, enabled: false };
+  }
+}
+
+function persistAuthConfig(cfg) {
+  localStorage.setItem('dsh-auth-config', JSON.stringify(cfg));
+}
+
+function authRoleLabel(level) {
+  const found = AUTH_ROLE_OPTIONS.find(function(o) { return o.value === level; });
+  return found ? found.label : (level == null ? '未设置' : String(level));
+}
+
+/** 兼容 Result{data:{token,userInfo}} 与裸对象两种返回包装 */
+function parseLoginPayload(payload, fallbackName) {
+  const data = (payload && (payload.data || payload)) || {};
+  const u = data.userInfo || data.user || data;
+  return {
+    userName: u.userName || fallbackName,
+    nickName: u.nickName || u.nick_name || '',
+    avatarUrl: u.avatarUrl || u.avatar_url || '',
+    token: data.token || u.token || '',
+    userId: u.userId != null ? u.userId : (u.user_id != null ? u.user_id : null),
+    roleLevel: u.roleLevel != null ? u.roleLevel : (u.role_level != null ? u.role_level : null),
+    tenantId: u.tenantId != null ? u.tenantId : (u.tenant_id != null ? u.tenant_id : null),
+    source: 'real'
+  };
+}
+
+async function doUnregisterAccount() {
+  const user = state.authUser;
+  if (!user) return;
+  if (!window.confirm('确定注销用户「' + (user.nickName || user.userName) + '」吗？将尝试删除服务端账号并清除本机登录态。')) return;
+  let note;
+  if (user.source !== 'mock' && user.token && user.userId != null) {
+    try {
+      const base = (loadAuthConfig().uri || '').replace(/\/+$/, '');
+      const resp = await fetch(base + '/api/auth/user/' + user.userId, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + user.token }
+      });
+      const payload = await resp.json().catch(function() { return null; });
+      note = resp.ok ? '服务端账号已删除'
+        : ('服务端注销未成功（' + resp.status + (payload && payload.message ? '：' + payload.message : '') + '）');
+    } catch (e) {
+      note = '服务端不可达：' + (e && e.message ? e.message : e);
+    }
+  } else {
+    note = user.source === 'mock' ? '模拟账号仅存在于本机' : '缺少 userId 或 token，跳过服务端注销';
+  }
+  saveAuthUser(null);
+  render();
+  window.alert('注销完成：' + note + '；本机登录态已清除。');
+}
+
+function renderAccountSettings(body, footer) {
+  const panel = el('section', { class: 'settings-panel' });
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, '登录配置'),
+      el('p', { class: 'settings-panel-desc' }, '配置登录服务地址、账号密码与角色；支持测试验证、模拟登录，已登录可退出或注销。'))));
+
+  const cfg = loadAuthConfig();
+  const user = state.authUser;
+
+  // 已登录：当前登录卡片
+  if (user) {
+    const current = el('section', { class: 'settings-panel' });
+    current.appendChild(el('div', { class: 'settings-panel-head' },
+      el('div', null,
+        el('h2', { class: 'settings-panel-title' }, '当前登录'),
+        el('p', { class: 'settings-panel-desc' },
+          (user.nickName ? user.nickName + '（' + user.userName + '）' : user.userName)
+          + ' · 来源：' + (user.source === 'mock' ? '模拟登录（本机会话）' : '服务端登录')
+          + (user.tenantId != null ? ' · 租户 ' + user.tenantId : ''))),
+      el('span', { class: 'settings-pill' }, authRoleLabel(user.roleLevel))));
+    const currentActions = el('div', { class: 'acct-actions' });
+    currentActions.appendChild(el('button', {
+      class: 'btn btn-secondary',
+      onclick: function() { saveAuthUser(null); render(); }
+    }, '退出登录'));
+    currentActions.appendChild(el('button', { class: 'btn btn-secondary acct-danger', onclick: doUnregisterAccount }, '注销用户'));
+    current.appendChild(currentActions);
+    body.appendChild(current);
+  }
+
+  // 登录配置表单
+  function acctField(labelText, input) {
+    const group = el('div', { class: 'form-group' });
+    group.appendChild(el('label', { class: 'form-label' }, labelText));
+    group.appendChild(input);
+    return group;
+  }
+  const uriInput = el('input', { class: 'form-input', value: cfg.uri, placeholder: 'http://127.0.0.1:8080（留空则走同源 /api/auth/login）' });
+  const nameInput = el('input', { class: 'form-input', value: cfg.userName, placeholder: 'userName' });
+  const passInput = el('input', { class: 'form-input', type: 'password', value: cfg.password, placeholder: 'password' });
+  const roleSelect = el('select', { class: 'form-input' });
+  for (const opt of AUTH_ROLE_OPTIONS) {
+    const option = el('option', { value: String(opt.value) }, opt.label);
+    if (cfg.roleLevel === opt.value) option.selected = true;
+    roleSelect.appendChild(option);
+  }
+  const enabledChk = el('input', { type: 'checkbox' });
+  enabledChk.checked = !!cfg.enabled;
+  const enabledRow = el('div', { class: 'form-group form-group-inline' });
+  enabledRow.appendChild(enabledChk);
+  enabledRow.appendChild(el('label', { class: 'form-label-inline', onclick: function() { enabledChk.checked = !enabledChk.checked; } },
+    '开启登录入口（在首页底部「设置」旁显示登录按钮；需同时填写登录 URI）'));
+  const form = el('div', { class: 'settings-form-grid' });
+  form.appendChild(acctField('登录 URI', uriInput));
+  form.appendChild(acctField('用户名 userName', nameInput));
+  form.appendChild(acctField('密码 password', passInput));
+  form.appendChild(acctField('角色 roleLevel', roleSelect));
+  panel.appendChild(form);
+  panel.appendChild(enabledRow);
+
+  const msgEl = el('div', { class: 'acct-msg' });
+  function showMsg(text, kind) {
+    msgEl.textContent = text;
+    msgEl.className = 'acct-msg' + (kind ? ' ' + kind : '');
+  }
+
+  function readForm() {
+    cfg.uri = uriInput.value.trim();
+    cfg.userName = nameInput.value.trim();
+    cfg.password = passInput.value;
+    cfg.roleLevel = parseInt(roleSelect.value, 10);
+    cfg.enabled = enabledChk.checked;
+    return cfg;
+  }
+
+  async function requestLogin() {
+    readForm();
+    if (!cfg.userName) throw new Error('请先填写用户名');
+    if (!cfg.password) throw new Error('请先填写密码');
+    const base = cfg.uri.replace(/\/+$/, '');
+    const resp = await fetch(base + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userName: cfg.userName, password: cfg.password })
+    });
+    const payload = await resp.json().catch(function() { return null; });
+    if (!resp.ok) {
+      if (resp.status === 404 && !base) {
+        throw new Error('登录失败（404）：同源没有 /api/auth/login，请在「登录 URI」填写后端地址，如 http://127.0.0.1:8080');
+      }
+      if (resp.status === 404) {
+        throw new Error('登录失败（404）：' + base + '/api/auth/login 不存在，请确认后端地址是否正确');
+      }
+      throw new Error((payload && (payload.message || payload.msg)) || ('登录失败（' + resp.status + '）'));
+    }
+    return parseLoginPayload(payload, cfg.userName);
+  }
+
+  const actions = el('div', { class: 'acct-actions' });
+  actions.appendChild(el('button', {
+    class: 'btn btn-secondary',
+    onclick: function() { persistAuthConfig(readForm()); showMsg('登录配置已保存到本机', 'ok'); }
+  }, '保存配置'));
+  const testBtn = el('button', {
+    class: 'btn btn-secondary',
+    onclick: async function() {
+      testBtn.disabled = true;
+      showMsg('验证中…');
+      try {
+        const u = await requestLogin();
+        persistAuthConfig(cfg);
+        showMsg('验证通过：' + u.userName + ' · ' + authRoleLabel(u.roleLevel), 'ok');
+      } catch (e) {
+        showMsg('验证失败：' + (e && e.message ? e.message : e), 'err');
+      } finally {
+        testBtn.disabled = false;
+      }
+    }
+  }, '测试验证');
+  actions.appendChild(testBtn);
+  actions.appendChild(el('button', {
+    class: 'btn btn-secondary',
+    onclick: function() {
+      readForm();
+      if (!cfg.userName) { showMsg('请先填写用户名', 'err'); return; }
+      persistAuthConfig(cfg);
+      saveAuthUser({
+        userName: cfg.userName,
+        nickName: '', avatarUrl: '', token: 'mock-' + Date.now(),
+        userId: null, roleLevel: cfg.roleLevel, tenantId: null, source: 'mock'
+      });
+      render();
+    }
+  }, '模拟登录'));
+  const loginBtn = el('button', {
+    class: 'btn btn-primary',
+    onclick: async function() {
+      loginBtn.disabled = true;
+      showMsg('登录中…');
+      try {
+        const u = await requestLogin();
+        persistAuthConfig(cfg);
+        saveAuthUser(u);
+        render();
+      } catch (e) {
+        showMsg('登录失败：' + (e && e.message ? e.message : e), 'err');
+        loginBtn.disabled = false;
+      }
+    }
+  }, '登录');
+  actions.appendChild(loginBtn);
+  panel.appendChild(actions);
+  panel.appendChild(msgEl);
+  panel.appendChild(el('p', { class: 'acct-hint' },
+    '测试验证只校验凭据，不生成本机会话；模拟登录跳过服务器，直接以所选角色建立本机会话（token 以 mock- 开头）；'
+    + '注销用户会调用 DELETE {uri}/api/auth/user/{id} 删除服务端账号（需 roleLevel=0）。'));
+  body.appendChild(panel);
 }
 
 function renderModelSettings(body, footer) {

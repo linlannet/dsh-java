@@ -1,6 +1,26 @@
 # 版本
 
 > 各版本详情见 `docs/md/release-vX.Y.Z-development-notes.md`；以下按 7 个模块记录包级功能更新。
+## 版本号：0.2.3
+- 更新日期：2026-11-08
+- 详情：docs/spec/0.2.2/release-v0.2.3-development-notes.md
+
+- **新增**：
+  - **dsh-java-api**：新增 `IMiniAppApi`（微信小程序登录用例接口）与 `MiniAppLoginRequestDTO`/`MiniAppLoginResponseDTO`
+  - **dsh-java-trigger**：新增 `MiniAppController`（`POST /api/miniapp/login`）
+  - **dsh-java-case**：新增 `MiniAppLoginUseCase`——以 `wx.login` 临时 code 调用微信 `jscode2session` 换取 `openid`，签发 2 小时短期会话令牌（`mini_` 前缀）；未配置 appid/secret 时返回 `50300`，不降级为匿名登录
+  - **dsh-java-app**：`application.yml` 新增 `dsh.miniapp.wechat.appid/secret`（通过 `DSH_MINIAPP_WECHAT_APPID`/`DSH_MINIAPP_WECHAT_SECRET` 环境变量注入，AppSecret 仅服务端配置）
+  - **移动端能力（移动访问开关 + 设备配对，重构回归）**：
+    - **dsh-java-api**：`IDeviceApi` 新增 `getMobileAccess`/`setMobileAccess` 开关接口；新增 `MobileAccessDTO`；DTO 统一 `*DTO` 后缀（`DevicePairRequestDTO`、`DevicePairResponseDTO`）
+    - **dsh-java-trigger**：`DeviceController` 新增 `GET/PUT /api/devices/mobile-access`
+    - **dsh-java-case**：`DevicePairingUseCase` 移动访问默认关闭，需桌面端显式开启；新增 `DevicePairingUseCaseTest`
+    - **dsh-java-domain**：设备凭据改为聚合 `DeviceCredentialAggregate`（仅存 Token SHA-256 摘要，不存明文）
+    - **dsh-java-infrastructure**：新增 `DeviceRepository`（内存最小闭环实现，后续可替换为数据库仓储）
+  - **AI 可发现性**：新增 `AGENTS.md`（AI 编码助手的构建/测试命令与约定）、`llms.txt`（面向 LLM 的项目摘要）、`docs/md/ai-discoverability.md`（系列仓库 About/topics 配置清单）
+- **更新**：
+  - 全模块 pom 版本 `0.2.2` → `0.2.3`
+  - `ApiKeyAuthInterceptor` 重新接入设备级 Bearer Token 校验（`devt_` 前缀，吊销后立即 401）
+  - Web 控制台（`app.js`/`app.css`）适配移动访问开关与设备管理面板
 
 ## 版本号：0.2.2
 - 更新日期：2026-11-02
@@ -36,7 +56,7 @@
 
 ### 修订记录（2026-11-05 ~ 2026-11-06）
 
-- **移除移动端设备配对功能**（功能未上线，整体下线）：
+- **移除移动端设备配对功能**（功能未上线，整体下线；0.2.3 已按聚合 + DTO 规范重构回归，见上方版本条目）：
   - **dsh-java-api**：删除 `IDeviceApi`、`DeviceDTO`、`DevicePairingCodeDTO`、`DevicePairRequest`、`DevicePairResult`
   - **dsh-java-trigger**：删除 `DeviceController`（`/api/devices/*` 全部端点）
   - **dsh-java-case**：删除 `DevicePairingUseCase`

@@ -2,6 +2,7 @@ package net.linlan.dsh.trigger.filter;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import net.linlan.dsh.api.IDeviceApi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,6 +27,17 @@ public class ApiKeyAuthInterceptor implements HandlerInterceptor {
 
     @Value("${harness.auth.api-keys:}")
     private String configuredKeys;
+
+    private final IDeviceApi deviceApi;
+
+    /**
+     * 构造拦截器。
+     *
+     * @param deviceApi 设备凭据用例（用于设备级 Bearer Token 校验）
+     */
+    public ApiKeyAuthInterceptor(IDeviceApi deviceApi) {
+        this.deviceApi = deviceApi;
+    }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
@@ -57,6 +69,18 @@ public class ApiKeyAuthInterceptor implements HandlerInterceptor {
             if (auth != null && auth.startsWith("Bearer ")) {
                 provided = auth.substring(7);
             }
+        }
+
+        // 设备级 Bearer Token（devt_ 前缀）：无论主 Key 是否配置都必须校验，吊销后立即 401
+        if (provided != null && provided.startsWith("devt_")) {
+            if (Boolean.TRUE.equals(this.deviceApi.validateDeviceToken(provided).data())) {
+                return true;
+            }
+            response.setStatus(401);
+            response.setContentType("application/json");
+            response.getWriter().write(
+                    "{\"error\":\"Unauthorized\",\"message\":\"Device credential revoked or invalid\"}");
+            return false;
         }
 
         // 未配置主密钥时全部放行，用于本地开发模式

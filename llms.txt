@@ -1,0 +1,38 @@
+# DSH Java (dsh-java) — Agent Harness
+
+> A self-contained AI Agent Harness built on Java 17 + Spring Boot 3.5.16.
+> ReAct loop, real tool execution, human approvals, plugins (Java SPI / Node sidecar / MCP),
+> event-sourced sessions, and a zero-build web console.
+
+Key capabilities:
+- ReAct agent loop (max 50 steps per turn)
+- Tools: file read/write, shell execution, web search/fetch, ask-user
+- Plugins: Java native JAR/SPI, Node bridge (JSON-RPC), MCP tools
+- Submit-time permission matrix + human approval for high-risk tools
+- Event sourcing for sessions, tasks, approvals, goals
+- REST + SSE protocol; H2 standalone, MySQL, Docker Compose
+
+Tech stack: Java 17, Spring Boot 3.5.16, MyBatis, Maven
+Version: 0.2.2
+Repository: https://github.com/linlannet/dsh-java
+Related repositories: dsh-java-plugins, dsh-java-desktop, dsh-java-mobile, dsh-java-release
+
+Build: `mvn clean package -DskipTests`
+Test:  `mvn test`
+Run:   `java -jar dsh-java-app/target/dsh-java-app-0.2.2-exec.jar --spring.profiles.active=standalone`
+Console: http://127.0.0.1:8090
+
+Module map:
+- dsh-java-domain        domain models, events, ports
+- dsh-java-infrastructure adapters (DB, LLM, plugin runtime)
+- dsh-java-case          use cases (agent loop, session, task, approval)
+- dsh-java-api           API interfaces + DTOs + response envelope
+- dsh-java-trigger       HTTP/SSE controllers and filters
+- dsh-java-app           Spring Boot application + static web console
+- plugins/sample-tools-plugin  sample Java plugin
+
+Docs:
+- README.md / README.en.md
+- docs/md/java-plugin-development.md
+- docs/spec/0.2.2/
+- AGENTS.md

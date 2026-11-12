@@ -1,5 +1,10 @@
 # DeepSeek Harness Java (dsh-java)
 
+> **TL;DR** · Java 17 + Spring Boot 的**可独立运行 Agent Harness**：ReAct 循环、真实工具、审批治理、Java/Node/MCP 插件、事件溯源、零构建 Web 控制台。
+> **Keywords**: Agent Harness, ReAct, AI Agent, MCP, Plugin, Spring Boot, Java, LLM
+> **相关仓库**: [dsh-java-plugins](https://github.com/linlannet/dsh-java-plugins) · [dsh-java-desktop](https://github.com/linlannet/dsh-java-desktop) · [dsh-java-mobile](https://github.com/linlannet/dsh-java-mobile) · [dsh-java-release](https://github.com/linlannet/dsh-java-release)
+> **AI 入口**: [llms.txt](./llms.txt) · [AGENTS.md](./AGENTS.md)
+
 
 > **基于 小傅哥的Deepseek Harness Java 延伸扩展** —— Java 17 + Spring Boot 3 ，并叠加麟览业务形态进行调整。
 - **小傅哥首页**：<https://github.com/fuzhengwei>

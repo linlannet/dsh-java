@@ -3900,10 +3900,11 @@ body, .app, .sidebar, .main-area, .main, .messages, .composer, .modal, .toast {
 .project-group-count { margin-left: auto; color: var(--text-3); font-size: 10.5px; font-weight: 500; flex: none; }
 .project-group-sessions { display: flex; flex-direction: column; gap: 1px; margin: 2px 0 4px 14px; }
 
-/* 底部设置 */
+/* 底部：账号入口 + 设置（对齐豆包布局） */
 .sidebar-footer {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   padding-top: 8px;
   border-top: 1px solid var(--border);
   margin-top: auto;
@@ -3928,6 +3929,115 @@ body, .app, .sidebar, .main-area, .main, .messages, .composer, .modal, .toast {
 .footer-link:hover { background: var(--bg-hover); color: var(--text); }
 .footer-link .icon { display: inline-flex; }
 .footer-link .icon svg { width: 16px; height: 16px; }
+
+/* 账号入口（头像 + 昵称/未登录 + 箭头） */
+.footer-account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.footer-account:hover { background: var(--bg-hover); color: var(--text); }
+.footer-avatar {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #8a7bf0, #5a8df0);
+  overflow: hidden;
+}
+.footer-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.footer-avatar.default {
+  background: var(--bg-hover);
+  color: var(--text-3);
+  border: 1px solid var(--border);
+}
+.footer-avatar.default svg { width: 15px; height: 15px; }
+.footer-account-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.footer-account-chevron { display: inline-flex; flex: none; color: var(--text-3); }
+.footer-account-chevron svg { width: 12px; height: 12px; }
+.footer-gear { width: 33px; flex: none; justify-content: center; padding: 6px 0; }
+.footer-login { width: 33px; flex: none; justify-content: center; padding: 6px 0; }
+.form-group-inline { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.form-label-inline { font-size: 13px; color: var(--text-2); cursor: pointer; margin: 0; user-select: none; }
+
+/* 账号菜单（已登录点击弹出） */
+.account-menu-overlay { position: fixed; inset: 0; z-index: 210; }
+.account-menu {
+  position: absolute;
+  left: 12px;
+  bottom: 56px;
+  min-width: 168px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+  padding: 6px;
+}
+.account-menu-name {
+  font-size: 12px;
+  color: var(--text-3);
+  padding: 6px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-menu-item {
+  display: block;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.account-menu-item:hover { background: var(--bg-hover); color: var(--text); }
+
+/* 登录弹窗 */
+.login-fields { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.login-error { color: #d64545; font-size: 12px; min-height: 16px; margin-top: 6px; }
+.login-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.login-btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.login-btn.primary { background: #4f6ef2; border-color: #4f6ef2; color: #fff; }
+.login-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* 个人登录设置面板（设置 → 系统 → 个人登录） */
+.acct-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.acct-msg { margin-top: 10px; font-size: 12.5px; }
+.acct-msg.err { color: #d64545; }
+.acct-msg.ok { color: #2e7d32; }
+.acct-danger { color: #d64545; border-color: currentColor; }
+.acct-hint { margin-top: 10px; font-size: 12px; color: var(--text-3); line-height: 1.6; }
 
 
 

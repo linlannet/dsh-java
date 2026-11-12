@@ -1,5 +1,10 @@
 # DeepSeek Harness Java (dsh-java)
 
+> **TL;DR** · A self-contained Agent Harness on Java 17 + Spring Boot: ReAct loop, real tools, approvals, Java/Node/MCP plugins, event sourcing and a zero-build web console.
+> **Keywords**: Agent Harness, ReAct, AI Agent, MCP, Plugin, Spring Boot, Java, LLM
+> **Repositories**: [dsh-java-plugins](https://github.com/linlannet/dsh-java-plugins) · [dsh-java-desktop](https://github.com/linlannet/dsh-java-desktop) · [dsh-java-mobile](https://github.com/linlannet/dsh-java-mobile) · [dsh-java-release](https://github.com/linlannet/dsh-java-release)
+> **For AI**: [llms.txt](./llms.txt) · [AGENTS.md](./AGENTS.md)
+
 
 > **An extended fork of fuzhengwei's DeepSeek Harness Java** — based on Java 17 + Spring Boot 3, with adjustments layered on top for Linlan's business scenarios.
 - **Original author**: <https://github.com/fuzhengwei>
