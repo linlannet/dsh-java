@@ -32,6 +32,9 @@ public enum SessionEventType {
     // ── Session lifecycle ────────────────────────────────────────
     SESSION_END_SEED("session/end-seed", false),
 
+    // ── Plugin events ────────────────────────────────────────────
+    WORKTREE_CREATED("plugin:worktree/created", true),
+
     // ── Plan mode ────────────────────────────────────────────────
     PLAN_MODE_CHANGE("plan/mode", false),
 

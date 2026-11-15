@@ -30,10 +30,14 @@
   - **dsh-java-domain**：CUA、浏览器、Worktree、Ralph、Hook、MCP 错误类统一继承 `HarnessError`，新增 `CUA_*`、`BROWSER_*`、`WORKTREE_NOT_GIT_REPO`、`RALPH_LOOP_*`、`HOOK_BLOCKED`、`MCP_RECONNECT_EXHAUSTED` 错误码
   - **dsh-java-domain**：Shell/FS 参数错误由 `MISSING_PARAM` 收敛为 `ToolArgsError`/`INVALID_ARGS`，统一 `invalid arguments: ` 前缀；修复缺省参数被当作字符串 `"null"` 继续执行的问题
   - **dsh-java-domain / infrastructure**：新增 `TerminalError` 基类；`TerminalBackendCleanupError` 聚合启动与清理失败（`cause` + `suppressed`），终端会话查找/运行状态错误改用 `TERMINAL_*` 码
-  - **错误码总表**：新增 [docs/spec/0.2.3/error-codes.md](docs/spec/0.2.3/error-codes.md)，覆盖通用码、16 个子系统码表与旧→新映射
+  - **错误码总表**：新增 [docs/spec/0.2.3/error-codes.md](docs/spec/0.2.3/error-codes.md)，覆盖通用码、17 个子系统码表与旧→新映射
   - **Office 能力工具化**：新增 `office_render`/`office_convert`/`office_recalculate` 并注册到工具目录；`OfficeSkill` 收敛为 `office` 路由 + `office-docx`/`office-pptx`/`office-xlsx` 内置写作技能；新增 `dsh.office.*` 输出治理配置与 `OfficeKitOutputStore` 过期/容量清理；LibreOffice 缺失映射为 `OFFICE_KIT_UNAVAILABLE`，不阻断启动
   - **Subagent 名称寻址**：`InProcessSubagentDriver` 增加名称索引与同级唯一校验、名称/会话 id 解析、`listAgents` 投影；`send_message`/`interrupt_agent` 改用 `agent` 参数并拒绝 `agent_id`；`SubagentTool` 支持可选 `name`，返回 `started subagent <name>` 与 `{kind:'activation', name}`；`list_agents` 返回 `{name, status, description?}`
   - **Web 计费与凭据**：新增 `searchBilling`/`fetchBilling`（`auto|account|api-key`）与有序凭据来源，`WebToolConfig`/`WebCredentialResolver` 解析优先级；`web_search`/`web_fetch` 按解析结果传递凭据；取消异常映射 `WEB_ABORTED`，`WebBillingError` 保留 cause
+  - **Worktree 归档清理**：新增 `WorktreeArchiveCleaner`/`WorktreeArchivePolicy`/`IWorktreeCleanupPort`，归档时按脏树、子模块、锁、分离 HEAD 条件跳过，非 force 移除且保留分支与提交；`JGitWorktree` 实现状态检查与移除；新增 `plugin:worktree/created` 事件类型与载荷
+  - **运行时上下文提醒**：新增 `RuntimeContextSnapshot`，`runtime-context` 统一包裹 `<system-reminder>`，首份/后续快照文案区分，清空输出 `form=snapshot`/`sections=[]`；旧快照缺 `sections` 仅刷新一次并保留原前缀
+  - **Plugin Bundle 更新**：新增 `PluginBundleInfo`（可选 `update=registry|git`）、`PluginBundleUpdateService`（Git 仅固定完整提交可更新）、`unexpected-package` 错误码；`PluginRegistryService` 新增带 `expectedPluginId/expectedVersion` 的安装校验
+  - **DeepSeek 文件上传超时**：`DeepSeekAdapterOptions` 新增 `filesApiTimeoutMs`（默认 20s）与 `filesConnectTimeoutMs`（默认 5s）；新增 `DeepSeekImageAttachmentPolicy`，上传超时降级内联 data URL，超时预算按 2 倍退避（上限 8 倍），成功后复位
 
   **旧 → 新错误码映射**
 

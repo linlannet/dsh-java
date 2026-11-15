@@ -19,12 +19,32 @@ public record DeepSeekAdapterOptions(
         int defaultContextWindow,
         int streamIdleTimeoutMs,
         List<DirectSeekCatalogModel> models,
-        ResolvedRetryPolicy retryPolicy
+        ResolvedRetryPolicy retryPolicy,
+        long filesApiTimeoutMs,
+        long filesConnectTimeoutMs
 ) {
+    /** 文件上传请求默认超时（20 秒）。 */
+    public static final long DEFAULT_FILES_API_TIMEOUT_MS = 20_000L;
+    /** 文件上传连接默认超时（5 秒）。 */
+    public static final long DEFAULT_FILES_CONNECT_TIMEOUT_MS = 5_000L;
+
+    /**
+     * 兼容旧调用：文件上传使用默认超时。
+     */
+    public DeepSeekAdapterOptions(String baseUrl, String apiKey, int maxTokens, int defaultContextWindow,
+                                  int streamIdleTimeoutMs, List<DirectSeekCatalogModel> models,
+                                  ResolvedRetryPolicy retryPolicy) {
+        this(baseUrl, apiKey, maxTokens, defaultContextWindow, streamIdleTimeoutMs, models, retryPolicy,
+                DEFAULT_FILES_API_TIMEOUT_MS, DEFAULT_FILES_CONNECT_TIMEOUT_MS);
+    }
+
     public DeepSeekAdapterOptions {
         java.util.Objects.requireNonNull(baseUrl, "baseUrl");
         java.util.Objects.requireNonNull(apiKey, "apiKey");
         models = List.copyOf(models);
+        filesApiTimeoutMs = filesApiTimeoutMs > 0 ? filesApiTimeoutMs : DEFAULT_FILES_API_TIMEOUT_MS;
+        filesConnectTimeoutMs = filesConnectTimeoutMs > 0
+                ? filesConnectTimeoutMs : DEFAULT_FILES_CONNECT_TIMEOUT_MS;
     }
 
     /**

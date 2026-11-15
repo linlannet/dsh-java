@@ -37,6 +37,7 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
     private final List<Function<AssembleContext, ToolProviderResult>> toolProviders = new ArrayList<>();
     private final Map<String, Function<AssembleContext, String>> variables = new LinkedHashMap<>();
     private final List<Runnable> runtimeContextSuppressors = new ArrayList<>();
+    private final RuntimeContextSnapshot runtimeSnapshots = new RuntimeContextSnapshot();
 
     private final String harnessIdentity;
     private final String persona;
@@ -138,6 +139,15 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
         runtimeContextSuppressors.add(() -> {});
     }
 
+    /**
+     * 返回运行时快照状态，供旧快照迁移与测试使用。
+     *
+     * @return 运行时快照
+     */
+    public RuntimeContextSnapshot runtimeSnapshots() {
+        return runtimeSnapshots;
+    }
+
     // ── Assembly ────────────────────────────────────────────────
 
     @Override
@@ -204,9 +214,13 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
 
         // Render
         String system = renderPrompt(assembly);
-        String runtimeContext = renderContextSnapshot(assembly);
-        if (!runtimeContext.isEmpty()) {
-            system = runtimeContext + "\n\n" + system;
+        List<String> contextSections = assembly.contexts().stream()
+                .map(c -> interpolate(c, assembly.variables()))
+                .filter(s -> !s.isEmpty())
+                .toList();
+        String reminder = runtimeSnapshots.render(agentId, contextSections).orElse("");
+        if (!reminder.isEmpty()) {
+            system = reminder + "\n\n" + system;
         }
 
         // If complete section, use only that
@@ -246,7 +260,8 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
                 .reduce((a, b) -> a + "\n\n" + b)
                 .orElse("");
         if (body.isEmpty()) return "";
-        return "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\n" + body;
+        return "<system-reminder>\n" + RuntimeContextSnapshot.SUBSEQUENT_PREFIX
+                + "\n\n" + body + "\n</system-reminder>";
     }
 
     /**

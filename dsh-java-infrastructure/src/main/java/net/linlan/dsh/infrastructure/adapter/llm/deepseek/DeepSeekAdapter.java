@@ -54,6 +54,7 @@ public class DeepSeekAdapter implements LlmAdapter {
     private final DeepSeekAdapterOptions options;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
+    private final DeepSeekImageAttachmentPolicy imagePolicy;
 
     /**
      * 处理Deep Seek Adapter。
@@ -65,6 +66,7 @@ public class DeepSeekAdapter implements LlmAdapter {
     public DeepSeekAdapter(DeepSeekAdapterOptions options, ObjectMapper objectMapper) {
         this.options = options;
         this.objectMapper = objectMapper;
+        this.imagePolicy = new DeepSeekImageAttachmentPolicy(options.filesApiTimeoutMs(), null);
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(15))
                 .build();
@@ -428,8 +430,7 @@ public class DeepSeekAdapter implements LlmAdapter {
                     String mime = ib.attachment() != null && ib.attachment().mimeType() != null
                             ? ib.attachment().mimeType() : "image/png";
                     byte[] data = ib.attachment() != null ? ib.attachment().data() : new byte[0];
-                    urlNode.put("url", "data:" + mime + ";base64,"
-                            + Base64.getEncoder().encodeToString(data));
+                    urlNode.put("url", imagePolicy.imageUrl(data, mime));
                     contentArr.add(imgPart);
                 }
                 msgNode.set("content", contentArr);

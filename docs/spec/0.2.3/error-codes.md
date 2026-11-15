@@ -162,6 +162,12 @@
 | `WEB_CREDENTIAL_MISSING` | 计费模式没有可用凭据 |
 | `WEB_ACCOUNT_UNAVAILABLE` | `account` 模式缺少账户凭据 |
 
+### 3.17 插件管理（`PluginManagementError`）
+
+| code | 触发场景 |
+| --- | --- |
+| `unexpected-package` | 带 expected 的安装命中其他包或版本 |
+
 ## 4. 旧 → 新映射
 
 | 旧 | 新 | 范围 | 说明 |

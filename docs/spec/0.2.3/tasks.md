@@ -193,22 +193,22 @@
 - [x] 取消异常映射 `WEB_ABORTED`，凭据错误保留 `cause`；验收：取消与凭据异常用例
 
 ### 11.5 Worktree 归档清理
-- [ ] 创建成功后写 `plugin:worktree/created` 会话事件；验收：事件可重放 —— `dsh-java-domain/.../tool/worktree/`
-- [ ] 归档时按条件执行 `git worktree remove`（非 force），失败仅提示；验收：脏树/子模块/锁/分离 HEAD 均保留
-- [ ] `retainOnArchive` 默认 false，分支与提交保留；验收：清理后分支仍存在
+- [x] 创建成功后写 `plugin:worktree/created` 会话事件；验收：事件可重放 —— `WorktreeTool.create(repo, branch, sessionId)` 写入 `Generic` 事件，含 repo/worktree/branch
+- [x] 归档时按条件执行 `git worktree remove`（非 force），失败仅提示；验收：脏树/子模块/锁/分离 HEAD 均保留 —— `WorktreeArchiveCleaner` + `JGitWorktree`，当前仓库无归档入口，供后续归档流程调用
+- [x] `retainOnArchive` 默认 false，分支与提交保留；验收：清理后分支仍存在（移除仅执行 `git worktree remove`，不删除分支）
 
 ### 11.6 运行时上下文提醒
-- [ ] `runtime-context` 消息包 `<system-reminder>`，首份/后续快照文案区分；验收：快照文本断言
-- [ ] 清空提醒输出 `form=snapshot`、`sections=[]`；验收：清空用例
-- [ ] 旧快照缺少 `sections` 时仅刷新一次且不改写前缀；验收：二次请求不重复刷新
+- [x] `runtime-context` 消息包 `<system-reminder>`，首份/后续快照文案区分；验收：快照文本断言 —— `RuntimeContextSnapshot`
+- [x] 清空提醒输出 `form=snapshot`、`sections=[]`；验收：清空用例
+- [x] 旧快照缺少 `sections` 时仅刷新一次且不改写前缀；验收：二次请求不重复刷新 —— `seedLegacy` + `refreshCount`，当前无持久化快照，由调用方注入旧前缀
 
 ### 11.7 Plugin Bundle 更新
-- [ ] `BundleInfo.updatable` 改为可选 `update`（`registry|git`）；验收：listBundles 契约 —— `dsh-java-domain/.../plugin/`
-- [ ] `updateBundle` 支持 Git 较新提交；新增 `unexpected-package`；验收：预期不符安装失败
+- [x] `BundleInfo.updatable` 改为可选 `update`（`registry|git`）；验收：listBundles 契约 —— `PluginBundleInfo` + `PluginBundleUpdateService`（当前仓库无 bundle 列表端点，模型与判定已就绪）
+- [x] `updateBundle` 支持 Git 较新提交；新增 `unexpected-package`；验收：预期不符安装失败 —— Git 仅固定完整提交可更新；`PluginRegistryService.installPlugin(..., expectedPluginId, expectedVersion)` 命中其他包/版本抛 `unexpected-package`
 
 ### 11.8 DeepSeek 文件上传超时
-- [ ] `filesApiTimeoutMs` 默认改 20s，连接/请求超时分离；验收：配置默认值 —— `dsh-java-infrastructure/.../llm/`
-- [ ] 超时后内联图片降级与 2 倍退避、成功复位；验收：连续超时用例
+- [x] `filesApiTimeoutMs` 默认改 20s，连接/请求超时分离；验收：配置默认值 —— `DeepSeekAdapterOptions`（20s + 5s 连接超时）
+- [x] 超时后内联图片降级与 2 倍退避、成功复位；验收：连续超时用例 —— `DeepSeekImageAttachmentPolicy`；当前仓库无 Files API 上传器，策略以上传器注入方式可用，适配器默认内联
 
 ### 11.9 WebServer 默认鉴权
 - [ ] 路由注册增加 `auth` 维度，默认 `required`，公开路由显式 `anonymous`；验收：未声明路由被拒 —— `dsh-java-trigger/`

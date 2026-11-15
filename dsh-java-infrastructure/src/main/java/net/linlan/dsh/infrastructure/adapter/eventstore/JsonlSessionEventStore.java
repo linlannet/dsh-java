@@ -442,7 +442,7 @@ public class JsonlSessionEventStore implements SessionPersistenceSeam {
             case TASK_SUBMITTED, TASK_AUTO_APPROVED, TASK_APPROVAL_REQUIRED,
                  TASK_APPROVED, TASK_EXECUTION_STARTED,
                  TASK_EXECUTION_COMPLETED, TASK_EXECUTION_FAILED,
-                 AGENT_EVENT ->
+                 AGENT_EVENT, WORKTREE_CREATED ->
                 new SessionEvent.Generic(seq, time, type, payloadJson);
         };
     }

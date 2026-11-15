@@ -5,6 +5,7 @@ import java.util.Optional;
 import net.linlan.dsh.domain.plugin.IPluginRegistryService;
 import net.linlan.dsh.domain.plugin.registry.adapter.port.IPluginArtifactInstallerPort;
 import net.linlan.dsh.domain.plugin.registry.adapter.repository.IHarnessPluginRepository;
+import net.linlan.dsh.domain.plugin.registry.model.error.PluginManagementError;
 import net.linlan.dsh.domain.plugin.registry.model.entity.HarnessPluginEntity;
 import net.linlan.dsh.domain.plugin.registry.model.valobj.PluginArtifactInstallPlanVO;
 import net.linlan.dsh.domain.plugin.registry.model.valobj.PluginInstallModeEnumVO;
@@ -103,6 +104,39 @@ public class PluginRegistryService implements IPluginRegistryService {
                 plugin.getInstallMode() == PluginInstallModeEnumVO.NATIVE,
                 plugin.getInstalledAt()
         );
+    }
+
+    /**
+     * 带预期包与版本的安装：命中其他包或版本时以 {@code unexpected-package} 失败。
+     *
+     * @param pluginId         插件 ID
+     * @param displayName      展示名
+     * @param pluginVersion    版本
+     * @param runtimeType      运行时类型
+     * @param sourcePath       源路径
+     * @param entrypoint       入口
+     * @param expectedPluginId 预期插件 ID，可为 null
+     * @param expectedVersion  预期版本，可为 null
+     * @return 安装结果
+     */
+    public PluginInstallationResultVO installPlugin(
+            String pluginId,
+            String displayName,
+            String pluginVersion,
+            String runtimeType,
+            String sourcePath,
+            String entrypoint,
+            String expectedPluginId,
+            String expectedVersion
+    ) {
+        if (expectedPluginId != null && !expectedPluginId.equals(pluginId)) {
+            throw PluginManagementError.unexpectedPackage(expectedPluginId, pluginId);
+        }
+        if (expectedVersion != null && !expectedVersion.equals(pluginVersion)) {
+            throw PluginManagementError.unexpectedPackage(
+                    pluginId + "@" + expectedVersion, pluginId + "@" + pluginVersion);
+        }
+        return installPlugin(pluginId, displayName, pluginVersion, runtimeType, sourcePath, entrypoint);
     }
 
     /**

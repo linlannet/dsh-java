@@ -1,5 +1,6 @@
 package net.linlan.dsh.domain.plugin.registry.service;
 
+import net.linlan.dsh.domain.plugin.registry.model.error.PluginManagementError;
 import net.linlan.dsh.domain.plugin.registry.adapter.port.IPluginArtifactInstallerPort;
 import net.linlan.dsh.domain.plugin.registry.adapter.repository.IHarnessPluginRepository;
 import net.linlan.dsh.domain.plugin.registry.model.entity.HarnessPluginEntity;
@@ -27,6 +28,37 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PluginRegistryServiceTest {
+
+    @Test
+    void installWithExpectedPackageRejectsMismatch() {
+        InMemoryPluginRepository repo = new InMemoryPluginRepository();
+        RecordingInstallerPort installer = new RecordingInstallerPort();
+        PluginRegistryService service = new PluginRegistryService(repo, installer);
+
+        var error = assertThrows(PluginManagementError.class, () -> service.installPlugin(
+                "time-tools", "Time Tools", "1.0.0",
+                "JAVA_NATIVE", "/tmp/time.jar", "net.example.TimeTools",
+                "other-tools", "1.0.0"));
+
+        assertEquals("unexpected-package", error.errorCode());
+        assertNull(installer.lastInstalledSourcePath);
+    }
+
+    @Test
+    void installWithExpectedVersionRejectsMismatch() {
+        InMemoryPluginRepository repo = new InMemoryPluginRepository();
+        RecordingInstallerPort installer = new RecordingInstallerPort();
+        PluginRegistryService service = new PluginRegistryService(repo, installer);
+
+        var error = assertThrows(PluginManagementError.class, () -> service.installPlugin(
+                "time-tools", "Time Tools", "1.0.0",
+                "JAVA_NATIVE", "/tmp/time.jar", "net.example.TimeTools",
+                "time-tools", "2.0.0"));
+
+        assertEquals("unexpected-package", error.errorCode());
+        assertTrue(error.getMessage().contains("2.0.0"));
+        assertNull(installer.lastInstalledSourcePath);
+    }
 
     @Test
     void installPluginPersistsJavaNativeAsNativeMode() {
