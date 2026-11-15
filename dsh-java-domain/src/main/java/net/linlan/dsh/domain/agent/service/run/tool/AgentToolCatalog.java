@@ -33,6 +33,12 @@ import net.linlan.dsh.domain.tool.jobs.JobListTool;
 import net.linlan.dsh.domain.tool.jobs.JobOutputTool;
 import net.linlan.dsh.domain.tool.jobs.JobRunTool;
 import net.linlan.dsh.domain.tool.lsp.LspTool;
+import net.linlan.dsh.domain.tool.office.OfficeConvertTool;
+import net.linlan.dsh.domain.tool.office.OfficeRecalculateTool;
+import net.linlan.dsh.domain.tool.office.OfficeRenderTool;
+import net.linlan.dsh.domain.tool.web.model.valobj.WebToolConfig;
+import net.linlan.dsh.domain.document.office.model.valobj.OfficeKitConfig;
+import net.linlan.dsh.domain.storage.conversion.adapter.port.IOfficeConverterPort;
 import net.linlan.dsh.domain.tool.schedule.ScheduleTools;
 import net.linlan.dsh.domain.tool.session.SessionSearchTool;
 import net.linlan.dsh.domain.tool.shell.IShellExecutor;
@@ -70,6 +76,9 @@ public final class AgentToolCatalog {
     private final net.linlan.dsh.domain.terminal.adapter.port.ITerminalPort terminalPort;
     private final IHarnessPluginRepository pluginRepository;
     private final IPluginRuntimeService pluginRuntimeService;
+    private final IOfficeConverterPort officeConverter;
+    private final OfficeKitConfig officeKitConfig;
+    private final WebToolConfig webToolConfig;
 
     public AgentToolCatalog(
             IShellExecutor shellExecutor,
@@ -89,7 +98,10 @@ public final class AgentToolCatalog {
             IConversationQueryService conversationQueryService,
             net.linlan.dsh.domain.terminal.adapter.port.ITerminalPort terminalPort,
             IHarnessPluginRepository pluginRepository,
-            IPluginRuntimeService pluginRuntimeService
+            IPluginRuntimeService pluginRuntimeService,
+            IOfficeConverterPort officeConverter,
+            OfficeKitConfig officeKitConfig,
+            WebToolConfig webToolConfig
     ) {
         this.shellExecutor = shellExecutor;
         this.fsPort = fsPort;
@@ -109,6 +121,9 @@ public final class AgentToolCatalog {
         this.terminalPort = terminalPort;
         this.pluginRepository = pluginRepository;
         this.pluginRuntimeService = pluginRuntimeService;
+        this.officeConverter = officeConverter;
+        this.officeKitConfig = officeKitConfig == null ? OfficeKitConfig.defaults() : officeKitConfig;
+        this.webToolConfig = webToolConfig == null ? WebToolConfig.defaults() : webToolConfig;
     }
 
     public ToolRegistry createRegistry(AgentToolContext context, ToolRegistry sharedRegistry) {
@@ -139,8 +154,13 @@ public final class AgentToolCatalog {
         localRegistry.register(new FsReadImageTool(agentFsPort));
         localRegistry.register(new FsEditTool(agentFsPort, cwdSupplier));
         localRegistry.register(new PluginStatusTool(pluginRepository, pluginRuntimeService));
-        localRegistry.register(new WebSearchTool(webPort));
-        localRegistry.register(new WebFetchTool(webPort));
+        if (officeConverter != null) {
+            localRegistry.register(new OfficeRenderTool(officeConverter, officeKitConfig));
+            localRegistry.register(new OfficeConvertTool(officeConverter, officeKitConfig));
+            localRegistry.register(new OfficeRecalculateTool(officeConverter, officeKitConfig));
+        }
+        localRegistry.register(new WebSearchTool(webPort, webToolConfig));
+        localRegistry.register(new WebFetchTool(webPort, webToolConfig));
         if (lspService != null) {
             localRegistry.register(new LspTool(lspService, agentFsPort));
         }

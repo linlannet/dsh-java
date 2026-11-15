@@ -1,6 +1,6 @@
 # DeepSeek Harness Java v0.2.3 需求规格
 
-> 版本：`v0.2.3` | 主线：移动端接入（移动设备访问开关 + 设备配对重构回归 + 微信小程序登录） | 基线：v0.2.2
+> 版本：`v0.2.3` | 主线：移动端接入（移动设备访问开关 + 设备配对重构回归 + 微信小程序登录） | 基线：v0.2.2 | 迭代二：参考源平台能力对齐（§8）
 >
 > **版本范围声明**：v0.2.3 全部设计与任务统一纳入本版本，与本规格同目录归档。四件套分别为 `docs/spec/0.2.3/spec.md`（本需求规格）、`design.md`（技术方案）、`tasks.md`（任务清单）、`release-v0.2.3-development-notes.md`（开发说明）。
 >
@@ -11,6 +11,8 @@
 > **数据声明**：本版本**不新增数据库表**。设备凭据与小程序会话均为进程内存储（`ConcurrentHashMap`），为最小闭环实现；数据库持久化（`device_credential` 表等）留待后续版本，见"当前边界"。
 >
 > **本阶段边界**：本文档仅定义"做什么（What）"与验收标准，不包含类签名、算法与部署实现等"怎么做（How）"细节。
+>
+> **迭代二声明**：§8 为 v0.2.3 迭代二新增范围（参考源 `v0.2.2-alpha.3` ~ `v0.2.2-rc.2` 升级项对齐），与迭代一（§5 移动端接入）并行归档于本版本；其技术方案见 `design.md` 第三章、任务见 `tasks.md` 第十一节。迭代二仍遵守**不新增 Maven 模块、不新增数据库表**的边界，第三方依赖以复用既有能力为准。
 
 ---
 
@@ -372,6 +374,176 @@ C --> MP : Response<...>
 
 ---
 
+# **8. 参考源升级项对齐（平台能力对齐 · 迭代二）**
+
+> 来源：参考源 `deepseek-harness` 最新发布 tag `dsh-v0.2.2-rc.3`（该 tag 无新增升级指南），本版对齐基线取 `docs/upgrade-guide/v0.2.2-alpha.3/`、`v0.2.2-rc.1/`、`v0.2.2-rc.2/` 共 42 条升级项中**适用于 Java 服务端**的部分。
+> 说明：v0.2.2 已对齐 `v0.2.2-alpha.2` 的 3 条平台能力；本节补齐其后新增能力。参考源 master 上尚未进入任何发布 tag 的改动（Timeline 实验插件、Forge Panel、CUA Windows 提供方、Plugin Market 等）不在本版范围。
+
+## **8.1 统一错误码与 HarnessError 体系**
+
+对应升级项：`attachment-error-codes`、`experimental-tool-error-codes`、`shell-fs-tool-error-codes`、`terminal-backend-cleanup-error`、`web-fetch-transport-error-codes`。
+
+### **8.1.1 Business Rules**
+
+1. **统一基类**：新增 `HarnessError` 作为可分类工具/后端错误基类，携带稳定 `code`、`name` 与可读消息；附件、CUA、浏览器、Worktree、Ralph、终端、OAR 子 agent、Liveshare、Hook 等错误均须继承。
+   a. Acceptance criteria: [工具失败] → [结果含 `error.name` 与 `error.code`]
+2. **禁止 UNKNOWN 丢失**：工具主体或模型请求失败时，持久化结果必须记录真实错误码，不得回落为 `UNKNOWN`。
+   a. Acceptance criteria: [图像附件读取失败] → [`turn/end` 记录 `ATTACHMENT_READ_FAILED` 等真实码]
+3. **附件错误码保持**：`AttachmentError` 的 `name` 与既有 `ATTACHMENT_*`、`INVALID_IMAGE`、`IMAGE_TOO_LARGE` 码不变，仅调整继承关系。
+4. **Shell/FS 参数错误归并**：无沙箱执行器时传入 `sandbox_permissions`/`justification`、或 `enableRunInBackground=false` 时传入 `run_in_background=true`，统一报 `INVALID_ARGS`；消息以 `invalid arguments: ` 开头并点名涉事字段。
+   a. Acceptance criteria: [无沙箱执行器 + sandbox_permissions] → [`INVALID_ARGS`]
+5. **删除废弃码**：移除 `JOB_BACKGROUND_DISABLED`；`IMAGE_UNSUPPORTED_MODEL` 统一改为 `MODEL_DOES_NOT_SUPPORT_IMAGES`。
+6. **Web 抓取传输分类**：本地 HTTP 抓取须区分 `WEB_FETCH_DNS_FAILED`、`WEB_FETCH_CONNECTION_REFUSED`、`WEB_FETCH_CONNECTION_TIMEOUT`、`WEB_FETCH_CERTIFICATE_INVALID`、`WEB_FETCH_CONNECTION_INTERRUPTED`、`WEB_FETCH_NETWORK_UNREACHABLE`，无法归类时回落 `WEB_FETCH_NETWORK_ERROR`；消息须包含故障类别、系统错误码与底层错误。
+7. **终端清理失败**：`TerminalBackendCleanupError` 继承 `TerminalError`，`code=CLEANUP_FAILED`；Java 无 `AggregateError`，以 `cleanupFailure` 作为 `cause`、启动失败放入 suppressed，并通过 `isAggregate()`/`startFailure()` 暴露聚合语义。
+
+> 完整码表与旧→新映射见 [error-codes.md](error-codes.md)。
+
+## **8.2 Subagent 名称寻址与中断默认值**
+
+对应升级项：`subagent-names`、`subagent-interrupt-default`。
+
+### **8.2.1 Business Rules**
+
+1. **目录与名称**：每个创建者的 `subagent/catalog` 内，新 subagent 拥有同级唯一名称；根为 `lead`，后代为 `reviewer/checker` 形式的路径名。
+2. **控制工具按名称寻址**：`send_message` 与 `interrupt_agent` 参数由 `agent_id` 改为 `agent`，接受名称或 Session id；仍传 `agent_id` 必须参数校验失败。
+   a. Acceptance criteria: [send_message 仅传 agent_id] → [参数校验失败]
+3. **创建工具名称参数**：`subagent`、`subagent_fork`、`subagent_oar` 接受可选 `name`，返回 `started subagent <name>`，结果为 `{kind:'activation', name}`。
+4. **列表契约**：`list_agents` 返回 `{name, status, description?}`；不可读分支以 `corrupt`/`unsupported`/`unavailable` 表示；文本行为 `<name> [<status>] — <description>`。
+5. **Team 负责人**：`team_task_list`/`team_task_update` 以 `owner`（名称）取代 `ownerId`；无主任务用 `unowned: true` 查询。
+6. **目录载荷版本**：`subagent/catalog` 写入第 3 版载荷；`SubagentActivation` 新增必填 `name`，`SubagentActivationSpec` 接受可选 `name`。
+7. **中断默认关闭**：内置组合（base、standard、ptc 等）的 subagent 控制工具默认 `interrupt=false`，模型不再获得 `interrupt_agent`；中断 API 本身仍可用。
+   a. Acceptance criteria: [内置组合构建工具目录] → [无 interrupt_agent]
+
+## **8.3 Office 能力工具化**
+
+对应升级项：`office-kit-package`、`office-operation-tools`、`office-skill-resources`。
+
+### **8.3.1 Business Rules**
+
+1. **工具替代技能动作**：注册 `office_render`、`office_convert`、`office_recalculate` 三个 Office 工具；不再注册 `office-render`、`office-recalculate`、`office-export-pdf` 技能。
+   a. Acceptance criteria: [加载 Office 技能后的下一步] → [工具目录含 3 个 office_* 工具]
+2. **技能保留**：保留 `office` 路由技能与 `office-docx`、`office-pptx`、`office-xlsx` 编写技能。
+3. **配置收敛**：删除 `skill-office` 的 `node`/`cli` 配置键与 `DSH_BUNDLED_OFFICE_CLI`、`DSH_BUNDLED_OFFICE_NODE`、`DSH_BUNDLED_OFFICE_SKILLS`；`DSH_BUNDLED_PRIMARY_RUNTIME` 统一为 `DSH_PRIMARY_RUNTIME`。
+4. **Python 环境声明**：`skill-office` 新增 `pythonEnvironment`，默认 `workspace-dependencies`；未挂载 workspace 依赖工具的组合须设为 `user`。
+5. **转换治理**：`office-kit` 配置新增 `outputDirectory`（默认 `$DSH_HOME/office-kit/outputs`）、`outputRetentionMs`、`maxOutputStoreBytes`。
+6. **缺 Kit 可诊断**：LibreOffice Kit 缺失时提供方仍注册，转换时返回 `OfficeKitError(unavailable)`，后续安装 Kit 无需重载提供方。
+7. **技能内置加载**：Office 技能从包内 assets 加载，不再依赖外部 `office-skills/` 目录。
+
+## **8.4 Web 搜索/抓取计费与凭据来源**
+
+对应升级项：`web-search-billing`。
+
+### **8.4.1 Business Rules**
+
+1. **计费模式**：新增 `searchBilling` 与 `fetchBilling`，取值 `auto`（默认）/`account`/`api-key`；`auto` 下 DeepSeek 模型路由行为不变，其他会话在无密钥时改用已登录账号。
+2. **凭据来源有序**：账号与 API 密钥来源各自携带地址，按列表顺序解析；顶层 `baseURL` 移除。
+3. **显式覆盖优先**：非空 `*BaseURL`、`*ApiKeyEnv` 仍优先于计费模式。
+4. **取消语义**：`AbortSignal` 取消时返回 `WEB_ABORTED`；凭据读取错误保留原始 `cause`。
+
+## **8.5 Worktree 归档清理**
+
+对应升级项：`archive-worktrees`。
+
+### **8.5.1 Business Rules**
+
+1. **创建记录**：工作树服务为每个创建的检出目录写入 `plugin:worktree/created` 会话事件。
+2. **归档清理条件**：创建 Session 归档时，仅当无其他未归档 Session 引用、创建者策略非只读、且 Git 检查为干净（无跟踪改动/未跟踪文件/已初始化子模块/锁/分离 HEAD）时，执行不带 `force` 的 `git worktree remove`。
+3. **保留语义**：分支与提交保留；`retainOnArchive` 默认关闭，开启后保留全部检出目录。
+   a. Acceptance criteria: [干净工作树归档] → [目录删除、分支保留]
+4. **失败提示**：Git 拒绝删除（如内嵌仓库）时保留目录，并在归档提示中显示清理失败。
+
+## **8.6 运行时上下文提醒**
+
+对应升级项：`runtime-context-reminders`。
+
+### **8.6.1 Business Rules**
+
+1. **提醒包装**：新写入的 `runtime-context` 用户消息文本必须包在 `<system-reminder>` 内。
+2. **快照语义**：首份快照介绍当前会话，不宣称覆盖更早上下文；后续快照明确覆盖摘要保留的上下文。
+3. **清空标记**：清空提醒携带 `form: 'snapshot'` 与 `sections: []`。
+4. **旧快照刷新**：缺少 `source.sections` 的旧快照或清空标记，在下一次获准请求时刷新一次，不改写既有请求前缀。
+
+## **8.7 Plugin Bundle 更新语义**
+
+对应升级项：`plugin-update-method`。
+
+### **8.7.1 Business Rules**
+
+1. **更新能力字段**：`BundleInfo.updatable` 由可选的 `BundleInfo.update` 取代，取值 `registry`（registry 有更新版本）或 `git`（固定到完整提交的 Git spec 有更新）；无法更新的 bundle 不含该字段。
+2. **Git 更新**：`updateBundle` 在 `options.spec` 指向同一仓库较新提交时接受 `git` bundle。
+3. **新错误码**：管理错误新增 `unexpected-package`；带 `expected` 的安装若装到其他包或版本，以该码失败。
+4. **工具契约不变**：`plugin_manager` 工具不返回该字段。
+
+## **8.8 DeepSeek 文件上传超时**
+
+对应升级项：`deepseek-files-timeout`。
+
+### **8.8.1 Business Rules**
+
+1. **默认超时**：`filesApiTimeoutMs` 默认值由 60 秒调整为 20 秒。
+2. **超时降级**：上传超时后，下一次需要上传图片的请求直接使用内联图片。
+3. **退避与恢复**：连续超时使跳过的请求次数翻倍；上传成功后清零。
+
+## **8.9 WebServer 默认鉴权**
+
+对应升级项：`connection-page-peer`（仅服务端部分）。
+
+### **8.9.1 Business Rules**
+
+1. **默认要求认证**：路由注册默认 `auth: required`；公开路由必须显式声明 `anonymous`，禁止隐式公开。
+   a. Acceptance criteria: [新增路由未声明 auth] → [默认要求认证]
+2. **Cookie 与连接页**：Token 校验与 HTTP 登录交换独立为认证提供方；有效 Cookie 可认证页面；移除页面/API 的 `purpose` 区分。
+3. **来源检查**：连接监听器活动时，来源检查同样作用于匿名路由。
+
+## **8.10 会话状态与事件写入**
+
+对应升级项：`session-status-package`（服务端投影部分）、`session-append-overloads`。
+
+### **8.10.1 Business Rules**
+
+1. **宿主阅读记录**：完成未读状态跟随宿主内存中、由所有前端共享的阅读记录；主视图切换到该会话时自动清除手动标记。
+2. **失败标记**：新增必填 `completionFailed`，标记最近一轮失败的未读会话。
+3. **显式标记**：新增 `mark(sessionId, unread)`；在 `readingReady` 报告取得宿主基线前调用必须拒绝。
+4. **事件批量写入**：`Session.append` 同时支持单事件与事件数组两种签名；既有单事件调用保持兼容。
+   a. Acceptance criteria: [批量 append 事件数组] → [按顺序写入并可重放]
+
+## **8.11 CUA 工具暴露一致性**
+
+对应升级项：`cua-agents-without-preset`（仅服务端装配部分）。
+
+### **8.11.1 Business Rules**
+
+1. **无 preset Agent**：未组合 Agent preset 的 Agent 仍须获得 `cua_run_code` 及其操作指引。
+2. **按 preset 区分**：使用配置 preset 的 Agent 获得原始 `cua`，使用其他 preset 的获得 `cua_run_code`；`agentPreset: false` 全局注册原始 `cua`。
+3. **运行期缺失可诊断**：专用程序运行时或工作目录服务不可用时，Agent 创建失败并返回可读原因（如 `CUA program tool is unavailable`）。
+
+## **8.12 PTC 程序输出选择**
+
+对应升级项：`ptc-inspect-output`（不包含 scoped REPL 与 bootstrap v3）。
+
+### **8.12.1 Business Rules**
+
+1. **显式输出**：程序通过 `inspect(...values)` 展示选定值；函数返回值与末尾表达式不再自动进入结果。
+2. **逐项渲染**：每个 `inspect` 参数独立渲染，字符串直出，其他值使用对象格式；不限制预览深度、数组项数或字符串长度。
+3. **图片输出**：截图与 `read_image` 在程序中返回 `Image`（`path`、`width`、`height`），通过 `inspect` 按输出顺序附加。
+4. **CUA 观察返回值**：`getCapabilities`/`listApps`/`findApps`/`getState`/`getWindows`/`getAccessibilityTree` 将结果返回程序，不再默认输出。
+
+## **8.13 不纳入本版的升级项**
+
+以下升级项与 Java 服务端无对应体系，明确不纳入：
+
+| 类别 | 升级项 | 原因 |
+| --- | --- | --- |
+| Cordis / 包导出 | `cordis-root-and-intercept-metadata`、`package-export-cleanup` | Java 无 Cordis 运行期与 npm 导出体系 |
+| Client / Desktop UI | `chat-process-activity-context`、`window-drag-regions`、`client-module-metadata`、`terminal-bundle-sidebar-backend`、`shared-search-filter` | 客户端渲染与桌面窗口行为 |
+| macOS 原生 CUA | `cua-ax-read-limits`、`cua-hover-ax-only`、`cua-native-platform`、`cua-partial-observations`、`cua-macos-provider` | Java CUA 基于 AWT Robot，无 AX 树与 macOS 原生 helper |
+| Python / Node 运行时 | `python-ptc-removal`、`ptc-bootstrap-protocol`、`ptc-scoped-repl-default` | Java PTC 无 Node REPL bootstrap 与 Python 绑定层 |
+| Forge | `forge-change-request-overview`、`forge-pinned-diff`、`forge-review-reads` | Java 无 Forge 评审体系 |
+| 账号体系 | `account-notification-fields`、`account-remote-provider` | Java 未实现 DeepSeek 账号与远程账号命名空间 |
+| 文档技能 | `dsh-doc-skill` | 参考源内部文档工作流，不影响运行时能力 |
+
+---
+
 ## 附：v0.2.3 能力清单与版本范围汇总
 
 | 序号 | 能力领域 | 归属环节 | 说明 |
@@ -383,5 +555,16 @@ C --> MP : Response<...>
 | 5 | 微信小程序登录 | §5.5 | jscode2session、`mini_` 会话（2h）、未配置 50300 |
 | 6 | 版本发布与工程治理 | §5.6 | pom 统一 0.2.3、CHANGELOG、四件套归档 |
 | 7 | AI 可发现性文档 | §5.7 | `llms.txt`、`AGENTS.md`、ai-discoverability.md |
+| 8 | 统一错误码与 HarnessError | §8.1 | 真实错误码落结果、Shell/FS/Web/Terminal 分类码 |
+| 9 | Subagent 名称寻址 | §8.2 | 名称/路径寻址、catalog v3、中断默认关闭 |
+| 10 | Office 能力工具化 | §8.3 | `office_render`/`office_convert`/`office_recalculate` |
+| 11 | Web 计费与凭据来源 | §8.4 | `searchBilling`/`fetchBilling`、有序凭据 |
+| 12 | Worktree 归档清理 | §8.5 | `plugin:worktree/created`、干净树清理、分支保留 |
+| 13 | 运行时上下文提醒 | §8.6 | `<system-reminder>` 包装、快照/清空语义 |
+| 14 | Plugin Bundle 更新语义 | §8.7 | `BundleInfo.update`、`unexpected-package` |
+| 15 | DeepSeek 文件上传超时 | §8.8 | 默认 20s、超时内联降级 |
+| 16 | WebServer 默认鉴权 | §8.9 | 默认 required、显式 anonymous |
+| 17 | 会话状态与事件写入 | §8.10 | 阅读记录、`completionFailed`、批量 append |
+| 18 | CUA / PTC 部分对齐 | §8.11–§8.12 | 无 preset Agent 的 `cua_run_code`、`inspect` 输出 |
 
 > **与 v0.2.2 修订记录的关系**：v0.2.2 修订期曾下线移动设备配对（原 `DevicePairRequest`/`DevicePairResult` 命名、`InMemoryDeviceRepository`、无开关控制）；v0.2.3 重构回归后 DTO 统一 `*DTO` 后缀、聚合建模（`DeviceCredentialAggregate`）、新增移动访问开关与单元测试。

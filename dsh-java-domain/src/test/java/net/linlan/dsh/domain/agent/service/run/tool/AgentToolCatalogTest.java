@@ -16,7 +16,7 @@ class AgentToolCatalogTest {
     void exposesSkillToolWhenSkillServiceIsConfigured() {
         AgentToolCatalog catalog = new AgentToolCatalog(
                 null, null, null, null, null, null, null, null, skillService(),
-                null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null);
 
         var registry = catalog.createRegistry(
                 new AgentToolCatalog.AgentToolContext("agent", "session", null, null, null),

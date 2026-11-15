@@ -1,5 +1,7 @@
 package net.linlan.dsh.domain.tool.worktree;
 
+import net.linlan.dsh.domain.common.error.HarnessError;
+
 import java.util.Objects;
 
 /**
@@ -24,7 +26,16 @@ public class WorktreeTool {
 
     public record WorktreeResult(String path, String branch) { }
 
-    public static class NotGitRepoException extends RuntimeException {
-        public NotGitRepoException(String message) { super(message); }
+    /**
+     * NotGitRepoException 表示目标目录不是 Git 仓库。
+     */
+    public static class NotGitRepoException extends HarnessError {
+
+        /** 非 Git 仓库错误码。 */
+        public static final String NOT_GIT_REPO = "WORKTREE_NOT_GIT_REPO";
+
+        public NotGitRepoException(String message) {
+            super(NOT_GIT_REPO, message);
+        }
     }
 }

@@ -2,6 +2,9 @@ package net.linlan.dsh.domain.tool.web;
 
 import net.linlan.dsh.domain.model.valobj.TextBlock;
 import net.linlan.dsh.domain.tool.web.adapter.port.IWebPort;
+import net.linlan.dsh.domain.tool.web.model.error.WebBillingError;
+import net.linlan.dsh.domain.tool.web.model.valobj.WebBillingMode;
+import net.linlan.dsh.domain.tool.web.model.valobj.WebToolConfig;
 import net.linlan.dsh.domain.model.entity.ToolDefinition;
 import net.linlan.dsh.domain.model.entity.ToolExecutionResult;
 import net.linlan.dsh.domain.model.entity.ToolRunContext;
@@ -32,15 +35,27 @@ public class WebSearchTool implements ToolDefinition {
     private static final long TIMEOUT_MS = 30_000;
 
     private final IWebPort webService;
+    private final WebToolConfig config;
+    private final WebCredentialResolver credentialResolver = new WebCredentialResolver();
 
     /**
-     * 处理Web 搜索 工具。
-     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
-     * @param webService Web Service参数。
-     * @return 方法执行结果。
+     * 使用默认 Web 配置创建。
+     *
+     * @param webService Web 服务
      */
     public WebSearchTool(IWebPort webService) {
+        this(webService, WebToolConfig.defaults());
+    }
+
+    /**
+     * 使用显式计费与凭据配置创建。
+     *
+     * @param webService Web 服务
+     * @param config     计费与凭据配置
+     */
+    public WebSearchTool(IWebPort webService, WebToolConfig config) {
         this.webService = webService;
+        this.config = config == null ? WebToolConfig.defaults() : config;
     }
 
     @Override public String name() { return NAME; }
@@ -116,7 +131,8 @@ public class WebSearchTool implements ToolDefinition {
                     ? ((Number) argMap.get("max_results")).intValue()
                     : DEFAULT_MAX_RESULTS;
 
-            IWebPort.SearchResult result = webService.search(query, maxResults);
+            IWebPort.SearchResult result = webService.search(
+                    query, maxResults, searchCredential());
 
             StringBuilder sb = new StringBuilder();
             if (result.content() != null && !result.content().isEmpty()) {
@@ -146,6 +162,9 @@ public class WebSearchTool implements ToolDefinition {
 
             return CompletableFuture.completedFuture(
                     ToolExecutionResult.ok(List.of(new TextBlock(sb.toString()))));
+        } catch (WebBillingError e) {
+            return CompletableFuture.completedFuture(
+                    ToolExecutionResult.fail(e.getMessage(), e.errorName(), e.errorCode()));
         } catch (Exception e) {
             return CompletableFuture.completedFuture(
                     ToolExecutionResult.fail("web_search failed: " + e.getMessage(), "EXECUTION_ERROR"));
@@ -170,6 +189,13 @@ public class WebSearchTool implements ToolDefinition {
 
     @Override
     public long timeoutMs() { return TIMEOUT_MS; }
+
+    private String searchCredential() {
+        if (config.searchBilling() == WebBillingMode.AUTO && config.searchCredentials().isEmpty()) {
+            return null;
+        }
+        return credentialResolver.resolve(config.searchBilling(), config.searchCredentials()).value();
+    }
 
     /**
      * 处理hostname。

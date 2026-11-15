@@ -12,7 +12,7 @@
 > 3. **不新增数据库表**：设备凭据与小程序会话为进程内存储；数据库仓储为后续版本任务。
 > 4. **DTO 命名规范**：对外 DTO 统一 `*DTO` 后缀。
 >
-> **任务统计**：共 **9 个任务组**、**24 个子任务节**、约 **55 条可勾选条目**。
+> **任务统计**：迭代一为 **9 个任务组**、**24 个子任务节**、约 **55 条可勾选条目**；迭代二（第十一节）新增 **12 个任务组**、**46 条待办条目**。
 >
 > **完成状态图例**：`[x]` 已完成 ｜ `[ ]` 待办/后续优化
 
@@ -151,3 +151,82 @@
 - [ ] 小程序会话持久化与 openid ↔ 用户档案绑定
 - [ ] 设备 token 细粒度权限（按设备裁剪工具/审批画像）
 - [ ] 多实例部署下的配对码/会话共享（外部存储）
+
+---
+
+## 11. 参考源平台能力对齐（迭代二）
+
+> 依赖：迭代一全部完成 ｜ 覆盖：spec §8.1–§8.12、design 第三章 ｜ 完成状态：待办
+>
+> 对齐基线：参考源 `v0.2.2-alpha.3` / `v0.2.2-rc.1` / `v0.2.2-rc.2` 升级指南；不纳入项见 spec §8.13。
+> 范围边界：不新增 Maven 模块、不新增数据库表；错误码改名为破坏性变更，须同步测试与文档。
+
+### 11.1 统一错误码与 HarnessError
+- [x] 新增 `HarnessError`（domain 公共异常包），字段 `code`/`name`/`message`/`cause`；验收：`instanceof HarnessError` 可用于统一捕获 —— `dsh-java-domain/.../common/error/HarnessError.java`
+- [x] 附件、CUA、浏览器、Worktree、Ralph、终端、OAR、Liveshare、Hook 错误类改为继承 `HarnessError`；验收：既有 `name` 与码不变（OAR/Liveshare 项目内无对应实现，已跳过）
+- [x] `ToolPipeline` / `ToolCallExecutor` 写入 `tool/result.error={name, code}`，禁止回落 `UNKNOWN`；验收：失败结果必含 `error.code`
+- [x] Shell/FS：无沙箱执行器与 `run_in_background` 不支持统一报 `INVALID_ARGS`，消息以 `invalid arguments: ` 开头；验收：对应单测（当前入参无这两项，已统一缺失参数/非法参数为 `ToolArgsError`/`INVALID_ARGS`）
+- [x] 移除 `JOB_BACKGROUND_DISABLED`，`IMAGE_UNSUPPORTED_MODEL`→`MODEL_DOES_NOT_SUPPORT_IMAGES`；验收：全仓库无旧码
+- [x] Web fetch 增加 6 个 `WEB_FETCH_*` 码与兜底码，消息含故障类别/系统码/底层错误；验收：DNS、拒绝、超时、证书用例
+- [x] `TerminalBackendCleanupError` 继承 `TerminalError`，`code=CLEANUP_FAILED`；启动失败与清理失败通过 `cleanupFailure` + `suppressed` 聚合（`isAggregate()` 判定），不依赖 Java 不存在的 `AggregateError`
+- [x] 更新 `ToolErrorCodes` 与各子系统码表，补充旧→新映射到 `CHANGELOG.md`；验收：文档可追溯 —— 总表见 [error-codes.md](error-codes.md)
+
+### 11.2 Subagent 名称寻址
+- [x] `subagent/catalog` 支持同级唯一名称与路径名（根 `lead`），载荷升至第 3 版；验收：`reviewer/checker` 可解析 —— Java 无持久化 catalog，改为 `InProcessSubagentDriver` 名称索引 + `listAgents` 投影，路径名按字面键支持
+- [x] `SendMessageTool` / `InterruptTool` 参数由 `agent_id` 改为 `agent`（名称或 Session id）；验收：仅传 `agent_id` 参数校验失败
+- [x] `SubagentTool` / fork / oar 接受可选 `name`，返回 `started subagent <name>` 与 `{kind:'activation', name}`；验收：结果结构一致
+- [x] `ListAgentsTool` 返回 `{name, status, description?}`，支持 `corrupt`/`unsupported`/`unavailable`；验收：文本行格式一致（进程内仅有 running/done，其余状态保留给外部驱动）
+- [x] Team 任务投影以 `owner` 取代 `ownerId`，无主任务用 `unowned` 查询；当前代码无 Team 任务投影，跳过
+- [x] 内置组合默认 `interrupt=false`，不注册 `interrupt_agent`；验收：工具目录断言（当前 `AgentToolCatalog` 未注册 interrupt 工具）
+
+### 11.3 Office 能力工具化
+- [x] 新增 `office_render` / `office_convert` / `office_recalculate` 三个工具并注册到工具目录；验收：加载技能后目录含三工具 —— `dsh-java-domain/.../tool/office/`
+- [x] 收敛 `OfficeSkill`：删除三个旧技能动作，保留 `office` 路由与 docx/pptx/xlsx 编写技能；验收：技能清单
+- [x] 删除 `skill-office.node/cli` 与 `DSH_BUNDLED_OFFICE_*` 配置/环境变量，新增 `pythonEnvironment`；验收：配置读取无旧键（当前仓库无旧键，已新增 `dsh.office.python-environment`）
+- [x] 新增 Office Kit 输出治理配置（`outputDirectory`/`outputRetentionMs`/`maxOutputStoreBytes`），复用转换端口与 `OfficeKitOutputStore`；验收：过期清理单测
+- [x] LibreOffice Kit 缺失时返回 `OfficeKitError(unavailable)` 且不阻断启动；验收：缺 Kit 启动 + 转换失败用例
+- [x] Office 技能资源改为内置 assets 加载；验收：无外部目录依赖
+
+### 11.4 Web 计费与凭据
+- [x] 新增 `searchBilling`/`fetchBilling`（`auto|account|api-key`）；验收：三模式解析用例 —— `dsh-java-domain/.../tool/web/`
+- [x] 凭据改为有序来源列表并移除顶层 `baseURL`；验收：顺序优先级用例
+- [x] 取消异常映射 `WEB_ABORTED`，凭据错误保留 `cause`；验收：取消与凭据异常用例
+
+### 11.5 Worktree 归档清理
+- [ ] 创建成功后写 `plugin:worktree/created` 会话事件；验收：事件可重放 —— `dsh-java-domain/.../tool/worktree/`
+- [ ] 归档时按条件执行 `git worktree remove`（非 force），失败仅提示；验收：脏树/子模块/锁/分离 HEAD 均保留
+- [ ] `retainOnArchive` 默认 false，分支与提交保留；验收：清理后分支仍存在
+
+### 11.6 运行时上下文提醒
+- [ ] `runtime-context` 消息包 `<system-reminder>`，首份/后续快照文案区分；验收：快照文本断言
+- [ ] 清空提醒输出 `form=snapshot`、`sections=[]`；验收：清空用例
+- [ ] 旧快照缺少 `sections` 时仅刷新一次且不改写前缀；验收：二次请求不重复刷新
+
+### 11.7 Plugin Bundle 更新
+- [ ] `BundleInfo.updatable` 改为可选 `update`（`registry|git`）；验收：listBundles 契约 —— `dsh-java-domain/.../plugin/`
+- [ ] `updateBundle` 支持 Git 较新提交；新增 `unexpected-package`；验收：预期不符安装失败
+
+### 11.8 DeepSeek 文件上传超时
+- [ ] `filesApiTimeoutMs` 默认改 20s，连接/请求超时分离；验收：配置默认值 —— `dsh-java-infrastructure/.../llm/`
+- [ ] 超时后内联图片降级与 2 倍退避、成功复位；验收：连续超时用例
+
+### 11.9 WebServer 默认鉴权
+- [ ] 路由注册增加 `auth` 维度，默认 `required`，公开路由显式 `anonymous`；验收：未声明路由被拒 —— `dsh-java-trigger/`
+- [ ] Token 校验/登录交换抽为认证提供方，Cookie 可认证页面与 API；验收：Cookie 用例
+- [ ] 连接监听器活动时匿名路由执行来源检查；验收：跨源拒绝用例
+
+### 11.10 会话状态与事件写入
+- [ ] 扩展 `SessionStatus` 表达阅读态/完成未读态，新增 `completionUnread`/`completionFailed`；验收：投影字段 —— `dsh-java-domain/.../session/`
+- [ ] 宿主共享阅读记录与 `mark(sessionId, unread)`（`readingReady` 前拒绝）；验收：标记用例
+- [ ] `append` 增加事件数组重载，按序批量写入且可重放；验收：批量重放用例
+
+### 11.11 CUA / PTC 部分对齐
+- [ ] 未组合 preset 的 Agent 注册 `cua_run_code`，按 `agentPreset` 选择 `cua`/`cua_run_code`；验收：工具目录用例 —— `dsh-java-domain/.../tool/web/computer/`
+- [ ] 专用运行时缺失时创建 Agent 失败并返回可读原因；验收：错误消息
+- [ ] PTC 程序输出改为 `inspect(...)` 显式选择，图片经 `inspect` 附加；验收：输出顺序与图片用例
+
+### 11.12 测试、文档与发布治理
+- [ ] 各能力域补充单元测试与 ArchUnit 回归；验收：`mvn test` 全绿
+- [ ] 更新 `CHANGELOG.md` 0.2.3 迭代二分节（新增/更新/破坏性变更）；验收：旧→新错误码映射表
+- [ ] 更新 `llms.txt`、`AGENTS.md` 与 `docs/md/` 相关说明；验收：版本与命令一致
+- [ ] 端到端冒烟：Office 转换、Worktree 归档、WebServer 鉴权、Subagent 名称链路；验收：冒烟记录归档

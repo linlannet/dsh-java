@@ -2,7 +2,7 @@
 
 > 版本：`v0.2.3` | 主线：移动端接入（移动设备访问开关 + 设备配对重构回归 + 微信小程序登录） | 基线：v0.2.2
 >
-> 本方案将 `spec.md` 的 §5.1–§5.7 能力领域与 §6 数据约束转化为分层落位、接口清单与实现细节。**不新增 Maven 模块、不新增第三方依赖、不新增数据库表。**
+> 本方案将 `spec.md` 的 §5.1–§5.7 能力领域、§8 参考源平台能力对齐与 §6 数据约束转化为分层落位、接口清单与实现细节。**不新增 Maven 模块、不新增第三方依赖、不新增数据库表。**
 
 ---
 
@@ -200,3 +200,195 @@ DOM <- REPO
 2. **单实例约束**：内存态不支持多实例；部署文档须注明。
 3. **微信凭据泄露**：secret 仅经环境变量注入；代码与文档均不落盘。
 4. **拦截器顺序**：`devt_` 分支位于主 Key 校验之前，未配置主 Key 时设备 token 依然强校验——保持 v0.2.2 修订前语义。
+
+---
+
+# 三、参考源平台能力对齐增量设计（迭代二）
+
+## 3.1 适用性判定与总体策略
+
+参考源最新发布 tag 为 `dsh-v0.2.2-rc.3`；该 tag 未新增升级指南。因此对齐范围取 `v0.2.2-alpha.3`、`v0.2.2-rc.1`、`v0.2.2-rc.2` 的 42 条升级项，按"Java 服务端是否存在对应体系"筛分为纳入与不纳入两组。
+
+| 组 | 升级项 | 处理 |
+| --- | --- | --- |
+| 纳入 | `attachment-error-codes`、`experimental-tool-error-codes`、`shell-fs-tool-error-codes`、`terminal-backend-cleanup-error`、`web-fetch-transport-error-codes` | 统一到 `HarnessError` 与分类错误码 |
+| 纳入 | `subagent-names`、`subagent-interrupt-default` | Subagent catalog 与工具参数改造 |
+| 纳入 | `office-kit-package`、`office-operation-tools`、`office-skill-resources` | Office 工具化与配置收敛 |
+| 纳入 | `web-search-billing` | 计费模式与凭据来源 |
+| 纳入 | `archive-worktrees` | 归档清理与会话事件 |
+| 纳入 | `runtime-context-reminders` | 上下文快照包装 |
+| 纳入 | `plugin-update-method` | Bundle 更新语义 |
+| 纳入 | `deepseek-files-timeout` | 文件上传超时策略 |
+| 部分纳入 | `connection-page-peer`、`session-status-package`、`session-append-overloads`、`cua-agents-without-preset`、`ptc-inspect-output` | 仅服务端契约与装配部分 |
+| 不纳入 | Cordis/包导出、Client/Desktop、macOS AX、Python/Node 运行时、Forge、账号、文档技能 | 见 `spec.md` §8.13 |
+
+**总体策略**：优先收敛跨能力的错误码契约（一次改造覆盖全部工具），再做各能力域的参数/配置演进；所有破坏性改名在 Java 侧以**编译期失败**暴露，不做静默兼容。
+
+## 3.2 统一错误码体系（HarnessError）
+
+### 3.2.1 模型
+
+```plantuml
+@startuml
+!theme plain
+class RuntimeException
+class HarnessError {
+  +String code
+  +String name()
+  +String message
+  +Throwable cause
+}
+class AttachmentError
+class ToolArgsError
+class TerminalError
+class WebFetchError
+class SubagentError
+class OfficeKitError
+RuntimeException <|-- HarnessError
+HarnessError <|-- AttachmentError
+HarnessError <|-- ToolArgsError
+HarnessError <|-- TerminalError
+HarnessError <|-- WebFetchError
+HarnessError <|-- SubagentError
+HarnessError <|-- OfficeKitError
+@enduml
+```
+
+- **落位**：`dsh-java-domain` 新增 `domain/common/error` 公共异常包（现有错误类散落在各子系统，本版收敛出统一基类），`code` 为稳定字符串常量，`name()` 返回具体错误类名。
+- **幂等映射**：工具执行管线（`ToolPipeline` / `ToolCallExecutor`）捕获 `HarnessError` 时写入 `tool/result.error = {name, code}`；非 `HarnessError` 才归为内部错误，禁止统一写成 `UNKNOWN`。
+- **码表归属**：各子系统维护自己的常量类（附件、终端、Web、Subagent、Office），由 `ToolErrorCodes` 只保留通用码（`INVALID_ARGS`、`TOOL_TIMEOUT` 等）。
+
+### 3.2.2 关键码变更
+
+| 场景 | 旧行为 | 新行为 |
+| --- | --- | --- |
+| 无沙箱执行器收到 `sandbox_permissions` | `SANDBOX_ESCALATION_UNAVAILABLE` | `ToolArgsError` / `INVALID_ARGS` |
+| `run_in_background` 不支持 | `JOB_BACKGROUND_DISABLED` | `ToolArgsError` / `INVALID_ARGS` |
+| 模型不支持图片 | `IMAGE_UNSUPPORTED_MODEL` | `MODEL_DOES_NOT_SUPPORT_IMAGES` |
+| 本地抓取网络失败 | `WEB_PROVIDER_ERROR` | `WEB_FETCH_*` 六类 + `WEB_FETCH_NETWORK_ERROR` |
+| 终端启动与清理双失败 | `AggregateError` | `TerminalBackendCleanupError` / `CLEANUP_FAILED` |
+| 图像附件读取失败 | `UNKNOWN` | `ATTACHMENT_*` / 图像准入码 |
+
+### 3.2.3 兼容性
+
+错误码是模型可见契约，属于**破坏性变更**：既有按旧码分支的测试、前端文案与外部脚本需同步更新；Java 侧通过常量类集中引用，避免字符串散落。
+
+完整码表、子系统归属与旧→新映射见 [error-codes.md](error-codes.md)。
+
+## 3.3 Subagent 名称寻址
+
+### 3.3.1 领域模型
+
+| 概念 | 设计 |
+| --- | --- |
+| 名称 | 同级唯一；根 `lead`；后代路径名 `reviewer/checker` |
+| 目录 | 每个创建者持有 `subagent/catalog`，写入第 3 版载荷；旧条目继续以 Session id 作为名称 |
+| 寻址 | `send_message`/`interrupt_agent` 的 `agent` 参数接受名称或 Session id；`agent_id` 参数删除 |
+| 列表 | `{name, status, description?}`；`status` 取 `running`/`done`/`corrupt`/`unsupported`/`unavailable` |
+| 激活结果 | `SubagentActivation` 新增必填 `name`；`SubagentActivationSpec` 接受可选 `name` |
+
+### 3.3.2 落位
+
+| 层 | 改动 |
+| --- | --- |
+| domain | `SubagentRegistry` 增加名称索引与同级唯一校验；`SubagentSessions` 维护名称 → Session id 映射；`SubagentActivation`/Spec 增加 `name` |
+| domain/tool/subagent | `SendMessageTool`、`InterruptTool` 参数改为 `agent`；`ListAgentsTool` 返回结构化行；`SubagentTool` 增加可选 `name` |
+| case | Team 任务投影把 `ownerId` 改为 `owner`，无主任务用 `unowned` 查询 |
+| 持久化 | 目录载荷版本升到 3；对旧载荷按 Session id 兼容读取 |
+
+> Java 适配：当前无持久化 `subagent/catalog`，名称索引落在 `InProcessSubagentDriver`（名称→会话 id、同级唯一、默认名称为会话 id），`listAgents` 直接投影；`reviewer/checker` 等路径名按字面键解析。
+
+## 3.4 Office 工具化
+
+| 工具 | 职责 | 复用 |
+| --- | --- | --- |
+| `office_render` | 文档渲染为可预览产物 | `OfficeToPdfService` / `LibreOfficeConverter` |
+| `office_convert` | 格式转换（docx/pptx/xlsx → PDF 等） | 同上 |
+| `office_recalculate` | 表格重算 | 既有文档转换端口扩展 |
+
+- **技能收敛**：`OfficeSkill` 只保留 `office` 路由与 `office-docx/pptx/xlsx` 三个编写技能，删除 `office-render`、`office-recalculate`、`office-export-pdf` 技能动作。
+- **配置**：新增 `dsh.office.output-directory`（默认 `$DSH_HOME/office-kit/outputs`）、`output-retention-ms`、`max-output-store-bytes`；删除 `skill-office.node/cli` 与 `DSH_BUNDLED_OFFICE_*`。
+- **缺 Kit 行为**：转换器缺失时工具返回 `OfficeKitError(unavailable)`，不阻止应用启动。
+- **安全**：Office 工具在 Host 进程内解析不可信文档，输入仍受文件系统后端授权约束；需在工具说明中标注该信任边界。
+
+## 3.5 Web 搜索/抓取计费
+
+- 配置模型：`dsh.web.search-billing` 与 `dsh.web.fetch-billing`，枚举 `auto|account|api-key`。
+- 凭据解析改为**有序来源列表**：每项包含地址与凭据提供方；顺序即优先级，移除顶层 `baseURL`。
+- 未识别的取消异常统一映射 `WEB_ABORTED`；凭据读取异常保留原始 `cause`。
+- 失败分类沿用 §3.2.2 的 `WEB_FETCH_*` 码，工具结果与日志共用同一码。
+
+## 3.6 Worktree 归档清理
+
+1. `WorktreeTool.create` 成功后写 `plugin:worktree/created` 会话事件（目录、仓库、分支、创建 Session）。
+2. 归档用例监听会话归档事件：按目录反查引用，确认无其他未归档 Session 引用后执行 `git status --porcelain`、子模块、锁与 HEAD 检查。
+3. 满足干净条件时调用 `git worktree remove`（不带 `force`）；失败仅提示，不阻断归档。
+4. 配置 `dsh.worktree.retain-on-archive` 默认 `false`；分支与提交始终保留。
+5. 旧版本创建的工作树没有事件记录，不纳入清理。
+
+## 3.7 运行时上下文提醒
+
+- `runtime-context` 消息统一由 `renderContextSnapshot()` 渲染，文本包在 `<system-reminder>...</system-reminder>`。
+- 首份快照标注"介绍当前会话"；后续快照标注"覆盖摘要保留的上下文"。
+- 清空提醒输出 `form=snapshot`、`sections=[]`。
+- 旧快照缺少 `source.sections` 时，在下一次获准请求时刷新一次；不改写已有请求前缀，保证前缀缓存稳定。
+
+## 3.8 Plugin Bundle 更新语义
+
+- `BundleInfo` 增加可选 `update` 字段（`registry` / `git`），移除 `updatable`。
+- `updateBundle` 支持 Git spec 指向同仓库较新提交；无法替换的 bundle 不返回 `update`。
+- 管理错误新增 `unexpected-package`：带 `expected` 的安装若命中其他包或版本即失败。
+- `plugin_manager` 工具契约不变，避免模型侧提示漂移。
+
+## 3.9 DeepSeek 文件上传超时
+
+- `filesApiTimeoutMs` 默认 20s（原 60s）；连接超时与请求超时分离配置。
+- 超时后下一条需要上传图片的请求改用内联图片；连续超时按 2 倍退避跳过，成功后复位。
+- 日志记录"上传超时 + 降级内联"事件，不记录图片内容。
+
+## 3.10 WebServer 默认鉴权
+
+- 路由注册模型增加 `auth` 维度，默认 `required`；静态资源、健康检查、连接页等公开路由必须显式 `anonymous`。
+- Token 校验与 HTTP 登录交换从连接页逻辑中抽为认证提供方；Cookie 可同时认证页面与 API。
+- 连接监听器活动时，匿名路由也执行来源检查。
+- 与现有 `ApiKeyAuthInterceptor` 的关系：拦截器继续负责 API Key/设备 token；`auth` 维度负责"路由是否允许匿名"，二者叠加而非替代。
+
+## 3.11 会话状态与事件写入
+
+- `SessionStatus` 从 `IDLE/RUNNING` 扩展为可表达宿主阅读态与完成未读态；新增 `completionUnread`、`completionFailed` 投影字段。
+- 宿主维护共享阅读记录：主视图切入会话自动清除手动未读标记；`mark(sessionId, unread)` 在 `readingReady` 前拒绝。
+- 事件存储接口 `append` 增加数组重载，内部按顺序批量落库并可重放；单事件签名保留。
+
+## 3.12 CUA / PTC 部分对齐
+
+- **CUA**：未组合 preset 的 Agent 也注册 `cua_run_code`；按 `agentPreset` 决定暴露 `cua` 还是 `cua_run_code`；专用程序运行时缺失时创建 Agent 失败并给出可读原因。
+- **PTC**：程序输出改为 `inspect(...)` 显式选择；CUA 观察方法与 `read_image` 返回可 `inspect` 的值/图片；不引入 scoped REPL 与 bootstrap v3。
+
+## 3.13 分层落位清单
+
+| 层 | 包 / 文件 | 职责 |
+| --- | --- | --- |
+| domain | `domain/common/error/HarnessError.java` 及子系统错误类 | 统一错误基类与码表 |
+| domain | `domain/agent/service/subagent/*`、`domain/tool/subagent/*` | 名称索引、catalog v3、工具参数 |
+| domain | `domain/document/office/*`、`domain/tool/office/*` | 三个 Office 工具与 Kit 治理 |
+| domain | `domain/tool/web/*`、`domain/llm/*` | 计费模式、凭据来源、上传超时 |
+| domain | `domain/tool/worktree/*`、`domain/session/*` | 工作树事件、归档清理、阅读态与批量 append |
+| domain | `domain/plugin/*` | Bundle 更新语义 |
+| case | `cases/plugin/*`、`cases/session/*`、`cases/agent/*` | 编排与投影 |
+| api | `api/**` 中受影响的 DTO / 接口 | 字段与参数契约 |
+| infrastructure | `adapter/*` | LibreOffice、HTTP、Git、事件存储实现 |
+| trigger | `trigger/**` | 路由 `auth` 声明与错误映射 |
+| app | `application.yml` / `harness.yml` | 新增配置项与默认值 |
+
+## 3.14 兼容性、风险与回滚
+
+| 风险 | 影响 | 缓解 |
+| --- | --- | --- |
+| 错误码改名破坏既有断言/脚本 | 中 | 码表集中管理；在 CHANGELOG 列出旧→新映射 |
+| Subagent 参数改名 | 中 | 编译期暴露；文档与工具 schema 同步；不保留 `agent_id` 兼容 |
+| Office 工具依赖 LibreOffice Kit | 高 | 缺失时返回 `unavailable`，不影响启动；文档标注部署前置 |
+| Worktree 自动清理误删 | 高 | 仅清理干净树、无其他引用、非只读；默认不强制删除；`retainOnArchive` 可全局保留 |
+| WebServer 默认 required | 中 | 上线前逐路由核对 `anonymous` 声明；本地开发使用既有 API Key |
+| 上下文提醒改动前缀 | 低 | 旧快照仅刷新一次，不改写既有前缀 |
+
+**回滚**：所有能力按配置开关可回退（`dsh.office.enabled`、`dsh.worktree.retain-on-archive`、`dsh.web.search-billing`、`dsh.webserver.auth-default`），回滚不需要数据库变更。

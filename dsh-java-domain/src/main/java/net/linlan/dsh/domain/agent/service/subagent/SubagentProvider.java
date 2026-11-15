@@ -42,7 +42,8 @@ public interface SubagentProvider {
             String parentCwd,
             int delegationDepth,
             List<ToolSchema> enabledTools,
-            List<String> allowedToolNames
+            List<String> allowedToolNames,
+            String name
     ) {}
 
     /**

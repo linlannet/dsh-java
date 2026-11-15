@@ -21,6 +21,37 @@
   - 全模块 pom 版本 `0.2.2` → `0.2.3`
   - `ApiKeyAuthInterceptor` 重新接入设备级 Bearer Token 校验（`devt_` 前缀，吊销后立即 401）
   - Web 控制台（`app.js`/`app.css`）适配移动访问开关与设备管理面板
+- **迭代二（进行中）**：参考源平台能力对齐
+  - **dsh-java-domain**：新增 `HarnessError` 统一错误基类与 `ToolArgsError`；`StorageException`/`AttachmentError`/`WebFetchError`/`TerminalBackendCleanupError` 接入统一体系
+  - **dsh-java-domain**：`ToolCallExecutor` 新增 `mapFailure`，工具抛出 `HarnessError` 时在 `tool/result` 中保留 `error.name` 与 `error.code`，不再统一回落 `TOOL_ERROR`
+  - **dsh-java-domain**：`ToolExecutionResult` 新增结构化失败重载；`ToolErrorCodes` 新增 `TOOL_ERROR`、`MODEL_DOES_NOT_SUPPORT_IMAGES`
+  - **dsh-java-domain**：`WebFetchTool` 捕获抓取分类错误；新增 `WEB_FETCH_DNS_FAILED` 等 7 个传输错误码
+  - **dsh-java-infrastructure**：`LocalWebService` 按异常类型分类抓取失败；`LocalTerminalPort` 清理失败抛出 `CLEANUP_FAILED`
+  - **dsh-java-domain**：CUA、浏览器、Worktree、Ralph、Hook、MCP 错误类统一继承 `HarnessError`，新增 `CUA_*`、`BROWSER_*`、`WORKTREE_NOT_GIT_REPO`、`RALPH_LOOP_*`、`HOOK_BLOCKED`、`MCP_RECONNECT_EXHAUSTED` 错误码
+  - **dsh-java-domain**：Shell/FS 参数错误由 `MISSING_PARAM` 收敛为 `ToolArgsError`/`INVALID_ARGS`，统一 `invalid arguments: ` 前缀；修复缺省参数被当作字符串 `"null"` 继续执行的问题
+  - **dsh-java-domain / infrastructure**：新增 `TerminalError` 基类；`TerminalBackendCleanupError` 聚合启动与清理失败（`cause` + `suppressed`），终端会话查找/运行状态错误改用 `TERMINAL_*` 码
+  - **错误码总表**：新增 [docs/spec/0.2.3/error-codes.md](docs/spec/0.2.3/error-codes.md)，覆盖通用码、16 个子系统码表与旧→新映射
+  - **Office 能力工具化**：新增 `office_render`/`office_convert`/`office_recalculate` 并注册到工具目录；`OfficeSkill` 收敛为 `office` 路由 + `office-docx`/`office-pptx`/`office-xlsx` 内置写作技能；新增 `dsh.office.*` 输出治理配置与 `OfficeKitOutputStore` 过期/容量清理；LibreOffice 缺失映射为 `OFFICE_KIT_UNAVAILABLE`，不阻断启动
+  - **Subagent 名称寻址**：`InProcessSubagentDriver` 增加名称索引与同级唯一校验、名称/会话 id 解析、`listAgents` 投影；`send_message`/`interrupt_agent` 改用 `agent` 参数并拒绝 `agent_id`；`SubagentTool` 支持可选 `name`，返回 `started subagent <name>` 与 `{kind:'activation', name}`；`list_agents` 返回 `{name, status, description?}`
+  - **Web 计费与凭据**：新增 `searchBilling`/`fetchBilling`（`auto|account|api-key`）与有序凭据来源，`WebToolConfig`/`WebCredentialResolver` 解析优先级；`web_search`/`web_fetch` 按解析结果传递凭据；取消异常映射 `WEB_ABORTED`，`WebBillingError` 保留 cause
+
+  **旧 → 新错误码映射**
+
+  | 旧 | 新 | 范围 |
+  | --- | --- | --- |
+  | `MISSING_PARAM` | `INVALID_ARGS`（`ToolArgsError`） | Shell/FS 参数入口 |
+  | `<field> parameter is required` | `invalid arguments: <field> is required` | Shell/FS 文案 |
+  | `IMAGE_UNSUPPORTED_MODEL` | `MODEL_DOES_NOT_SUPPORT_IMAGES` | 图片输入 |
+  | `JOB_BACKGROUND_DISABLED` | 删除 | 后台执行 |
+  | `StorageException(UNIT_NOT_FOUND, "attachment not found")` | `AttachmentError(ATTACHMENT_NOT_FOUND)` | 附件读取 |
+  | `IllegalArgumentException("terminal session not found")` | `TerminalError(TERMINAL_SESSION_NOT_FOUND)` | 终端 |
+  | `IllegalStateException("terminal session is not running")` | `TerminalError(TERMINAL_SESSION_NOT_RUNNING)` | 终端 |
+  | 清理失败 `cause=null` | `TerminalBackendCleanupError(CLEANUP_FAILED)` | 终端关闭 |
+  | 未知异常 `name=code` | `ToolInternalError` / `TOOL_ERROR` | 工具管线 |
+  | Hook 失败 `name=HOOK_BLOCKED` | `HookError` / `HOOK_BLOCKED` | 工具管线 |
+  | Web 抓取返回 `Fetch error: ...` 成功文本 | `WebFetchError(WEB_FETCH_*)` | 本地抓取 |
+  | `CancellationException` 归为网络错误 | `WEB_ABORTED` | Web 抓取取消 |
+  | 无凭据/账户缺失静默失败 | `WEB_CREDENTIAL_MISSING` / `WEB_ACCOUNT_UNAVAILABLE` | Web 计费 |
 
 ## 版本号：0.2.2
 - 更新日期：2026-11-02

@@ -1,5 +1,6 @@
 package net.linlan.dsh.infrastructure.adapter.web;
 
+import net.linlan.dsh.domain.tool.web.WebFetchError;
 import net.linlan.dsh.domain.tool.web.adapter.port.IWebPort;
 import java.net.URI;
 import java.net.URLDecoder;
@@ -71,13 +72,19 @@ public class LocalWebService implements IWebPort {
 
     @Override
     public SearchResult search(String query, int maxResults) {
+        return search(query, maxResults, null);
+    }
+
+    @Override
+    public SearchResult search(String query, int maxResults, String credential) {
         String normalizedQuery = query == null ? "" : query.trim();
         if (normalizedQuery.isEmpty()) {
             return new SearchResult("Query must not be blank.", List.of(), false);
         }
 
         if (searchApiBase != null && !searchApiBase.isBlank()) {
-            SearchResult configured = searchWithConfiguredEndpoint(normalizedQuery, maxResults);
+            SearchResult configured = searchWithConfiguredEndpoint(
+                    normalizedQuery, maxResults, resolveKey(credential));
             if (configured != null && (!configured.sources().isEmpty() || (configured.content() != null && !configured.content().isBlank()))) {
                 return configured;
             }
@@ -105,14 +112,22 @@ public class LocalWebService implements IWebPort {
 
     @Override
     public FetchResult fetch(String url, int maxChars) {
+        return fetch(url, maxChars, null);
+    }
+
+    @Override
+    public FetchResult fetch(String url, int maxChars, String credential) {
         try {
-            HttpRequest request = HttpRequest.newBuilder()
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .timeout(Duration.ofSeconds(REQUEST_TIMEOUT_SEC))
                     .header("User-Agent", "dsh-java/1.0")
-                    .header("Accept", "text/html, text/plain, application/json, */*")
-                    .GET()
-                    .build();
+                    .header("Accept", "text/html, text/plain, application/json, */*");
+            String key = resolveKey(credential);
+            if (key != null && !key.isBlank()) {
+                builder.header("Authorization", "Bearer " + key.trim());
+            }
+            HttpRequest request = builder.GET().build();
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
@@ -139,8 +154,11 @@ public class LocalWebService implements IWebPort {
             }
 
             return new FetchResult(url, readable, title, contentType);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw WebFetchError.from(e);
         } catch (Exception e) {
-            return new FetchResult(url, "Fetch error: " + e.getMessage(), null, "text/plain");
+            throw WebFetchError.from(e);
         }
     }
 
@@ -201,7 +219,7 @@ public class LocalWebService implements IWebPort {
      * @param maxResults max Results参数。
      * @return 方法执行结果。
      */
-    private SearchResult searchWithConfiguredEndpoint(String query, int maxResults) {
+    private SearchResult searchWithConfiguredEndpoint(String query, int maxResults, String apiKey) {
         try {
             URI uri = buildSearchUri(searchApiBase, query, maxResults);
             HttpRequest.Builder builder = HttpRequest.newBuilder()
@@ -209,8 +227,8 @@ public class LocalWebService implements IWebPort {
                     .timeout(Duration.ofSeconds(REQUEST_TIMEOUT_SEC))
                     .header("User-Agent", "dsh-java/1.0")
                     .header("Accept", "text/html, text/plain, application/json, */*");
-            if (searchApiKey != null && !searchApiKey.isBlank()) {
-                builder.header("Authorization", "Bearer " + searchApiKey.trim());
+            if (apiKey != null && !apiKey.isBlank()) {
+                builder.header("Authorization", "Bearer " + apiKey.trim());
             }
 
             HttpResponse<String> response = client.send(builder.GET().build(), HttpResponse.BodyHandlers.ofString());
@@ -223,6 +241,10 @@ public class LocalWebService implements IWebPort {
         } catch (Exception e) {
             return new SearchResult("Configured search failed: " + e.getMessage(), List.of(), false);
         }
+    }
+
+    private String resolveKey(String credential) {
+        return credential != null && !credential.isBlank() ? credential : searchApiKey;
     }
 
     /**

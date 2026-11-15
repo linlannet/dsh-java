@@ -1,7 +1,15 @@
 package net.linlan.dsh.domain.tool.goal;
 
+import net.linlan.dsh.domain.tool.model.error.ToolArgsError;
+
 import java.util.Map;
 
+/**
+ * RalphLoopTool 管理 Ralph 循环的启动、状态与推进。
+ *
+ * <p>调用流程：状态校验 → 更新循环状态 → 返回快照。</p>
+ * <p>示例：循环已运行时再次启动返回 {@code RALPH_LOOP_ALREADY_RUNNING}。</p>
+ */
 public final class RalphLoopTool {
 
     public enum LoopStatus {
@@ -14,10 +22,10 @@ public final class RalphLoopTool {
 
     public Map<String, Object> start(String goal) {
         if (status == LoopStatus.RUNNING) {
-            throw new IllegalStateException("ralph loop already running");
+            throw new RalphLoopError(RalphLoopError.ALREADY_RUNNING, "ralph loop already running");
         }
         if (goal == null || goal.isBlank()) {
-            throw new IllegalArgumentException("goal must not be blank");
+            throw new ToolArgsError("goal must not be blank");
         }
         this.currentGoal = goal;
         this.status = LoopStatus.RUNNING;
@@ -44,7 +52,7 @@ public final class RalphLoopTool {
 
     public int incrementRound() {
         if (status != LoopStatus.RUNNING) {
-            throw new IllegalStateException("ralph loop not running");
+            throw new RalphLoopError(RalphLoopError.NOT_RUNNING, "ralph loop not running");
         }
         return ++roundCount;
     }

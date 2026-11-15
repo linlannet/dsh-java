@@ -235,6 +235,9 @@ public class AgentRunBeanConfig {
             CompactionEngine compactionEngine,
             IHarnessPluginRepository pluginRepository,
             IPluginRuntimeService pluginRuntimeService,
+            net.linlan.dsh.domain.storage.conversion.adapter.port.IOfficeConverterPort officeConverter,
+            net.linlan.dsh.domain.document.office.model.valobj.OfficeKitConfig officeKitConfig,
+            net.linlan.dsh.domain.tool.web.model.valobj.WebToolConfig webToolConfig,
             @Value("${harness.agent.tool-timeout-ms:300000}") long toolTimeoutMs
     ) {
         ISessionEventStore sessionEventStore = sessionEventStoreProvider.getIfAvailable();
@@ -263,7 +266,10 @@ public class AgentRunBeanConfig {
                 conversationQueryService,
                 terminalPort,
                 pluginRepository,
-                pluginRuntimeService
+                pluginRuntimeService,
+                officeConverter,
+                officeKitConfig,
+                webToolConfig
         );
 
         return new AgentRunFactory(

@@ -39,6 +39,10 @@ harness:
   web:
     search-api-base: ${HARNESS_SEARCH_API_BASE:}
     search-api-key: ${HARNESS_SEARCH_API_KEY:}
+    search-billing: ${HARNESS_WEB_SEARCH_BILLING:auto}
+    fetch-billing: ${HARNESS_WEB_FETCH_BILLING:auto}
+    search-credentials: []
+    fetch-credentials: []
 
   storage:
     root: ${HARNESS_STORAGE_ROOT:${user.home}/.dsh/storage}

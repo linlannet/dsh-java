@@ -1,5 +1,7 @@
 package net.linlan.dsh.domain.tool.shell;
 
+import net.linlan.dsh.domain.tool.model.error.ToolArgsError;
+
 import net.linlan.dsh.domain.model.valobj.ContentBlock;
 import net.linlan.dsh.domain.model.valobj.TextBlock;
 import net.linlan.dsh.domain.model.entity.ToolDefinition;
@@ -114,10 +116,11 @@ public class ShellExecuteTool implements ToolDefinition {
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         try {
             Map<String, Object> argMap = (Map<String, Object>) args;
-            String command = String.valueOf(argMap.get("command"));
+            String command = argMap.get("command") == null
+                    ? null : String.valueOf(argMap.get("command"));
             if (command == null || command.isBlank()) {
                 return CompletableFuture.completedFuture(
-                        ToolExecutionResult.fail("command parameter is required", "MISSING_PARAM"));
+                        ToolExecutionResult.fail(new ToolArgsError("command is required").toFailure()));
             }
 
             // 危险命令静态拦截（审批之外的第二道防线）

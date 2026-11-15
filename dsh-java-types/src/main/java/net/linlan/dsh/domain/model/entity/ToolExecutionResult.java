@@ -77,9 +77,20 @@ public sealed interface ToolExecutionResult
 
 /** 快速创建简单文本失败结果。 */
     static Failure fail(String message, String code) {
+        return fail(message, code, code);
+    }
+
+/** 快速创建带错误名与错误码的文本失败结果。 */
+    static Failure fail(String message, String name, String code) {
         var error = new ToolFailure(message,
-                new ToolFailure.ToolErrorInfo(code, code));
+                new ToolFailure.ToolErrorInfo(name, code));
         var content = List.of((ContentBlock) new TextBlock(message));
+        return new Failure(error, content, null, List.of());
+    }
+
+/** 使用已构造的失败信息创建失败结果。 */
+    static Failure fail(ToolFailure error) {
+        var content = List.of((ContentBlock) new TextBlock(error.message()));
         return new Failure(error, content, null, List.of());
     }
 }

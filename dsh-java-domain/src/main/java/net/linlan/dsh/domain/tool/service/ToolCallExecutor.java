@@ -1,6 +1,8 @@
 package net.linlan.dsh.domain.tool.service;
 
 import net.linlan.dsh.domain.model.entity.*;
+import net.linlan.dsh.domain.common.error.HarnessError;
+import net.linlan.dsh.domain.hooks.model.error.HookError;
 import net.linlan.dsh.domain.model.valobj.ContentBlock;
 import net.linlan.dsh.domain.model.valobj.ToolCallBlock;
 import net.linlan.dsh.domain.hooks.model.valobj.HookOutput;
@@ -295,11 +297,47 @@ public final class ToolCallExecutor {
                     ToolErrorCodes.TOOL_TIMEOUT);
         } catch (ExecutionException ee) {
             Throwable cause = ee.getCause() != null ? ee.getCause() : ee;
-            return ToolExecutionResult.fail(cause.getMessage(), "TOOL_ERROR");
+            return mapFailure(cause);
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
-            return ToolExecutionResult.fail("tool wait interrupted", "TOOL_ERROR");
+            return mapFailure(ie);
         }
+    }
+
+    /**
+     * 将工具抛出的异常映射为结构化失败结果。
+     * <p>HarnessError 保留错误名与错误码；其他异常统一归为 TOOL_ERROR，避免丢失真实失败信息。</p>
+     * <p>数据示例：WebFetchError(DNS 失败) 映射为 {@code name=WebFetchError, code=WEB_FETCH_DNS_FAILED}。</p>
+     *
+     * @param error 原始异常（可含 CompletionException/ExecutionException 包装）
+     * @return 结构化失败结果
+     */
+    static ToolExecutionResult mapFailure(Throwable error) {
+        Throwable cause = unwrap(error);
+        if (cause instanceof HarnessError harnessError) {
+            return ToolExecutionResult.fail(harnessError.toFailure());
+        }
+        String message = cause.getMessage();
+        if (message == null || message.isBlank()) {
+            message = cause.getClass().getSimpleName();
+        }
+        return ToolExecutionResult.fail(
+                message, "ToolInternalError", ToolErrorCodes.TOOL_ERROR);
+    }
+
+    /**
+     * 剥离 CompletionException/ExecutionException 包装，返回最内层原因。
+     *
+     * @param error 原始异常
+     * @return 最内层原因；无原因时返回原异常
+     */
+    private static Throwable unwrap(Throwable error) {
+        Throwable current = error == null ? new IllegalStateException("unknown tool error") : error;
+        while ((current instanceof CompletionException || current instanceof ExecutionException)
+                && current.getCause() != null) {
+            current = current.getCause();
+        }
+        return current;
     }
 
     /**
@@ -369,7 +407,7 @@ public final class ToolCallExecutor {
                     callSeqs[index] = appendToolCall(turn, step, call.block);
                     started++;
                     slots[index] = new Slot(null, ToolExecutionResult.fail(
-                            "Blocked by PreToolUse hook", "HOOK_BLOCKED"), false);
+                            HookError.blocked().toFailure()), false);
                     nextToStart++;
                     continue;
                 }
@@ -424,8 +462,7 @@ public final class ToolCallExecutor {
                         CompletionStage<Integer> tracked = future.handle((result, error) -> {
                             if (settled.add(finalIndex)) {
                                 if (error != null) {
-                                    slots[finalIndex] = new Slot(ctx,
-                                            ToolExecutionResult.fail(error.getMessage(), "TOOL_ERROR"), false);
+                                    slots[finalIndex] = new Slot(ctx, mapFailure(error), false);
                                 } else {
                                     if (!pipelineActive) afterTool(call.block.name());
                                     slots[finalIndex] = new Slot(ctx, result, true);
@@ -450,8 +487,7 @@ public final class ToolCallExecutor {
                         }
                     }
                 } catch (Exception e) {
-                    slots[index] = new Slot(ctx,
-                            ToolExecutionResult.fail(e.getMessage(), "TOOL_ERROR"), false);
+                    slots[index] = new Slot(ctx, mapFailure(e), false);
                 }
 
                 nextToStart++;
@@ -546,8 +582,7 @@ public final class ToolCallExecutor {
                             future.whenComplete((result, error) -> {
                                 if (settled.add(finalIndex)) {
                                     if (error != null) {
-                                        slots[finalIndex] = new Slot(ctx,
-                                                ToolExecutionResult.fail(error.getMessage(), "TOOL_ERROR"), false);
+                                        slots[finalIndex] = new Slot(ctx, mapFailure(error), false);
                                     } else {
                                         slots[finalIndex] = new Slot(ctx, result, true);
                                     }
@@ -560,8 +595,7 @@ public final class ToolCallExecutor {
                             inFlight.put(index, future.thenApply(v -> finalIndex));
                         }
                     } catch (Exception e) {
-                        slots[index] = new Slot(ctx,
-                                ToolExecutionResult.fail(e.getMessage(), "TOOL_ERROR"), false);
+                        slots[index] = new Slot(ctx, mapFailure(e), false);
                     }
                     nextToStart++;
                     committed = commitReady(turn, step, group, slots, callSeqs, committed, acceptContext);
@@ -811,7 +845,7 @@ public final class ToolCallExecutor {
         public ToolPhaseOutcome preIntercept(ToolCallContext ctx) {
             if (shouldBlock(ctx.toolName())) {
                 return ToolPhaseOutcome.halt(ToolPhase.PRE,
-                        ToolExecutionResult.fail("Blocked by PreToolUse hook", "HOOK_BLOCKED"));
+                        ToolExecutionResult.fail(HookError.blocked().toFailure()));
             }
             return ToolPhaseOutcome.proceed(ToolPhase.PRE);
         }

@@ -1,7 +1,11 @@
 package net.linlan.dsh.domain.tool.web;
 
 import net.linlan.dsh.domain.model.valobj.TextBlock;
+import net.linlan.dsh.domain.common.error.HarnessError;
 import net.linlan.dsh.domain.tool.web.adapter.port.IWebPort;
+import net.linlan.dsh.domain.tool.web.model.error.WebBillingError;
+import net.linlan.dsh.domain.tool.web.model.valobj.WebBillingMode;
+import net.linlan.dsh.domain.tool.web.model.valobj.WebToolConfig;
 import net.linlan.dsh.domain.model.entity.ToolDefinition;
 import net.linlan.dsh.domain.model.entity.ToolExecutionResult;
 import net.linlan.dsh.domain.model.entity.ToolRunContext;
@@ -32,15 +36,27 @@ public class WebFetchTool implements ToolDefinition {
     private static final long TIMEOUT_MS = 30_000;
 
     private final IWebPort webService;
+    private final WebToolConfig config;
+    private final WebCredentialResolver credentialResolver = new WebCredentialResolver();
 
     /**
-     * 处理Web Fetch 工具。
-     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
-     * @param webService Web Service参数。
-     * @return 方法执行结果。
+     * 使用默认 Web 配置创建。
+     *
+     * @param webService Web 服务
      */
     public WebFetchTool(IWebPort webService) {
+        this(webService, WebToolConfig.defaults());
+    }
+
+    /**
+     * 使用显式计费与凭据配置创建。
+     *
+     * @param webService Web 服务
+     * @param config     计费与凭据配置
+     */
+    public WebFetchTool(IWebPort webService, WebToolConfig config) {
         this.webService = webService;
+        this.config = config == null ? WebToolConfig.defaults() : config;
     }
 
     @Override public String name() { return NAME; }
@@ -108,7 +124,7 @@ public class WebFetchTool implements ToolDefinition {
                     ? ((Number) argMap.get("max_chars")).intValue()
                     : DEFAULT_MAX_CHARS;
 
-            IWebPort.FetchResult result = webService.fetch(url, maxChars);
+            IWebPort.FetchResult result = webService.fetch(url, maxChars, fetchCredential());
 
             StringBuilder sb = new StringBuilder();
             if (result.title() != null && !result.title().isEmpty()) {
@@ -129,6 +145,12 @@ public class WebFetchTool implements ToolDefinition {
 
             return CompletableFuture.completedFuture(
                     ToolExecutionResult.ok(List.of(new TextBlock(sb.toString()))));
+        } catch (WebBillingError e) {
+            return CompletableFuture.completedFuture(
+                    ToolExecutionResult.fail(e.getMessage(), e.errorName(), e.errorCode()));
+        } catch (HarnessError e) {
+            return CompletableFuture.completedFuture(
+                    ToolExecutionResult.fail(e.getMessage(), e.errorName(), e.errorCode()));
         } catch (Exception e) {
             return CompletableFuture.completedFuture(
                     ToolExecutionResult.fail("web_fetch failed: " + e.getMessage(), "EXECUTION_ERROR"));
@@ -153,4 +175,11 @@ public class WebFetchTool implements ToolDefinition {
 
     @Override
     public long timeoutMs() { return TIMEOUT_MS; }
+
+    private String fetchCredential() {
+        if (config.fetchBilling() == WebBillingMode.AUTO && config.fetchCredentials().isEmpty()) {
+            return null;
+        }
+        return credentialResolver.resolve(config.fetchBilling(), config.fetchCredentials()).value();
+    }
 }

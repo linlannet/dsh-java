@@ -1,5 +1,6 @@
 package net.linlan.dsh.domain.tool.web.browser;
 
+import net.linlan.dsh.domain.tool.model.error.ToolArgsError;
 import net.linlan.dsh.domain.tool.web.browser.adapter.port.IBrowserUsePort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,16 +32,16 @@ class BrowserUseToolTest {
     @DisplayName("navigate 空 URL 抛异常")
     void navigateBlankThrows() {
         var tool = new BrowserUseTool(new StubBrowserPort());
-        assertThrows(IllegalArgumentException.class, () -> tool.navigate(""));
-        assertThrows(IllegalArgumentException.class, () -> tool.navigate(null));
+        assertThrows(ToolArgsError.class, () -> tool.navigate(""));
+        assertThrows(ToolArgsError.class, () -> tool.navigate(null));
     }
 
     @Test
     @DisplayName("navigate 非法 URL 抛异常")
     void navigateInvalidThrows() {
         var tool = new BrowserUseTool(new StubBrowserPort());
-        assertThrows(IllegalArgumentException.class, () -> tool.navigate("not-a-url"));
-        assertThrows(IllegalArgumentException.class, () -> tool.navigate("ftp://example.com"));
+        assertThrows(ToolArgsError.class, () -> tool.navigate("not-a-url"));
+        assertThrows(ToolArgsError.class, () -> tool.navigate("ftp://example.com"));
     }
 
     @Test
@@ -56,8 +57,8 @@ class BrowserUseToolTest {
     @DisplayName("click 空选择器抛异常")
     void clickBlankThrows() {
         var tool = new BrowserUseTool(new StubBrowserPort());
-        assertThrows(IllegalArgumentException.class, () -> tool.click(""));
-        assertThrows(IllegalArgumentException.class, () -> tool.click(null));
+        assertThrows(ToolArgsError.class, () -> tool.click(""));
+        assertThrows(ToolArgsError.class, () -> tool.click(null));
     }
 
     @Test
@@ -74,15 +75,15 @@ class BrowserUseToolTest {
     @DisplayName("input 空选择器抛异常")
     void inputBlankSelectorThrows() {
         var tool = new BrowserUseTool(new StubBrowserPort());
-        assertThrows(IllegalArgumentException.class, () -> tool.input("", "text"));
-        assertThrows(IllegalArgumentException.class, () -> tool.input(null, "text"));
+        assertThrows(ToolArgsError.class, () -> tool.input("", "text"));
+        assertThrows(ToolArgsError.class, () -> tool.input(null, "text"));
     }
 
     @Test
     @DisplayName("input null 文本抛异常")
     void inputNullTextThrows() {
         var tool = new BrowserUseTool(new StubBrowserPort());
-        assertThrows(IllegalArgumentException.class, () -> tool.input("#field", null));
+        assertThrows(ToolArgsError.class, () -> tool.input("#field", null));
     }
 
     @Test
@@ -100,7 +101,7 @@ class BrowserUseToolTest {
         var port = new StubBrowserPort();
         port.screenshotResult = null;
         var tool = new BrowserUseTool(port);
-        assertThrows(IllegalStateException.class, tool::screenshot);
+        assertThrows(BrowserUseError.class, tool::screenshot);
     }
 
     @Test
@@ -125,8 +126,8 @@ class BrowserUseToolTest {
     @DisplayName("getText 空选择器抛异常")
     void getTextBlankSelectorThrows() {
         var tool = new BrowserUseTool(new StubBrowserPort());
-        assertThrows(IllegalArgumentException.class, () -> tool.getText(""));
-        assertThrows(IllegalArgumentException.class, () -> tool.getText(null));
+        assertThrows(ToolArgsError.class, () -> tool.getText(""));
+        assertThrows(ToolArgsError.class, () -> tool.getText(null));
     }
 
     @Test

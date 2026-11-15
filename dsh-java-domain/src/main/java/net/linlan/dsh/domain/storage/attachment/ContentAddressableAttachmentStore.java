@@ -57,11 +57,11 @@ public class ContentAddressableAttachmentStore {
         }
         java.util.Map<String, String> table = backend.load(DESCRIPTOR).tables().get(TABLE);
         if (table == null) {
-            throw new StorageException(StorageErrorCode.UNIT_NOT_FOUND, "attachment not found: " + contentHash);
+            throw AttachmentError.notFound(contentHash);
         }
         String encoded = table.get(contentHash);
         if (encoded == null) {
-            throw new StorageException(StorageErrorCode.UNIT_NOT_FOUND, "attachment not found: " + contentHash);
+            throw AttachmentError.notFound(contentHash);
         }
         return Base64.getDecoder().decode(encoded);
     }

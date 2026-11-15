@@ -1,5 +1,7 @@
 package net.linlan.dsh.domain.tool.fs;
 
+import net.linlan.dsh.domain.tool.model.error.ToolArgsError;
+
 import net.linlan.dsh.domain.model.valobj.TextBlock;
 import net.linlan.dsh.domain.tool.fs.adapter.port.IFsPort;
 import net.linlan.dsh.domain.model.entity.ToolDefinition;
@@ -109,12 +111,13 @@ public class FsWriteTool implements ToolDefinition {
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         try {
             Map<String, Object> argMap = (Map<String, Object>) args;
-            String path = String.valueOf(argMap.get("path"));
+            String path = argMap.get("path") == null
+                    ? null : String.valueOf(argMap.get("path"));
             String content = String.valueOf(argMap.get("content"));
 
             if (path == null || path.isBlank()) {
                 return CompletableFuture.completedFuture(
-                        ToolExecutionResult.fail("path parameter is required", "MISSING_PARAM"));
+                        ToolExecutionResult.fail(new ToolArgsError("path is required").toFailure()));
             }
             if (content == null) {
                 content = "";

@@ -1,6 +1,8 @@
 package net.linlan.dsh.infrastructure.adapter.terminal;
 
 import net.linlan.dsh.domain.terminal.adapter.port.ITerminalPort;
+import net.linlan.dsh.domain.terminal.model.valobj.TerminalBackendCleanupError;
+import net.linlan.dsh.domain.terminal.model.valobj.TerminalError;
 import net.linlan.dsh.domain.terminal.model.valobj.TerminalReadResultVO;
 import net.linlan.dsh.domain.terminal.model.valobj.TerminalSendResultVO;
 import net.linlan.dsh.domain.terminal.model.valobj.TerminalSessionSnapshotVO;
@@ -126,7 +128,8 @@ public class LocalTerminalPort implements ITerminalPort {
     private TerminalSessionRuntime requireSession(String sessionId) {
         TerminalSessionRuntime runtime = sessions.get(sessionId);
         if (runtime == null) {
-            throw new IllegalArgumentException("terminal session not found: " + sessionId);
+            throw new TerminalError(TerminalError.SESSION_NOT_FOUND,
+                    "terminal session not found: " + sessionId);
         }
         return runtime;
     }
@@ -169,6 +172,7 @@ public class LocalTerminalPort implements ITerminalPort {
         private volatile Instant updatedAt = createdAt;
         private volatile Integer exitCode;
         private volatile String lastMessage = "";
+        private volatile Throwable startError;
 
         /**
          * 处理终端 会话 运行时。
@@ -212,6 +216,7 @@ public class LocalTerminalPort implements ITerminalPort {
                     }
                 });
             } catch (IOException e) {
+                startError = e;
                 status = TerminalSessionStatus.EXITED;
                 exitCode = -1;
                 append("[terminal start error] " + e.getMessage() + "\n");
@@ -223,7 +228,8 @@ public class LocalTerminalPort implements ITerminalPort {
          */
         private TerminalSendResultVO send(String command, long timeoutMs) {
             if (status != TerminalSessionStatus.RUNNING || process == null || writer == null) {
-                throw new IllegalStateException("terminal session is not running: " + sessionId);
+                throw new TerminalError(TerminalError.SESSION_NOT_RUNNING,
+                        "terminal session is not running: " + sessionId);
             }
             String marker = "__DSH_DONE_" + UUID.randomUUID().toString().replace("-", "") + "__";
             long startedAt = System.currentTimeMillis();
@@ -286,16 +292,31 @@ public class LocalTerminalPort implements ITerminalPort {
             status = TerminalSessionStatus.CLOSED;
             updatedAt = Instant.now();
             Process current = process;
-            if (current != null) {
+            if (current == null) {
+                return;
+            }
+            try {
                 current.destroy();
-                try {
-                    if (!current.waitFor(2, TimeUnit.SECONDS)) {
-                        current.destroyForcibly();
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+            } catch (RuntimeException e) {
+                throw new TerminalBackendCleanupError(
+                        "terminal backend cleanup failed: " + sessionId, startError, e);
+            }
+            try {
+                if (!current.waitFor(2, TimeUnit.SECONDS)) {
                     current.destroyForcibly();
+                    if (!current.waitFor(1, TimeUnit.SECONDS)) {
+                        throw new TerminalBackendCleanupError(
+                                "terminal backend cleanup failed: process for session "
+                                        + sessionId + " is still alive",
+                                startError,
+                                new IllegalStateException("process still alive after destroyForcibly: " + sessionId));
+                    }
                 }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                current.destroyForcibly();
+                throw new TerminalBackendCleanupError(
+                        "terminal backend cleanup interrupted: " + sessionId, startError, e);
             }
         }
 

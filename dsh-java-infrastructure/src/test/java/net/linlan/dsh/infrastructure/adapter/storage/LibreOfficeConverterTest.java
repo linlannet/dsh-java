@@ -1,5 +1,6 @@
 package net.linlan.dsh.infrastructure.adapter.storage;
 
+import net.linlan.dsh.domain.document.office.model.error.OfficeKitError;
 import net.linlan.dsh.domain.storage.conversion.adapter.port.IOfficeConverterPort;
 import org.junit.jupiter.api.Test;
 
@@ -37,8 +38,9 @@ class LibreOfficeConverterTest {
     @Test
     void convertToPdfMissingInputThrows() {
         LibreOfficeConverter c = new LibreOfficeConverter();
-        assertThrows(IllegalArgumentException.class,
+        var error = assertThrows(OfficeKitError.class,
                 () -> c.convertToPdf("/nonexistent-file-xyz.docx", "/tmp"));
+        assertEquals(OfficeKitError.INPUT_NOT_FOUND, error.errorCode());
     }
 
     @Test
@@ -46,8 +48,9 @@ class LibreOfficeConverterTest {
         Path input = Files.createTempFile("test-input", ".docx");
         try {
             LibreOfficeConverter c = new LibreOfficeConverter();
-            assertThrows(IllegalStateException.class,
+            var error = assertThrows(OfficeKitError.class,
                     () -> c.convertToPdf(input.toString(), "/dev/null/cannot-create-dir/output"));
+            assertEquals(OfficeKitError.CONVERSION_FAILED, error.errorCode());
         } finally {
             Files.deleteIfExists(input);
         }
@@ -59,8 +62,9 @@ class LibreOfficeConverterTest {
         Path outDir = Files.createTempDirectory("lo-out");
         try {
             LibreOfficeConverter c = new LibreOfficeConverter("nonexistent-soffice-cmd-xyz", 5);
-            assertThrows(IllegalStateException.class,
+            var error = assertThrows(OfficeKitError.class,
                     () -> c.convertToPdf(input.toString(), outDir.toString()));
+            assertEquals(OfficeKitError.UNAVAILABLE, error.errorCode());
         } finally {
             Files.deleteIfExists(input);
             Files.deleteIfExists(outDir);
@@ -73,8 +77,9 @@ class LibreOfficeConverterTest {
         Path outDir = Files.createTempDirectory("lo-out");
         try {
             LibreOfficeConverter c = new LibreOfficeConverter("false", 5);
-            assertThrows(IllegalStateException.class,
+            var error = assertThrows(OfficeKitError.class,
                     () -> c.convertToPdf(input.toString(), outDir.toString()));
+            assertEquals(OfficeKitError.CONVERSION_FAILED, error.errorCode());
         } finally {
             Files.deleteIfExists(input);
             Files.deleteIfExists(outDir);
@@ -87,8 +92,9 @@ class LibreOfficeConverterTest {
         Path outDir = Files.createTempDirectory("lo-out");
         try {
             LibreOfficeConverter c = new LibreOfficeConverter("sleep", 1);
-            assertThrows(IllegalStateException.class,
+            var error = assertThrows(OfficeKitError.class,
                     () -> c.convertToPdf(input.toString(), outDir.toString()));
+            assertEquals(OfficeKitError.CONVERSION_FAILED, error.errorCode());
         } finally {
             Files.deleteIfExists(input);
             Files.deleteIfExists(outDir);

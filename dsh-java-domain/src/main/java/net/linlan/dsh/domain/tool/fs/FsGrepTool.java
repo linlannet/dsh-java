@@ -1,5 +1,7 @@
 package net.linlan.dsh.domain.tool.fs;
 
+import net.linlan.dsh.domain.tool.model.error.ToolArgsError;
+
 import net.linlan.dsh.domain.model.valobj.TextBlock;
 import net.linlan.dsh.domain.tool.fs.adapter.port.IFsPort;
 import net.linlan.dsh.domain.model.entity.ToolDefinition;
@@ -110,10 +112,11 @@ public class FsGrepTool implements ToolDefinition {
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         try {
             Map<String, Object> argMap = (Map<String, Object>) args;
-            String pattern = String.valueOf(argMap.get("pattern"));
+            String pattern = argMap.get("pattern") == null
+                    ? null : String.valueOf(argMap.get("pattern"));
             if (pattern == null || pattern.isBlank() || "null".equals(pattern)) {
                 return CompletableFuture.completedFuture(
-                        ToolExecutionResult.fail("pattern parameter is required", "MISSING_PARAM"));
+                        ToolExecutionResult.fail(new ToolArgsError("pattern is required").toFailure()));
             }
             String directory = argMap.get("directory") != null
                     ? String.valueOf(argMap.get("directory")) : ".";

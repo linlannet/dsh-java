@@ -10,6 +10,8 @@ public final class ToolErrorCodes {
     public static final String INVALID_ARGS = "INVALID_ARGS";
     public static final String INVALID_TOOL_OUTPUT = "INVALID_TOOL_OUTPUT";
     public static final String TOOL_TIMEOUT = "TOOL_TIMEOUT";
+    public static final String TOOL_ERROR = "TOOL_ERROR";
+    public static final String MODEL_DOES_NOT_SUPPORT_IMAGES = "MODEL_DOES_NOT_SUPPORT_IMAGES";
 
     /**
      * 转换为 ol Error Codes。

@@ -6,10 +6,12 @@ import net.linlan.dsh.domain.model.valobj.TextBlock;
 import net.linlan.dsh.domain.model.entity.ToolDefinition;
 import net.linlan.dsh.domain.model.entity.ToolExecutionResult;
 import net.linlan.dsh.domain.model.entity.ToolRunContext;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 /**
@@ -23,6 +25,7 @@ public class SubagentTool implements ToolDefinition {
     private final SubagentRegistry registry;
     private final String providerName;
     private final Supplier<AgentOptions> parentOptionsSupplier;
+    private final AtomicInteger nameCounter = new AtomicInteger(0);
 
     /**
      * 初始化子智能体工具。
@@ -105,6 +108,11 @@ public class SubagentTool implements ToolDefinition {
         bgProp.put("description", "If true, run the subagent in the background (default: false).");
         properties.put("run_in_background", bgProp);
 
+        Map<String, Object> nameProp = new LinkedHashMap<>();
+        nameProp.put("type", "string");
+        nameProp.put("description", "Optional sibling-unique name for the subagent.");
+        properties.put("name", nameProp);
+
         props.put("properties", properties);
         props.put("required", List.of("prompt"));
 
@@ -150,6 +158,10 @@ public class SubagentTool implements ToolDefinition {
         }
 
         SubagentProvider provider = registry.resolve(providerName);
+        String requestedName = argMap.get("name") instanceof String n && !n.isBlank() ? n.trim() : null;
+        String agentName = requestedName != null
+                ? requestedName
+                : providerName + "-" + nameCounter.incrementAndGet();
 
         SubagentProvider.SubagentStartRequest request = new SubagentProvider.SubagentStartRequest(
                 prompt,
@@ -158,15 +170,17 @@ public class SubagentTool implements ToolDefinition {
                 null,           // parentCwd
                 0,              // delegationDepth (top-level)
                 List.of(),      // enabledTools (all)
-                List.of()       // allowedToolNames (all)
+                List.of(),      // allowedToolNames (all)
+                agentName
         );
 
         return provider.start(request).<ToolExecutionResult>thenApply(result -> {
-            List<ContentBlock> content;
+            List<ContentBlock> content = new ArrayList<>();
+            content.add(new TextBlock("started subagent " + agentName));
             if (result.output() != null && !result.output().isEmpty()) {
-                content = result.output();
+                content.addAll(result.output());
             } else {
-                content = List.of(new TextBlock(
+                content.add(new TextBlock(
                         "[subagent ended with reason: " + result.stopReason() + " and no output]"
                 ));
             }
@@ -178,7 +192,8 @@ public class SubagentTool implements ToolDefinition {
                 );
             }
 
-            return ToolExecutionResult.ok(content);
+            return new ToolExecutionResult.Success(null, content,
+                    Map.of("kind", "activation", "name", agentName), List.of(), false);
         }).exceptionally(e -> ToolExecutionResult.fail(
                 "Subagent execution failed: " + e.getMessage(),
                 "SUBAGENT_ERROR"

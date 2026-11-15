@@ -11,7 +11,6 @@ import java.util.Map;
 import net.linlan.dsh.domain.storage.adapter.port.IStorageBackendPort;
 import net.linlan.dsh.domain.storage.model.valobj.KvSnapshot;
 import net.linlan.dsh.domain.storage.model.valobj.KvUnitDescriptor;
-import net.linlan.dsh.domain.storage.model.valobj.StorageException;
 import org.junit.jupiter.api.Test;
 
 class ContentAddressableAttachmentStoreTest {
@@ -84,7 +83,10 @@ class ContentAddressableAttachmentStoreTest {
         StubBackend backend = new StubBackend();
         ContentAddressableAttachmentStore store = new ContentAddressableAttachmentStore(backend);
 
-        assertThrows(StorageException.class, () -> store.retrieve("nonexistenthash"));
+        AttachmentError error = assertThrows(AttachmentError.class,
+                () -> store.retrieve("nonexistenthash"));
+        assertEquals("ATTACHMENT_NOT_FOUND", error.errorCode());
+        assertEquals("AttachmentError", error.errorName());
     }
 
     @Test

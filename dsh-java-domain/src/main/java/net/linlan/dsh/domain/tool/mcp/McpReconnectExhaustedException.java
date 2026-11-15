@@ -1,15 +1,22 @@
 package net.linlan.dsh.domain.tool.mcp;
 
+import net.linlan.dsh.domain.common.error.HarnessError;
+
 /**
  * McpReconnectExhaustedException 在 MCP 客户端重连次数耗尽时抛出。
  */
-public class McpReconnectExhaustedException extends RuntimeException {
+public class McpReconnectExhaustedException extends HarnessError {
+
+    /** 重连耗尽错误码。 */
+    public static final String RECONNECT_EXHAUSTED = "MCP_RECONNECT_EXHAUSTED";
 
     private final String serverName;
     private final int attempts;
 
     public McpReconnectExhaustedException(String serverName, int attempts, Throwable cause) {
-        super("MCP server '" + serverName + "' reconnect exhausted after " + attempts + " attempts", cause);
+        super(RECONNECT_EXHAUSTED,
+                "MCP server '" + serverName + "' reconnect exhausted after " + attempts + " attempts",
+                cause);
         this.serverName = serverName;
         this.attempts = attempts;
     }

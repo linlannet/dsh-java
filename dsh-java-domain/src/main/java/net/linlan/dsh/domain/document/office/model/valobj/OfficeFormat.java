@@ -5,7 +5,7 @@ package net.linlan.dsh.domain.document.office.model.valobj;
  *
  */
 public enum OfficeFormat {
-    DOC, DOCX, XLS, XLSX, PPT, PPTX;
+    DOC, DOCX, XLS, XLSX, PPT, PPTX, ODT, ODS, ODP;
 
     public boolean isOoxml() {
         return this == DOCX || this == XLSX || this == PPTX;
@@ -20,6 +20,9 @@ public enum OfficeFormat {
             case "xlsx" -> XLSX;
             case "ppt" -> PPT;
             case "pptx" -> PPTX;
+            case "odt" -> ODT;
+            case "ods" -> ODS;
+            case "odp" -> ODP;
             default -> null;
         };
     }

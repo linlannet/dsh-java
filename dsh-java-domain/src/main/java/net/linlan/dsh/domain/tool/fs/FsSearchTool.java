@@ -1,5 +1,7 @@
 package net.linlan.dsh.domain.tool.fs;
 
+import net.linlan.dsh.domain.tool.model.error.ToolArgsError;
+
 import net.linlan.dsh.domain.model.valobj.TextBlock;
 import net.linlan.dsh.domain.tool.fs.adapter.port.IFsPort;
 import net.linlan.dsh.domain.model.entity.ToolDefinition;
@@ -97,16 +99,18 @@ public class FsSearchTool implements ToolDefinition {
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         try {
             Map<String, Object> argMap = (Map<String, Object>) args;
-            String directory = String.valueOf(argMap.get("directory"));
-            String pattern = String.valueOf(argMap.get("pattern"));
+            String directory = argMap.get("directory") == null
+                    ? null : String.valueOf(argMap.get("directory"));
+            String pattern = argMap.get("pattern") == null
+                    ? null : String.valueOf(argMap.get("pattern"));
 
             if (directory == null || directory.isBlank()) {
                 return CompletableFuture.completedFuture(
-                        ToolExecutionResult.fail("directory parameter is required", "MISSING_PARAM"));
+                        ToolExecutionResult.fail(new ToolArgsError("directory is required").toFailure()));
             }
             if (pattern == null || pattern.isBlank()) {
                 return CompletableFuture.completedFuture(
-                        ToolExecutionResult.fail("pattern parameter is required", "MISSING_PARAM"));
+                        ToolExecutionResult.fail(new ToolArgsError("pattern is required").toFailure()));
             }
 
             int maxResults = argMap.get("max_results") != null

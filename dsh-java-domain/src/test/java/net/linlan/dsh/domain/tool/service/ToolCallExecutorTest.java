@@ -11,7 +11,9 @@ import net.linlan.dsh.domain.model.valobj.ToolExecutionMode;
 import net.linlan.dsh.domain.session.event.model.entity.SessionHeader;
 import net.linlan.dsh.domain.session.event.model.entity.SessionLog;
 import net.linlan.dsh.domain.tool.adapter.ToolRegistry;
+import net.linlan.dsh.domain.tool.model.error.ToolArgsError;
 import net.linlan.dsh.domain.tool.model.valobj.ToolPhase;
+import net.linlan.dsh.domain.tool.web.WebFetchError;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -164,6 +166,40 @@ class ToolCallExecutorTest {
         var abort = new AtomicBoolean(false);
         var calls = List.of(new ToolCallBlock("c1", "no-such-tool", "{}"));
         assertDoesNotThrow(() -> executor.execute(1, 1, calls, abort, null));
+    }
+
+    @Test
+    @DisplayName("mapFailure 保留 HarnessError 的错误名与错误码")
+    void mapFailureKeepsHarnessErrorIdentity() {
+        var result = ToolCallExecutor.mapFailure(new ToolArgsError("sandbox_permissions unsupported"));
+
+        var failure = assertInstanceOf(ToolExecutionResult.Failure.class, result);
+        assertEquals("ToolArgsError", failure.error().info().name());
+        assertEquals("INVALID_ARGS", failure.error().info().code());
+        assertTrue(failure.error().message().startsWith("invalid arguments: "));
+    }
+
+    @Test
+    @DisplayName("mapFailure 剥离 CompletionException 并保留分类码")
+    void mapFailureUnwrapsCompletionException() {
+        var wrapped = new java.util.concurrent.CompletionException(
+                WebFetchError.from(new java.net.UnknownHostException("bad.example")));
+
+        var failure = assertInstanceOf(ToolExecutionResult.Failure.class,
+                ToolCallExecutor.mapFailure(wrapped));
+        assertEquals("WebFetchError", failure.error().info().name());
+        assertEquals("WEB_FETCH_DNS_FAILED", failure.error().info().code());
+    }
+
+    @Test
+    @DisplayName("mapFailure 对普通异常回落为 TOOL_ERROR")
+    void mapFailureFallsBackToToolError() {
+        var failure = assertInstanceOf(ToolExecutionResult.Failure.class,
+                ToolCallExecutor.mapFailure(new IllegalStateException("boom")));
+
+        assertEquals("ToolInternalError", failure.error().info().name());
+        assertEquals("TOOL_ERROR", failure.error().info().code());
+        assertEquals("boom", failure.error().message());
     }
 
     // ── helpers ──────────────────────────────────────────────

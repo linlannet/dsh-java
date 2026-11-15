@@ -1,5 +1,7 @@
 package net.linlan.dsh.domain.tool.fs;
 
+import net.linlan.dsh.domain.tool.model.error.ToolArgsError;
+
 import net.linlan.dsh.domain.model.valobj.ImageAttachmentRef;
 import net.linlan.dsh.domain.model.valobj.ImageBlock;
 import net.linlan.dsh.domain.model.valobj.TextBlock;
@@ -100,7 +102,7 @@ public class FsReadImageTool implements ToolDefinition {
             String path = String.valueOf(argMap.get("path"));
             if (path == null || path.isBlank() || "null".equals(path)) {
                 return CompletableFuture.completedFuture(
-                        ToolExecutionResult.fail("path parameter is required", "MISSING_PARAM"));
+                        ToolExecutionResult.fail(new ToolArgsError("path is required").toFailure()));
             }
             String mime = mimeTypeOf(path);
             if (mime == null) {

@@ -1,5 +1,7 @@
 package net.linlan.dsh.domain.tool.fs;
 
+import net.linlan.dsh.domain.tool.model.error.ToolArgsError;
+
 import net.linlan.dsh.domain.tool.fs.adapter.port.IFsPort;
 
 import net.linlan.dsh.domain.model.valobj.ContentBlock;
@@ -103,10 +105,11 @@ public class FsReadTool implements ToolDefinition {
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         try {
             Map<String, Object> argMap = (Map<String, Object>) args;
-            String path = String.valueOf(argMap.get("path"));
+            String path = argMap.get("path") == null
+                    ? null : String.valueOf(argMap.get("path"));
             if (path == null || path.isBlank()) {
                 return CompletableFuture.completedFuture(
-                        ToolExecutionResult.fail("path parameter is required", "MISSING_PARAM"));
+                        ToolExecutionResult.fail(new ToolArgsError("path is required").toFailure()));
             }
 
             int offset = argMap.get("offset") != null

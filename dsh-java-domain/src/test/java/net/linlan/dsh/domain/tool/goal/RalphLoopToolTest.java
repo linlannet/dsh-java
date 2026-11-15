@@ -1,5 +1,6 @@
 package net.linlan.dsh.domain.tool.goal;
 
+import net.linlan.dsh.domain.tool.model.error.ToolArgsError;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -21,8 +22,8 @@ class RalphLoopToolTest {
     @DisplayName("start 空 goal 抛异常")
     void startBlankGoalThrows() {
         var tool = new RalphLoopTool();
-        assertThrows(IllegalArgumentException.class, () -> tool.start(""));
-        assertThrows(IllegalArgumentException.class, () -> tool.start(null));
+        assertThrows(ToolArgsError.class, () -> tool.start(""));
+        assertThrows(ToolArgsError.class, () -> tool.start(null));
     }
 
     @Test
@@ -30,7 +31,7 @@ class RalphLoopToolTest {
     void doubleStartThrows() {
         var tool = new RalphLoopTool();
         tool.start("goal1");
-        assertThrows(IllegalStateException.class, () -> tool.start("goal2"));
+        assertThrows(RalphLoopError.class, () -> tool.start("goal2"));
     }
 
     @Test
@@ -61,7 +62,7 @@ class RalphLoopToolTest {
     @DisplayName("incrementRound 未运行时抛异常")
     void incrementRoundWhenNotRunningThrows() {
         var tool = new RalphLoopTool();
-        assertThrows(IllegalStateException.class, tool::incrementRound);
+        assertThrows(RalphLoopError.class, tool::incrementRound);
     }
 
     @Test

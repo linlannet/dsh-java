@@ -1,5 +1,7 @@
 package net.linlan.dsh.domain.tool.fs;
 
+import net.linlan.dsh.domain.tool.model.error.ToolArgsError;
+
 import net.linlan.dsh.domain.model.valobj.TextBlock;
 import net.linlan.dsh.domain.tool.fs.adapter.port.IFsPort;
 import net.linlan.dsh.domain.model.entity.ToolDefinition;
@@ -144,13 +146,20 @@ public class StrReplaceEditorTool implements ToolDefinition {
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         try {
             Map<String, Object> argMap = (Map<String, Object>) args;
-            String command = String.valueOf(argMap.get("command"));
-            String path = resolveAbsolute(String.valueOf(argMap.get("path")));
+            String command = argMap.get("command") == null
+                    ? null : String.valueOf(argMap.get("command"));
+            String rawPath = argMap.get("path") == null
+                    ? null : String.valueOf(argMap.get("path"));
 
             if (command == null || command.isBlank()) {
                 return CompletableFuture.completedFuture(
-                        ToolExecutionResult.fail("command parameter is required", "MISSING_PARAM"));
+                        ToolExecutionResult.fail(new ToolArgsError("command is required").toFailure()));
             }
+            if (rawPath == null || rawPath.isBlank()) {
+                return CompletableFuture.completedFuture(
+                        ToolExecutionResult.fail(new ToolArgsError("path is required").toFailure()));
+            }
+            String path = resolveAbsolute(rawPath);
 
             String result = switch (command) {
                 case "view" -> doView(path);

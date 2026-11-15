@@ -1,11 +1,13 @@
 package net.linlan.dsh.domain.storage.model.valobj;
 
+import net.linlan.dsh.domain.common.error.HarnessError;
+
 /**
- * StorageException 定义当前模块中的class契约与职责。
- * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
- * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
+ * StorageException 定义存储子系统的可分类错误。
+ * <p>调用流程：存储适配或校验失败 → 抛出本错误 → 工具执行管线记录 name/code。</p>
+ * <p>示例：读取不存在的存储单元返回 {@code UNIT_NOT_FOUND}。</p>
  */
-public class StorageException extends RuntimeException {
+public class StorageException extends HarnessError {
 
     private final StorageErrorCode code;
 
@@ -17,7 +19,7 @@ public class StorageException extends RuntimeException {
      * @return 方法执行结果。
      */
     public StorageException(StorageErrorCode code, String message) {
-        super(message);
+        super(code == null ? null : code.name(), message);
         this.code = code;
     }
 
@@ -30,7 +32,7 @@ public class StorageException extends RuntimeException {
      * @return 方法执行结果。
      */
     public StorageException(StorageErrorCode code, String message, Throwable cause) {
-        super(message, cause);
+        super(code == null ? null : code.name(), message, cause);
         this.code = code;
     }
 

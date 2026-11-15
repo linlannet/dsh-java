@@ -71,3 +71,25 @@ v0.2.3 以**移动端接入**为主线，包含三块内容：
 - **新增数据库表：无**（进程内存储）；
 - **新增 Maven 模块：无**（全部落在既有 7 模块 + 2 插件内）；
 - 制品体积增量可忽略（新增类约 15 个 + 3 份文档）。
+
+## 7. 迭代二范围（参考源平台能力对齐，规划中）
+
+> 状态：**未实现**，仅完成需求、设计与任务拆解；代码落地与验证记录待本轮开发完成后补入本节。
+
+| 能力域 | 参考源升级项 | 归属 |
+| --- | --- | --- |
+| 统一错误码与 `HarnessError` | `attachment-error-codes` 等 5 项 | spec §8.1 / design §3.2 / tasks §11.1 |
+| Subagent 名称寻址 | `subagent-names`、`subagent-interrupt-default` | spec §8.2 / design §3.3 / tasks §11.2 |
+| Office 能力工具化 | `office-kit-package` 等 3 项 | spec §8.3 / design §3.4 / tasks §11.3 |
+| Web 计费与凭据来源 | `web-search-billing` | spec §8.4 / design §3.5 / tasks §11.4 |
+| Worktree 归档清理 | `archive-worktrees` | spec §8.5 / design §3.6 / tasks §11.5 |
+| 运行时上下文提醒 | `runtime-context-reminders` | spec §8.6 / design §3.7 / tasks §11.6 |
+| Plugin Bundle 更新 | `plugin-update-method` | spec §8.7 / design §3.8 / tasks §11.7 |
+| DeepSeek 文件上传超时 | `deepseek-files-timeout` | spec §8.8 / design §3.9 / tasks §11.8 |
+| WebServer 默认鉴权 | `connection-page-peer`（部分） | spec §8.9 / design §3.10 / tasks §11.9 |
+| 会话状态与事件写入 | `session-status-package`（部分）、`session-append-overloads` | spec §8.10 / design §3.11 / tasks §11.10 |
+| CUA / PTC 部分对齐 | `cua-agents-without-preset`、`ptc-inspect-output` | spec §8.11–§8.12 / design §3.12 / tasks §11.11 |
+
+**不纳入**：Cordis/包导出、Client/Desktop、macOS AX、Python/Node 运行时、Forge、账号、文档技能，原因见 spec §8.13。
+
+**发布口径**：本节能力未完成前，0.2.3 不标记为"已发布"；完成后需补齐验证结论、已知限制与依赖/体积增量。

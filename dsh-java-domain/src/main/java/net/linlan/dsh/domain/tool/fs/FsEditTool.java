@@ -1,5 +1,7 @@
 package net.linlan.dsh.domain.tool.fs;
 
+import net.linlan.dsh.domain.tool.model.error.ToolArgsError;
+
 import net.linlan.dsh.domain.model.valobj.TextBlock;
 import net.linlan.dsh.domain.tool.fs.adapter.port.IFsPort;
 import net.linlan.dsh.domain.model.entity.ToolDefinition;
@@ -134,11 +136,12 @@ public class FsEditTool implements ToolDefinition {
             Object newObj = argMap.get("new_string");
             if (path == null || path.isBlank() || "null".equals(path)) {
                 return CompletableFuture.completedFuture(
-                        ToolExecutionResult.fail("path parameter is required", "MISSING_PARAM"));
+                        ToolExecutionResult.fail(new ToolArgsError("path is required").toFailure()));
             }
             if (oldObj == null || newObj == null) {
                 return CompletableFuture.completedFuture(
-                        ToolExecutionResult.fail("old_string and new_string are required", "MISSING_PARAM"));
+                        ToolExecutionResult.fail(
+                                new ToolArgsError("old_string and new_string are required").toFailure()));
             }
             String oldString = String.valueOf(oldObj);
             String newString = String.valueOf(newObj);
@@ -151,7 +154,8 @@ public class FsEditTool implements ToolDefinition {
             }
             if (oldString.isEmpty()) {
                 return CompletableFuture.completedFuture(
-                        ToolExecutionResult.fail("old_string must not be empty", "INVALID_ARGS"));
+                        ToolExecutionResult.fail(
+                                new ToolArgsError("old_string must not be empty").toFailure()));
             }
 
             String content = fsService.read(path, 1, -1);
