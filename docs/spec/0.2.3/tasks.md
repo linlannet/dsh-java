@@ -211,22 +211,22 @@
 - [x] 超时后内联图片降级与 2 倍退避、成功复位；验收：连续超时用例 —— `DeepSeekImageAttachmentPolicy`；当前仓库无 Files API 上传器，策略以上传器注入方式可用，适配器默认内联
 
 ### 11.9 WebServer 默认鉴权
-- [ ] 路由注册增加 `auth` 维度，默认 `required`，公开路由显式 `anonymous`；验收：未声明路由被拒 —— `dsh-java-trigger/`
-- [ ] Token 校验/登录交换抽为认证提供方，Cookie 可认证页面与 API；验收：Cookie 用例
-- [ ] 连接监听器活动时匿名路由执行来源检查；验收：跨源拒绝用例
+- [x] 路由注册增加 `auth` 维度，默认 `required`，公开路由显式 `anonymous`；验收：未声明路由被拒 —— 新增 `@RouteAuth`/`RouteAuthResolver`，`ApiKeyAuthInterceptor` 对无注解路由按 `required` 拒绝，`AgentCardController` 等 `.well-known` 路由显式 `ANONYMOUS`；`harness.webserver.auth-default=anonymous` 可回滚
+- [x] Token 校验/登录交换抽为认证提供方，Cookie 可认证页面与 API；验收：Cookie 用例 —— `WebAuthProvider`/`DefaultWebAuthProvider`，按 `X-API-Key` → `Bearer` → `dsh_session` Cookie 顺序校验，`issueSessionToken` 供登录交换
+- [x] 连接监听器活动时匿名路由执行来源检查；验收：跨源拒绝用例 —— `ConnectionOriginGuard`（`harness.auth.connection-listener.enabled`），同源/白名单放行，跨源 403
 
 ### 11.10 会话状态与事件写入
-- [ ] 扩展 `SessionStatus` 表达阅读态/完成未读态，新增 `completionUnread`/`completionFailed`；验收：投影字段 —— `dsh-java-domain/.../session/`
-- [ ] 宿主共享阅读记录与 `mark(sessionId, unread)`（`readingReady` 前拒绝）；验收：标记用例
-- [ ] `append` 增加事件数组重载，按序批量写入且可重放；验收：批量重放用例
+- [x] 扩展 `SessionStatus` 表达阅读态/完成未读态，新增 `completionUnread`/`completionFailed`；验收：投影字段 —— 新增 `domain/session/status/model/valobj/SessionStatus`（running/completionUnread/completionFailed）与 `SessionReadState`；`ConversationSessionSummaryVO` 增加两个投影字段并由 `ConversationQueryService` 填充
+- [x] 宿主共享阅读记录与 `mark(sessionId, unread)`（`readingReady` 前拒绝）；验收：标记用例 —— `SessionReadingRegistry`（内存共享记录、`turn/end` 更新完成位置、`mark`/`acknowledge`/`read`，`readingReady` 前抛 `IllegalStateException`；首次会话查询惰性建立基线）
+- [x] `append` 增加事件数组重载，按序批量写入且可重放；验收：批量重放用例 —— `ISessionEventLogService.append(String, List<SessionEvent>)` 默认委托 `appendBatch`，单事件签名保留；`SessionEventLogService` 写入后记录 `turn/end` 阅读状态
 
 ### 11.11 CUA / PTC 部分对齐
-- [ ] 未组合 preset 的 Agent 注册 `cua_run_code`，按 `agentPreset` 选择 `cua`/`cua_run_code`；验收：工具目录用例 —— `dsh-java-domain/.../tool/web/computer/`
-- [ ] 专用运行时缺失时创建 Agent 失败并返回可读原因；验收：错误消息
-- [ ] PTC 程序输出改为 `inspect(...)` 显式选择，图片经 `inspect` 附加；验收：输出顺序与图片用例
+- [x] 未组合 preset 的 Agent 注册 `cua_run_code`，按 `agentPreset` 选择 `cua`/`cua_run_code`；验收：工具目录用例 —— `AgentToolCatalog` 依据 `SessionHeader.agentPreset` 选择：`cua` → `CuaTool`，其余/未组合 → `CuaRunCodeTool`；新增 `CuaTool`/`CuaRunCodeTool`
+- [x] 专用运行时缺失时创建 Agent 失败并返回可读原因；验收：错误消息 —— preset 要求 CUA 但 `IComputerUsePort` 缺失时抛 `IllegalStateException("CUA program tool is unavailable")`
+- [x] PTC 程序输出改为 `inspect(...)` 显式选择，图片经 `inspect` 附加；验收：输出顺序与图片用例 —— 新增 `PtcProgramOutput`：按 inspect 调用顺序收集，字符串直出、图片转 `ImageBlock`、其他值对象格式；不自动收集返回值/末尾表达式
 
 ### 11.12 测试、文档与发布治理
-- [ ] 各能力域补充单元测试与 ArchUnit 回归；验收：`mvn test` 全绿
-- [ ] 更新 `CHANGELOG.md` 0.2.3 迭代二分节（新增/更新/破坏性变更）；验收：旧→新错误码映射表
-- [ ] 更新 `llms.txt`、`AGENTS.md` 与 `docs/md/` 相关说明；验收：版本与命令一致
-- [ ] 端到端冒烟：Office 转换、Worktree 归档、WebServer 鉴权、Subagent 名称链路；验收：冒烟记录归档
+- [x] 各能力域补充单元测试与 ArchUnit 回归；验收：`mvn test` 全绿 —— 新增/更新 11.1–11.11 相关测试类，`mvn test` exit 0，既有 ArchUnit 规则随全量回归通过
+- [x] 更新 `CHANGELOG.md` 0.2.3 迭代二分节（新增/更新/破坏性变更）；验收：旧→新错误码映射表 —— 迭代二补「变更分类」三段，旧→新错误码映射表位于同节
+- [x] 更新 `llms.txt`、`AGENTS.md` 与 `docs/md/` 相关说明；验收：版本与命令一致 —— 版本号与 jar 名统一为 `0.2.3`，spec 路径改为 `docs/spec/0.2.3/`，`ai-discoverability.md` 同步 release bundle 版本
+- [x] 端到端冒烟：Office 转换、Worktree 归档、WebServer 鉴权、Subagent 名称链路；验收：冒烟记录归档 —— 记录见 [smoke.md](smoke.md)，四条链路与 `mvn test` 均通过

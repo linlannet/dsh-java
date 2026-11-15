@@ -6,6 +6,8 @@ import net.linlan.dsh.domain.session.event.model.entity.SessionEvent;
 import net.linlan.dsh.domain.session.event.model.entity.SessionHeader;
 import net.linlan.dsh.domain.session.event.model.entity.SessionLog;
 import net.linlan.dsh.domain.session.projection.service.ProjectionCache;
+import net.linlan.dsh.domain.session.status.service.SessionReadingRegistry;
+import net.linlan.dsh.domain.session.event.model.valobj.TurnEndReason;
 
 import java.util.List;
 import java.util.Map;
@@ -13,6 +15,7 @@ import java.util.Objects;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -23,6 +26,7 @@ public class SessionEventLogService implements ISessionEventLogService {
 
     private final SessionPersistenceSeam store;
     private final SessionWriteLeaseService writeLeaseService;
+    private final SessionReadingRegistry readingRegistry;
     private final Map<String, SessionLog> logs = new ConcurrentHashMap<>();
     private volatile ProjectionCache projectionCache;
 
@@ -32,12 +36,25 @@ public class SessionEventLogService implements ISessionEventLogService {
      * @param store store参数。
      * @return 方法执行结果。
      */
+    @Autowired
     public SessionEventLogService(
             SessionPersistenceSeam store,
-            SessionWriteLeaseService writeLeaseService
+            SessionWriteLeaseService writeLeaseService,
+            SessionReadingRegistry readingRegistry
     ) {
         this.store = Objects.requireNonNull(store, "store");
         this.writeLeaseService = Objects.requireNonNull(writeLeaseService, "writeLeaseService");
+        this.readingRegistry = Objects.requireNonNull(readingRegistry, "readingRegistry");
+    }
+
+    /**
+     * 兼容既有测试与手工装配的两参构造。
+     *
+     * @param store            事件存储
+     * @param writeLeaseService 写租约服务
+     */
+    public SessionEventLogService(SessionPersistenceSeam store, SessionWriteLeaseService writeLeaseService) {
+        this(store, writeLeaseService, new SessionReadingRegistry());
     }
 
     public void setProjectionCache(ProjectionCache projectionCache) {
@@ -68,10 +85,12 @@ public class SessionEventLogService implements ISessionEventLogService {
             SessionLog log = getOrCreateLog(sessionId);
             SessionEvent appended = log.append(event);
             store.append(sessionId, appended);
+            observeReading(sessionId, appended);
             triggerProjection(appended);
             return appended;
         });
     }
+
     /**
      * 追加Batch。
      * 流程：应用领域规则 → 更新领域对象 → 返回结果。
@@ -88,6 +107,7 @@ public class SessionEventLogService implements ISessionEventLogService {
             List<SessionEvent> appended = log.appendBatch(events);
             store.appendBatch(sessionId, appended);
             for (SessionEvent e : appended) {
+                observeReading(sessionId, e);
                 triggerProjection(e);
             }
             return appended;
@@ -177,6 +197,19 @@ public class SessionEventLogService implements ISessionEventLogService {
         ProjectionCache pc = this.projectionCache;
         if (pc != null) {
             pc.onEventAppended(event);
+        }
+    }
+
+    /**
+     * 将 turn/end 观察结果写入宿主阅读记录。
+     *
+     * @param sessionId 会话标识
+     * @param event     已追加事件
+     */
+    private void observeReading(String sessionId, SessionEvent event) {
+        if (event instanceof SessionEvent.TurnEnd turnEnd) {
+            boolean failed = turnEnd.reason() instanceof TurnEndReason.Error;
+            readingRegistry.recordTurnEnd(sessionId, failed);
         }
     }
 

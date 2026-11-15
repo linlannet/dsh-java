@@ -38,6 +38,9 @@
   - **运行时上下文提醒**：新增 `RuntimeContextSnapshot`，`runtime-context` 统一包裹 `<system-reminder>`，首份/后续快照文案区分，清空输出 `form=snapshot`/`sections=[]`；旧快照缺 `sections` 仅刷新一次并保留原前缀
   - **Plugin Bundle 更新**：新增 `PluginBundleInfo`（可选 `update=registry|git`）、`PluginBundleUpdateService`（Git 仅固定完整提交可更新）、`unexpected-package` 错误码；`PluginRegistryService` 新增带 `expectedPluginId/expectedVersion` 的安装校验
   - **DeepSeek 文件上传超时**：`DeepSeekAdapterOptions` 新增 `filesApiTimeoutMs`（默认 20s）与 `filesConnectTimeoutMs`（默认 5s）；新增 `DeepSeekImageAttachmentPolicy`，上传超时降级内联 data URL，超时预算按 2 倍退避（上限 8 倍），成功后复位
+  - **WebServer 默认鉴权**：新增 `@RouteAuth`（`required|anonymous`）与 `RouteAuthResolver`，未声明路由默认要求认证，`.well-known` 公开路由显式匿名；认证逻辑抽为 `WebAuthProvider`/`DefaultWebAuthProvider`，支持 `X-API-Key`、`Bearer` 与 `dsh_session` Cookie；`ConnectionOriginGuard` 在连接监听器活动时对匿名路由执行同源/白名单来源检查；新增 `harness.auth.cookie-name`、`harness.auth.connection-listener.enabled`、`harness.auth.allowed-origins`、`harness.webserver.auth-default` 配置
+  - **会话状态与事件写入**：新增 `SessionStatus`（`running`/`completionUnread`/`completionFailed`）与 `SessionReadState`；`SessionReadingRegistry` 维护宿主共享阅读记录，`mark` 在 `readingReady` 前拒绝，`turn/end` 自动更新完成位置，失败轮次驱动 `completionFailed`；`ISessionEventLogService.append` 新增事件数组重载（委托 `appendBatch`），单事件签名保持兼容
+  - **CUA / PTC 部分对齐**：新增 `CuaTool`（`cua`）与 `CuaRunCodeTool`（`cua_run_code`），`AgentToolCatalog` 按 `agentPreset` 选择，未组合 preset 默认获得 `cua_run_code`；CUA 运行时缺失时按 preset 抛出可读错误；新增 `PtcProgramOutput`，PTC 输出改为 `inspect(...)` 显式选择，图片按调用位置附加，返回值与末尾表达式不再自动输出
 
   **旧 → 新错误码映射**
 
@@ -56,6 +59,11 @@
   | Web 抓取返回 `Fetch error: ...` 成功文本 | `WebFetchError(WEB_FETCH_*)` | 本地抓取 |
   | `CancellationException` 归为网络错误 | `WEB_ABORTED` | Web 抓取取消 |
   | 无凭据/账户缺失静默失败 | `WEB_CREDENTIAL_MISSING` / `WEB_ACCOUNT_UNAVAILABLE` | Web 计费 |
+
+  **变更分类**
+  - 新增：`HarnessError` 体系与 `error-codes.md`、Office 三工具、Worktree 归档清理、Plugin Bundle 更新、运行时上下文快照、`SessionReadingRegistry`、`@RouteAuth`/`WebAuthProvider`、`CuaTool`/`CuaRunCodeTool`、`PtcProgramOutput`
+  - 更新：`send_message`/`interrupt_agent` 改用 `agent` 名称寻址；`web_search`/`web_fetch` 支持计费模式与有序凭据；DeepSeek 文件上传新增超时与内联降级；会话摘要新增 `completionUnread`/`completionFailed`；事件 API 新增数组重载
+  - 破坏性变更：未声明 `@RouteAuth` 的路由默认要求认证（可用 `harness.webserver.auth-default=anonymous` 回滚）；Shell/FS 参数错误统一为 `INVALID_ARGS`；子代理工具不再接受 `agent_id`；`SessionStatus` 投影字段扩展
 
 ## 版本号：0.2.2
 - 更新日期：2026-11-02

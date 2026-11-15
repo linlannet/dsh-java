@@ -5,11 +5,13 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import net.linlan.dsh.trigger.filter.RouteAuth;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RouteAuth(RouteAuth.Level.ANONYMOUS)
 public class AgentCardController {
     private static final String A2A_PROTOCOL_VERSION = "0.3.0";
     private final String displayName;

@@ -1,7 +1,7 @@
 # AGENTS.md — dsh-java
 
 ## Project
-Java 17 + Spring Boot 3.5.16 **Agent Harness** (ReAct loop, tools, approvals, plugins, event sourcing). Version 0.2.2.
+Java 17 + Spring Boot 3.5.16 **Agent Harness** (ReAct loop, tools, approvals, plugins, event sourcing). Version 0.2.3.
 
 ## Layout
 - `dsh-java-domain` models, events, ports
@@ -36,5 +36,5 @@ Dependency direction: `trigger -> api <- case -> domain`, `infrastructure` imple
 ## Key Docs
 - `README.md`, `README.en.md`
 - `docs/md/java-plugin-development.md`
-- `docs/spec/0.2.2/`
+- `docs/spec/0.2.3/`
 - `llms.txt`

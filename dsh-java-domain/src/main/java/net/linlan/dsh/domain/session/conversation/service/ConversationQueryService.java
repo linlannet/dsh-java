@@ -17,6 +17,8 @@ import net.linlan.dsh.domain.session.log.adapter.repository.ISessionEventReposit
 import net.linlan.dsh.domain.session.log.model.entity.SessionEventEntity;
 import net.linlan.dsh.domain.session.registry.adapter.repository.IHarnessSessionRepository;
 import net.linlan.dsh.domain.session.registry.model.aggregate.HarnessSessionAggregate;
+import net.linlan.dsh.domain.session.status.model.valobj.SessionStatus;
+import net.linlan.dsh.domain.session.status.service.SessionReadingRegistry;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -44,6 +46,7 @@ public class ConversationQueryService implements IConversationQueryService {
     private final IHarnessSessionRepository harnessSessionRepository;
     private final ISessionEventRepository sessionEventRepository;
     private final ISessionEventStore sessionEventStore;
+    private final SessionReadingRegistry readingRegistry;
 
     /**
      * 初始化会话查询服务。
@@ -52,11 +55,13 @@ public class ConversationQueryService implements IConversationQueryService {
     public ConversationQueryService(
             IHarnessSessionRepository harnessSessionRepository,
             ISessionEventRepository sessionEventRepository,
-            ISessionEventStore sessionEventStore
+            ISessionEventStore sessionEventStore,
+            SessionReadingRegistry readingRegistry
     ) {
         this.harnessSessionRepository = harnessSessionRepository;
         this.sessionEventRepository = sessionEventRepository;
         this.sessionEventStore = sessionEventStore;
+        this.readingRegistry = readingRegistry;
     }
 
     /**
@@ -81,6 +86,7 @@ public class ConversationQueryService implements IConversationQueryService {
         }
         List<ConversationSessionSummaryVO> merged = new ArrayList<>(byId.values());
         merged.sort(Comparator.comparing(ConversationSessionSummaryVO::createdAt).reversed());
+        readingRegistry.ensureBaseline(byId.keySet());
         return merged.stream()
                 .skip(Math.max(offset, 0))
                 .limit(Math.max(limit, 0))
@@ -197,12 +203,17 @@ public class ConversationQueryService implements IConversationQueryService {
                 .filter(text -> text != null && !text.isBlank())
                 .orElse("新会话");
         String preview = messages.isEmpty() ? "等待消息" : abbreviate(previewText(messages.get(messages.size() - 1).content()), 24);
+        String status = session.getStatus().name();
+        SessionStatus reading = statusOf(session.getSessionId(), status);
         return new ConversationSessionSummaryVO(
                 session.getSessionId(),
                 title,
                 preview,
-                session.getStatus().name(),
-                session.getCreatedAt()
+                status,
+                session.getCreatedAt(),
+                null, null, null, null, null,
+                reading.completionUnread(),
+                reading.completionFailed()
         );
     }
 
@@ -223,16 +234,21 @@ public class ConversationQueryService implements IConversationQueryService {
                 .filter(text -> text != null && !text.isBlank())
                 .orElse("新会话");
         String preview = messages.isEmpty() ? "等待消息" : abbreviate(previewText(messages.get(messages.size() - 1).content()), 24);
+        String status = session.getStatus().name();
+        SessionStatus reading = statusOf(session.getSessionId(), status);
         return new ConversationSessionSummaryVO(
                 session.getSessionId(),
                 title,
                 preview,
-                session.getStatus().name(),
+                status,
                 session.getCreatedAt(),
                 session.getWorkspaceId(),
                 session.getModelCode(),
                 session.getProfileCode(),
-                session.getLastActivityAt()
+                session.getLastActivityAt(),
+                null,
+                reading.completionUnread(),
+                reading.completionFailed()
         );
     }
 
@@ -284,6 +300,7 @@ public class ConversationQueryService implements IConversationQueryService {
             }
             preview = abbreviate(previewText(text), 24);
         }
+        SessionStatus reading = statusOf(header.sessionId(), "COMPLETED");
         return new ConversationSessionSummaryVO(
                 header.sessionId(),
                 title != null && !title.isBlank() ? title : "新会话",
@@ -294,8 +311,21 @@ public class ConversationQueryService implements IConversationQueryService {
                 null,
                 null,
                 null,
-                header.agentPreset()
+                header.agentPreset(),
+                reading.completionUnread(),
+                reading.completionFailed()
         );
+    }
+
+    /**
+     * 生成会话阅读态投影。
+     *
+     * @param sessionId 会话标识
+     * @param status    会话状态字符串
+     * @return 阅读态投影
+     */
+    private SessionStatus statusOf(String sessionId, String status) {
+        return readingRegistry.status(sessionId, "RUNNING".equalsIgnoreCase(status));
     }
 
     /**

@@ -48,6 +48,9 @@ import net.linlan.dsh.domain.tool.terminal.TerminalTools;
 import net.linlan.dsh.domain.tool.web.WebFetchTool;
 import net.linlan.dsh.domain.tool.web.WebSearchTool;
 import net.linlan.dsh.domain.tool.web.adapter.port.IWebPort;
+import net.linlan.dsh.domain.tool.web.computer.CuaRunCodeTool;
+import net.linlan.dsh.domain.tool.web.computer.CuaTool;
+import net.linlan.dsh.domain.tool.web.computer.adapter.port.IComputerUsePort;
 import net.linlan.dsh.domain.skill.ISkillService;
 import net.linlan.dsh.domain.tool.skill.SkillTool;
 import net.linlan.dsh.domain.plugin.IPluginRuntimeService;
@@ -79,6 +82,7 @@ public final class AgentToolCatalog {
     private final IOfficeConverterPort officeConverter;
     private final OfficeKitConfig officeKitConfig;
     private final WebToolConfig webToolConfig;
+    private final IComputerUsePort computerUsePort;
 
     public AgentToolCatalog(
             IShellExecutor shellExecutor,
@@ -101,7 +105,8 @@ public final class AgentToolCatalog {
             IPluginRuntimeService pluginRuntimeService,
             IOfficeConverterPort officeConverter,
             OfficeKitConfig officeKitConfig,
-            WebToolConfig webToolConfig
+            WebToolConfig webToolConfig,
+            IComputerUsePort computerUsePort
     ) {
         this.shellExecutor = shellExecutor;
         this.fsPort = fsPort;
@@ -124,6 +129,7 @@ public final class AgentToolCatalog {
         this.officeConverter = officeConverter;
         this.officeKitConfig = officeKitConfig == null ? OfficeKitConfig.defaults() : officeKitConfig;
         this.webToolConfig = webToolConfig == null ? WebToolConfig.defaults() : webToolConfig;
+        this.computerUsePort = computerUsePort;
     }
 
     public ToolRegistry createRegistry(AgentToolContext context, ToolRegistry sharedRegistry) {
@@ -154,6 +160,7 @@ public final class AgentToolCatalog {
         localRegistry.register(new FsReadImageTool(agentFsPort));
         localRegistry.register(new FsEditTool(agentFsPort, cwdSupplier));
         localRegistry.register(new PluginStatusTool(pluginRepository, pluginRuntimeService));
+        registerComputerUse(localRegistry, context);
         if (officeConverter != null) {
             localRegistry.register(new OfficeRenderTool(officeConverter, officeKitConfig));
             localRegistry.register(new OfficeConvertTool(officeConverter, officeKitConfig));
@@ -206,6 +213,27 @@ public final class AgentToolCatalog {
         }
 
         return new CompositeToolRegistry(localRegistry, sharedRegistry);
+    }
+
+    /**
+     * 按 agentPreset 选择 CUA 工具：配置了 {@code cua} preset 时暴露原始 {@code cua}，
+     * 其余情况（含未组合 preset）暴露 {@code cua_run_code}。
+     *
+     * @param registry 本地工具注册表
+     * @param context  工具上下文
+     */
+    private void registerComputerUse(InMemoryToolRegistry registry, AgentToolContext context) {
+        String preset = context.session() == null || context.session().header() == null
+                ? null : context.session().header().agentPreset();
+        boolean rawTool = "cua".equalsIgnoreCase(preset);
+        boolean requiresCua = rawTool || "cua_run_code".equalsIgnoreCase(preset);
+        if (computerUsePort == null) {
+            if (requiresCua) {
+                throw new IllegalStateException("CUA program tool is unavailable");
+            }
+            return;
+        }
+        registry.register(rawTool ? new CuaTool(computerUsePort) : new CuaRunCodeTool(computerUsePort));
     }
 
     public record AgentToolContext(

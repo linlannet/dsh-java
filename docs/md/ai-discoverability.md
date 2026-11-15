@@ -24,7 +24,7 @@
 | dsh-java-plugins | Java native plugins for dsh-java: MySQL, OceanBase, Dameng and Mall, with plugin development contract and reference implementations. |
 | dsh-java-desktop | DSH Java desktop client built with Tauri 2 + React 19: bundled agent runtime, digital-human collaboration and A2A protocol. |
 | dsh-java-mobile | DSH Java multi-platform shell: Android/iOS (Tauri 2 Mobile), HarmonyOS (ArkWeb) and WeChat mini-program share one React H5 artifact. |
-| dsh-java-release | Ready-to-run release bundle for DSH Java 0.2.2: artifacts + four database plugins + built-in skills, start with one command. |
+| dsh-java-release | Ready-to-run release bundle for DSH Java 0.2.3: artifacts + four database plugins + built-in skills, start with one command. |
 
 ## Topics（各仓库统一粘贴）
 

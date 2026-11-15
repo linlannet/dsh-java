@@ -26,6 +26,16 @@ public interface ISessionEventLogService {
     SessionEvent append(String sessionId, SessionEvent event);
 
     /**
+     * 批量追加事件（事件数组重载），按顺序写入并可重放。
+     *
+     * @param sessionId 会话ID
+     * @param events    事件数组
+     * @return 已分配序列号的事件列表
+     */
+    default List<SessionEvent> append(String sessionId, List<SessionEvent> events) {
+        return appendBatch(sessionId, events);
+    }
+    /**
      * 处理appendBatch。
      * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
      * @param sessionId 会话ID。

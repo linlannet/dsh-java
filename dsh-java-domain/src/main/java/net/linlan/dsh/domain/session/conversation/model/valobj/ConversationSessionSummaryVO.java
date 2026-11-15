@@ -21,6 +21,8 @@ import java.util.List;
  * @param profileCode 执行画像编码
  * @param lastActivityAt 最近活动时间
  * @param agentId 侧边栏 Agent 标识（Agent 会话从 agentPreset 还原，任务会话为 null）
+ * @param completionUnread 是否存在未确认的完成轮次或手动未读标记
+ * @param completionFailed 未读完成轮次是否以执行错误结束
  *
  *
  */
@@ -34,7 +36,9 @@ public record ConversationSessionSummaryVO(
         String modelCode,
         String profileCode,
         Instant lastActivityAt,
-        String agentId
+        String agentId,
+        boolean completionUnread,
+        boolean completionFailed
 ) {
     /**
      * 仅用于侧边栏的简化构造方法。
@@ -57,5 +61,16 @@ public record ConversationSessionSummaryVO(
                                         String workspaceId, String modelCode, String profileCode,
                                         Instant lastActivityAt) {
         this(sessionId, title, preview, status, createdAt, workspaceId, modelCode, profileCode, lastActivityAt, null);
+    }
+
+    /**
+     * 兼容旧调用方的十参构造（不含阅读态）。
+     */
+    public ConversationSessionSummaryVO(String sessionId, String title, String preview,
+                                        String status, Instant createdAt,
+                                        String workspaceId, String modelCode, String profileCode,
+                                        Instant lastActivityAt, String agentId) {
+        this(sessionId, title, preview, status, createdAt, workspaceId, modelCode, profileCode,
+                lastActivityAt, agentId, false, false);
     }
 }

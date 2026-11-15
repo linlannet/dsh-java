@@ -238,6 +238,8 @@ public class AgentRunBeanConfig {
             net.linlan.dsh.domain.storage.conversion.adapter.port.IOfficeConverterPort officeConverter,
             net.linlan.dsh.domain.document.office.model.valobj.OfficeKitConfig officeKitConfig,
             net.linlan.dsh.domain.tool.web.model.valobj.WebToolConfig webToolConfig,
+            org.springframework.beans.factory.ObjectProvider<
+                    net.linlan.dsh.domain.tool.web.computer.adapter.port.IComputerUsePort> computerUseProvider,
             @Value("${harness.agent.tool-timeout-ms:300000}") long toolTimeoutMs
     ) {
         ISessionEventStore sessionEventStore = sessionEventStoreProvider.getIfAvailable();
@@ -269,7 +271,8 @@ public class AgentRunBeanConfig {
                 pluginRuntimeService,
                 officeConverter,
                 officeKitConfig,
-                webToolConfig
+                webToolConfig,
+                computerUseProvider.getIfAvailable()
         );
 
         return new AgentRunFactory(

@@ -32,6 +32,15 @@ harness:
 
   auth:
     api-keys: []
+    cookie-name: dsh_session
+    # 连接监听器活动时，匿名路由同样执行来源检查
+    connection-listener:
+      enabled: false
+    allowed-origins: ${HARNESS_AUTH_ALLOWED_ORIGINS:}
+
+  webserver:
+    # required：未声明 @RouteAuth 的路由必须认证；anonymous：回滚为全部放行
+    auth-default: ${HARNESS_WEBSERVER_AUTH_DEFAULT:required}
 
   goal:
     default-max-rounds: 256

@@ -2,14 +2,18 @@ package net.linlan.dsh.domain.session.event.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import net.linlan.dsh.domain.session.event.adapter.repository.SessionPersistenceSeam;
 import net.linlan.dsh.domain.session.event.model.entity.SessionEvent;
 import net.linlan.dsh.domain.session.event.model.entity.SessionHeader;
+import net.linlan.dsh.domain.session.event.model.valobj.TurnEndReason;
+import net.linlan.dsh.domain.session.status.service.SessionReadingRegistry;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -38,6 +42,33 @@ class SessionEventLogServiceTest {
 
         assertThrows(SessionWriteLeaseConflictException.class,
                 () -> service.append("locked-session", SessionEventFactory.turnStart()));
+    }
+
+    @Test
+    void shouldAppendEventArrayInOrderAndReplay() {
+        var header = SessionHeader.create("batch-session", Instant.EPOCH, null, null);
+        var store = new StubSessionEventStore(header);
+        var service = new SessionEventLogService(store, leaseService);
+
+        List<SessionEvent> appended = service.append("batch-session", List.of(
+                SessionEventFactory.turnStart(),
+                SessionEventFactory.turnEnd(new TurnEndReason.Completed())));
+
+        assertEquals(List.of(0L, 1L), appended.stream().map(SessionEvent::seq).toList());
+        assertEquals(appended, service.readAll("batch-session"));
+    }
+
+    @Test
+    void shouldRecordFailedTurnEndInReadingRegistry() {
+        var header = SessionHeader.create("reading-session", Instant.EPOCH, null, null);
+        var registry = new SessionReadingRegistry();
+        registry.reportBaseline(Map.of());
+        var service = new SessionEventLogService(new StubSessionEventStore(header), leaseService, registry);
+
+        service.append("reading-session", SessionEventFactory.turnEnd(new TurnEndReason.Error("boom", "E1")));
+
+        assertTrue(registry.state("reading-session").orElseThrow().completionUnread());
+        assertTrue(registry.status("reading-session", false).completionFailed());
     }
 
     private static final class StubSessionEventStore implements SessionPersistenceSeam {

@@ -349,20 +349,28 @@ HarnessError <|-- OfficeKitError
 ## 3.10 WebServer 默认鉴权
 
 - 路由注册模型增加 `auth` 维度，默认 `required`；静态资源、健康检查、连接页等公开路由必须显式 `anonymous`。
+  - 实现：`@RouteAuth(REQUIRED|ANONYMOUS)` + `RouteAuthResolver`（方法注解优先、类注解回退、默认 `required`）；`harness.webserver.auth-default=anonymous` 用于回滚。
 - Token 校验与 HTTP 登录交换从连接页逻辑中抽为认证提供方；Cookie 可同时认证页面与 API。
+  - 实现：`WebAuthProvider` / `DefaultWebAuthProvider`，凭据顺序 `X-API-Key` → `Authorization: Bearer` → `harness.auth.cookie-name`（默认 `dsh_session`）。
 - 连接监听器活动时，匿名路由也执行来源检查。
+  - 实现：`ConnectionOriginGuard`，同源或 `harness.auth.allowed-origins` 白名单放行，其余 403；`harness.auth.connection-listener.enabled` 控制开关。
 - 与现有 `ApiKeyAuthInterceptor` 的关系：拦截器继续负责 API Key/设备 token；`auth` 维度负责"路由是否允许匿名"，二者叠加而非替代。
 
 ## 3.11 会话状态与事件写入
 
 - `SessionStatus` 从 `IDLE/RUNNING` 扩展为可表达宿主阅读态与完成未读态；新增 `completionUnread`、`completionFailed` 投影字段。
+  - 实现：`domain/session/status/model/valobj/SessionStatus`（running/completionUnread/completionFailed）与 `SessionReadState`；`ConversationSessionSummaryVO` 输出两个投影字段。
 - 宿主维护共享阅读记录：主视图切入会话自动清除手动未读标记；`mark(sessionId, unread)` 在 `readingReady` 前拒绝。
+  - 实现：`SessionReadingRegistry` 内存记录；`turn/end` 更新完成位置，`mark`/`read`/`acknowledge` 单调推进阅读位置；首次会话查询调用 `ensureBaseline` 建立宿主基线。
 - 事件存储接口 `append` 增加数组重载，内部按顺序批量落库并可重放；单事件签名保留。
+  - 实现：`ISessionEventLogService.append(String, List<SessionEvent>)` 默认委托 `appendBatch`；`SessionEventLogService` 在写入后观察 `turn/end`（`Error` 记为失败）。
 
 ## 3.12 CUA / PTC 部分对齐
 
 - **CUA**：未组合 preset 的 Agent 也注册 `cua_run_code`；按 `agentPreset` 决定暴露 `cua` 还是 `cua_run_code`；专用程序运行时缺失时创建 Agent 失败并给出可读原因。
+  - 实现：`CuaTool`（`cua`）、`CuaRunCodeTool`（`cua_run_code`）；`AgentToolCatalog` 从 `SessionHeader.agentPreset` 选择（`cua` → 原始工具，其余/未组合 → 程序工具）；preset 要求 CUA 而 `IComputerUsePort` 为空时抛 `IllegalStateException("CUA program tool is unavailable")`。
 - **PTC**：程序输出改为 `inspect(...)` 显式选择；CUA 观察方法与 `read_image` 返回可 `inspect` 的值/图片；不引入 scoped REPL 与 bootstrap v3。
+  - 实现：`PtcProgramOutput` 按 inspect 调用顺序收集；字符串直出、`ImageAttachmentRef` 转 `ImageBlock`、其他值对象格式；返回值与末尾表达式不自动进入结果。
 
 ## 3.13 分层落位清单
 
