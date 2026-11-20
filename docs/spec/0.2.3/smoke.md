@@ -9,6 +9,7 @@
 | 命令 | 结果 |
 | --- | --- |
 | `mvn test` | 通过（exit 0） |
+| `mvn clean package` | BUILD SUCCESS，产物 `dsh-java-app/target/dsh-java-app-0.2.3-exec.jar` |
 
 ## 能力链路
 

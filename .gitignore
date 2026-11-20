@@ -24,7 +24,7 @@ build
 
 # Log file
 *.log
-log/
+
 
 # BlueJ files
 *.ctxt
