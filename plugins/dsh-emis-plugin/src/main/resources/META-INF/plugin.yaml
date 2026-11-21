@@ -1,0 +1,6 @@
+id: emis-identity
+name: EMIS Identity Plugin
+version: 0.1.0
+author: Linlan
+description: 企业多用户身份鉴权（linlan-emis RS256 JWT + JWKS），提供 whoami 与 scope_check 工具。
+entrypoint: net.linlan.dsh.plugin.emis.EmisIdentityPlugin
