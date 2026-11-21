@@ -11,6 +11,7 @@ Java 17 + Spring Boot 3.5.16 **Agent Harness** (ReAct loop, tools, approvals, pl
 - `dsh-java-trigger` HTTP/SSE controllers, filters
 - `dsh-java-app` Spring Boot app + static web console
 - `plugins/sample-tools-plugin`
+- `plugins/dsh-emis-plugin` (linlan-emis identity: RS256 JWKS, whoami/scope_check)
 
 Dependency direction: `trigger -> api <- case -> domain`, `infrastructure` implements domain ports.
 

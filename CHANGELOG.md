@@ -6,6 +6,7 @@
 - 详情：docs/spec/0.2.3/release-v0.2.3-development-notes.md
 
 - **新增**：
+  - **plugins/dsh-emis-plugin**：新增 linlan-emis 企业身份鉴权插件（P0）：RS256 JWT + JWKS 本地验签，提供 `whoami` / `scope_check` 工具；拒绝 HS256；JWKS 不可达 fail-closed；不记录 token；已在根 `pom.xml` 注册模块
   - **dsh-java-api**：新增 `IMiniAppApi`（微信小程序登录用例接口）与 `MiniAppLoginRequestDTO`/`MiniAppLoginResponseDTO`
   - **dsh-java-trigger**：新增 `MiniAppController`（`POST /api/miniapp/login`）
   - **dsh-java-case**：新增 `MiniAppLoginUseCase`——以 `wx.login` 临时 code 调用微信 `jscode2session` 换取 `openid`，签发 2 小时短期会话令牌（`mini_` 前缀）；未配置 appid/secret 时返回 `50300`，不降级为匿名登录

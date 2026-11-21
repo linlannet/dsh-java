@@ -50,6 +50,7 @@
         <module>dsh-java-domain</module>
         <module>dsh-java-infrastructure</module>
         <module>plugins/sample-tools-plugin</module>
+        <module>plugins/dsh-emis-plugin</module>
         <module>plugins/dsh-plugin-archetype</module>
     </modules>
 

@@ -30,6 +30,7 @@ Module map:
 - dsh-java-trigger       HTTP/SSE controllers and filters
 - dsh-java-app           Spring Boot application + static web console
 - plugins/sample-tools-plugin  sample Java plugin
+- plugins/dsh-emis-plugin     linlan-emis identity plugin (RS256 JWKS; whoami/scope_check)
 
 Docs:
 - README.md / README.en.md

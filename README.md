@@ -843,7 +843,7 @@ install → activate → run → disable → uninstall
 ```
 
 预置插件可在 `harness.extensions.plugins.preset` 中声明（支持 `auto-start` / 旧字段 `auto-enable`），启动时自动装载。完整 Archetype 命令、代码模板和 HTTP 安装示例见 [`docs/md/java-plugin-development.md`](docs/md/java-plugin-development.md)。
-完整 Java 插件示例见 [`plugins/sample-tools-plugin`](plugins/sample-tools-plugin)；完整 Node Bridge 示例见 [`plugins/dsh-demo-plugin`](plugins/dsh-demo-plugin)。
+完整 Java 插件示例见 [`plugins/sample-tools-plugin`](plugins/sample-tools-plugin)；企业身份插件见 [`plugins/dsh-emis-plugin`](plugins/dsh-emis-plugin)；完整 Node Bridge 示例见 [`plugins/dsh-demo-plugin`](plugins/dsh-demo-plugin)。
 
 ### 7.5 二次开发指南
 
@@ -1067,6 +1067,7 @@ Node Bridge 当前主要扩展 Agent 可调用的工具；`PluginContext` 提供
 | 样例 | 说明 |
 | --- | --- |
 | [`plugins/sample-tools-plugin`](plugins/sample-tools-plugin) | Java 插件：天气查询 + 文件摘要，并演示 `PluginContext` 注册提示词、事件和 Hook |
+| [`plugins/dsh-emis-plugin`](plugins/dsh-emis-plugin) | Java 插件：linlan-emis 企业身份鉴权（RS256 JWKS，`whoami` / `scope_check`） |
 | [`plugins/dsh-demo-plugin`](plugins/dsh-demo-plugin) | Node Bridge 插件：最小 JSON-RPC sidecar，演示 `initialize`、`tools/list`、`tools/call` |
 
 智能客服场景的插件接入、示例工具、安装验证和生产化边界见 [`docs/md/smart-customer-service-plugin.md`](docs/md/smart-customer-service-plugin.md)。
