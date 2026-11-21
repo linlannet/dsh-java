@@ -54,7 +54,8 @@ public final class RouteAuthResolver {
     public static boolean isPublicResource(HttpServletRequest request) {
         String path = request.getRequestURI();
         return path.equals("/") || path.equals("/index.html") || path.equals("/app.js") || path.equals("/app.css")
-                || path.startsWith("/lib/") || path.equals("/favicon.ico") || path.startsWith("/actuator")
+                || path.startsWith("/lib/") || path.equals("/favicon.ico") || path.equals("/brand-logo.svg")
+                || path.equals("/bridge.html") || path.startsWith("/actuator")
                 || path.startsWith("/.well-known/");
     }
 }

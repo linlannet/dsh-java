@@ -821,14 +821,11 @@ function renderSidebar() {
   // 会话列表（置顶区 + 对话/项目）
   expandSection.appendChild(buildSidebarListArea());
 
-  // 底部：账号入口 + EMIS 登录入口（开启时显示）+ 设置（对齐豆包侧边栏底部布局）
+  // 底部：账号入口（仅在"开启登录入口"时显示：未登录=登录入口，已登录=当前人员信息）+ 设置
   const footer = el('div', { class: 'sidebar-footer' });
-  footer.appendChild(buildAccountEntry());
   const acfg = loadAuthConfig();
   if (acfg.enabled) {
-    const loginEntry = el('button', { class: 'footer-link footer-login', onclick: onAccountClick, title: '登录', 'aria-label': '登录' });
-    loginEntry.appendChild(icon('user'));
-    footer.appendChild(loginEntry);
+    footer.appendChild(buildAccountEntry());
   }
   const settingsBtn = el('button', { class: 'footer-link footer-gear', onclick: function() { openSettingsPage(); }, title: '设置', 'aria-label': '设置' });
   settingsBtn.appendChild(icon('settings'));
@@ -3671,7 +3668,7 @@ function renderAccountSettings(body, footer) {
   const enabledRow = el('div', { class: 'form-group form-group-inline' });
   enabledRow.appendChild(enabledChk);
   enabledRow.appendChild(el('label', { class: 'form-label-inline', onclick: function() { enabledChk.checked = !enabledChk.checked; } },
-    '开启登录入口（在首页底部「设置」旁显示登录按钮）'));
+    '开启登录入口（开启后首页底部显示账号入口：未登录可点此登录，已登录显示当前人员信息；关闭则完全隐藏）'));
   panel.appendChild(enabledRow);
 
   const msgEl = el('div', { class: 'acct-msg' });

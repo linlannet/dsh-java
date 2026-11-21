@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录完成 · DSH Java</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, sans-serif;
+      background: #f5f7fa; color: #1f2933;
+    }
+    .card {
+      background: #fff; border: 1px solid #e4e8ed; border-radius: 14px; padding: 36px 40px;
+      max-width: 420px; text-align: center; box-shadow: 0 8px 30px rgba(31, 40, 51, .08);
+    }
+    .icon { font-size: 40px; line-height: 1; }
+    h1 { font-size: 20px; margin: 16px 0 8px; }
+    p { font-size: 14px; color: #64707d; line-height: 1.7; margin: 0; }
+    .ok { color: #1a8a4a; }
+    .fail { color: #c0392b; }
+    .hint { margin-top: 20px; font-size: 12px; color: #94a0ac; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon" id="icon">✓</div>
+    <h1 id="title">正在完成登录…</h1>
+    <p id="desc">请稍候，正在与桌面应用同步身份。</p>
+    <p class="hint">验证完成后可直接关闭此窗口，返回 DSH Java Desktop。</p>
+  </div>
+  <script>
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var status = params.get('status');
+      var icon = document.getElementById('icon');
+      var title = document.getElementById('title');
+      var desc = document.getElementById('desc');
+      if (status === 'success') {
+        icon.textContent = '✓';
+        icon.className = 'icon ok';
+        title.textContent = '企业身份登录成功';
+        desc.textContent = '身份已同步给桌面应用，你现在可以关闭此窗口。';
+      } else if (status === 'cancelled') {
+        icon.textContent = '×';
+        icon.className = 'icon fail';
+        title.textContent = '已取消登录';
+        desc.textContent = '未授予授权，桌面应用保持未登录状态。可关闭此窗口。';
+      } else {
+        icon.textContent = '✓';
+        title.textContent = '正在完成登录…';
+        desc.textContent = '如果你是在浏览器直接打开此页，请返回桌面应用继续。';
+      }
+    })();
+  </script>
+</body>
+</html>

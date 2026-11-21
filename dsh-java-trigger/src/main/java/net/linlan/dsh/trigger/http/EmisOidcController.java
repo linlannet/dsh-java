@@ -37,6 +37,7 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 企业身份登录（linlan-emis OIDC 授权码 + PKCE）。
@@ -53,7 +54,13 @@ public class EmisOidcController {
     private static final String SESSION_VERIFIER = "emis_oidc_verifier";
     private static final String SESSION_RETURN = "emis_oidc_return";
     private static final String SESSION_IDENTITY = "emis_identity";
+    private static final String SESSION_TICKET = "emis_oidc_ticket";
     private static final SecureRandom RANDOM = new SecureRandom();
+    /** 桌面端浏览器登录回传票据：ticket -> (身份, 过期时间)，一次性消费，5 分钟有效。 */
+    private final Map<String, TicketEntry> tickets = new ConcurrentHashMap<>();
+    private static final long TICKET_TTL_MS = 5 * 60 * 1000L;
+
+    private record TicketEntry(EmisIdentityDTO identity, long expiresAt) {}
 
     private final EmisOidcProperties props;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -71,6 +78,7 @@ public class EmisOidcController {
     @GetMapping("/login")
     @RouteAuth(RouteAuth.Level.ANONYMOUS)
     public void login(@RequestParam(name = "return", required = false, defaultValue = "/") String returnTo,
+                      @RequestParam(name = "ticket", required = false) String ticket,
                       HttpServletRequest request, HttpServletResponse response) throws IOException {
         if (!props.isConfigured()) {
             writeError(response, 503, "50300", "企业身份未配置：请设置 DSH_EMIS_OIDC_CLIENT_ID / CLIENT_SECRET");
@@ -82,6 +90,10 @@ public class EmisOidcController {
         session.setAttribute(SESSION_STATE, state);
         session.setAttribute(SESSION_VERIFIER, verifier);
         session.setAttribute(SESSION_RETURN, safeReturn(returnTo));
+        // 桌面端传入的一次性票据：回调成功后把身份挂到该票据，桌面端轮询 /api/emis/ticket 取回
+        if (ticket != null && !ticket.isBlank() && ticket.matches("[A-Za-z0-9_-]{16,128}")) {
+            session.setAttribute(SESSION_TICKET, ticket);
+        }
 
         String authorizeUrl = props.getBaseUrl() + "/oauth2/authorize"
                 + "?response_type=code"
@@ -108,9 +120,11 @@ public class EmisOidcController {
         String expectedState = (String) session.getAttribute(SESSION_STATE);
         String verifier = (String) session.getAttribute(SESSION_VERIFIER);
         String returnTo = (String) session.getAttribute(SESSION_RETURN);
+        String ticket = (String) session.getAttribute(SESSION_TICKET);
         session.removeAttribute(SESSION_STATE);
         session.removeAttribute(SESSION_VERIFIER);
         session.removeAttribute(SESSION_RETURN);
+        session.removeAttribute(SESSION_TICKET);
 
         if (expectedState == null || state == null || !MessageDigest.isEqual(
                 expectedState.getBytes(StandardCharsets.UTF_8), state.getBytes(StandardCharsets.UTF_8))) {
@@ -138,6 +152,13 @@ public class EmisOidcController {
             session.setAttribute(SESSION_IDENTITY, identity);
             session.setAttribute("emis_access_token", accessToken);
             session.setAttribute("emis_id_token", idToken);
+            // 桌面端票据：把身份挂到一次性 ticket，回跳 bridge.html 后桌面端轮询取回
+            if (ticket != null && !ticket.isBlank()) {
+                purgeExpiredTickets();
+                tickets.put(ticket, new TicketEntry(identity, System.currentTimeMillis() + TICKET_TTL_MS));
+                response.sendRedirect("/bridge.html?ticket=" + enc(ticket) + "&status=success");
+                return;
+            }
             response.sendRedirect(safeReturn(returnTo));
         } catch (OidcException ex) {
             log.warn("[emis-oidc] callback rejected: {}", ex.code);
@@ -157,6 +178,27 @@ public class EmisOidcController {
             return Response.success(dto);
         }
         return Response.fail("40100", "未登录");
+    }
+
+    /**
+     * 桌面端回调票据消费：浏览器完成登录后回跳 bridge.html，桌面端用 ticket 取回身份。
+     * 一次性（取走即删），5 分钟有效，不依赖浏览器 cookie，避免 localStorage 落 token。
+     */
+    @GetMapping("/ticket")
+    @RouteAuth(RouteAuth.Level.ANONYMOUS)
+    public Response<EmisIdentityDTO> consumeTicket(@RequestParam(name = "ticket") String ticket) {
+        purgeExpiredTickets();
+        TicketEntry entry = tickets.get(ticket);
+        if (entry == null) {
+            return Response.fail("40100", "票据无效或已过期");
+        }
+        tickets.remove(ticket);
+        return Response.success(entry.identity());
+    }
+
+    private void purgeExpiredTickets() {
+        long now = System.currentTimeMillis();
+        tickets.entrySet().removeIf(e -> e.getValue().expiresAt() <= now);
     }
 
     @PostMapping("/logout")
