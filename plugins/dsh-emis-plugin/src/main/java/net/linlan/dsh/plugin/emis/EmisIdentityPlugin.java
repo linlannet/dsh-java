@@ -10,7 +10,7 @@ import net.linlan.dsh.domain.spi.PluginContext;
 public class EmisIdentityPlugin extends AbstractHarnessPlugin {
 
     public EmisIdentityPlugin() {
-        super("emis-identity");
+        super("dsh-emis-plugin");
     }
 
     @Override
@@ -28,6 +28,6 @@ public class EmisIdentityPlugin extends AbstractHarnessPlugin {
                 + "- Use scope_check before sensitive actions (e.g. binding:write, user:read).\n"
                 + "- HS256 platform tokens are NOT accepted by this plugin; dsh-java must use OIDC RS256 tokens.\n");
 
-        log.info("[emis-identity] configured, baseUrl={}, jwksPath={}", config.baseUrl(), config.jwksPath());
+        log.info("[dsh-emis-plugin] configured, baseUrl={}, jwksPath={}", config.baseUrl(), config.jwksPath());
     }
 }

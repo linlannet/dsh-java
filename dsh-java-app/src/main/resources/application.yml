@@ -69,6 +69,18 @@ management:
 # 微信小程序登录（AppID / AppSecret 取自微信公众平台 → 开发管理 → 开发设置）
 # 未配置时 /api/miniapp/login 返回 50300，不会降级为匿名登录；AppSecret 只允许在服务端配置。
 dsh:
+  # 企业身份（linlan-emis OIDC）；client-secret 仅允许环境变量注入
+  emis:
+    oidc:
+      enabled: ${DSH_EMIS_OIDC_ENABLED:false}
+      base-url: ${DSH_EMIS_OIDC_BASE_URL:http://localhost:8080}
+      client-id: ${DSH_EMIS_OIDC_CLIENT_ID:}
+      client-secret: ${DSH_EMIS_OIDC_CLIENT_SECRET:}
+      redirect-uri: ${DSH_EMIS_OIDC_REDIRECT_URI:http://localhost:8090/api/emis/callback}
+      scopes: ${DSH_EMIS_OIDC_SCOPES:openid profile tenant}
+      issuer: ${DSH_EMIS_OIDC_ISSUER:http://localhost:8080}
+      post-logout-redirect-uri: ${DSH_EMIS_OIDC_POST_LOGOUT_REDIRECT_URI:http://localhost:8090/}
+      timeout-ms: ${DSH_EMIS_OIDC_TIMEOUT_MS:3000}
   office:
     output-directory: ${DSH_HOME:${user.home}/.dsh}/office-kit/outputs
     output-retention-ms: 86400000

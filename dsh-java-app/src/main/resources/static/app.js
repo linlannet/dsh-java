@@ -175,7 +175,7 @@ const state = {
   customSessionTitles: JSON.parse(localStorage.getItem('dshSessionTitles') || '{}'),
   workspaces: JSON.parse(localStorage.getItem('workspaces') || '[]'),
   currentWorkspace: localStorage.getItem('currentWorkspace') || '',
-  // 登录账号（POST /api/auth/login 颁发；null = 未登录，侧边栏底部显示默认头像 + 未登录）
+  // 企业身份（/api/emis/me 返回；null = 未登录，侧边栏底部显示默认头像 + 未登录）
   authUser: JSON.parse(localStorage.getItem('dsh-auth-user') || 'null'),
   modelSettings: [],
   availableModels: [],
@@ -821,11 +821,11 @@ function renderSidebar() {
   // 会话列表（置顶区 + 对话/项目）
   expandSection.appendChild(buildSidebarListArea());
 
-  // 底部：账号入口 + 登录入口（开启且已配置 URI 时显示）+ 设置（对齐豆包侧边栏底部布局）
+  // 底部：账号入口 + EMIS 登录入口（开启时显示）+ 设置（对齐豆包侧边栏底部布局）
   const footer = el('div', { class: 'sidebar-footer' });
   footer.appendChild(buildAccountEntry());
   const acfg = loadAuthConfig();
-  if (acfg.enabled && acfg.uri) {
+  if (acfg.enabled) {
     const loginEntry = el('button', { class: 'footer-link footer-login', onclick: onAccountClick, title: '登录', 'aria-label': '登录' });
     loginEntry.appendChild(icon('user'));
     footer.appendChild(loginEntry);
@@ -842,8 +842,42 @@ function renderSidebar() {
 // ── 账号入口（对齐豆包底部布局：头像 + 昵称/未登录 + 箭头） ─────────────
 function saveAuthUser(user) {
   state.authUser = user || null;
-  if (user) localStorage.setItem('dsh-auth-user', JSON.stringify(user));
-  else localStorage.removeItem('dsh-auth-user');
+  if (user) {
+    const safe = Object.assign({}, user);
+    delete safe.token;
+    localStorage.setItem('dsh-auth-user', JSON.stringify(safe));
+  } else {
+    localStorage.removeItem('dsh-auth-user');
+  }
+}
+
+function emisLoginUrl() {
+  return '/api/emis/login?return=' + encodeURIComponent(location.pathname + location.search);
+}
+
+async function doEmisLogout() {
+  try {
+    const resp = await fetch('/api/emis/logout', { method: 'POST' });
+    const payload = await resp.json().catch(function() { return null; });
+    const url = payload && payload.data && payload.data.logoutUrl;
+    saveAuthUser(null);
+    render();
+    if (url) window.location.href = url;
+  } catch (e) {
+    saveAuthUser(null);
+    render();
+  }
+}
+
+async function refreshEmisIdentity() {
+  try {
+    const resp = await fetch('/api/emis/me');
+    const payload = await resp.json().catch(function() { return null; });
+    if (payload && payload.code === '00000' && payload.data) {
+      saveAuthUser(Object.assign({ nickName: '', avatarUrl: '', source: 'emis' }, payload.data));
+      render();
+    }
+  } catch (e) { /* 未登录或身份服务未启用 */ }
 }
 
 function buildAccountEntry() {
@@ -879,74 +913,14 @@ function openAccountMenu() {
   menu.appendChild(el('div', { class: 'account-menu-name' }, state.authUser.nickName || state.authUser.userName || ''));
   menu.appendChild(el('button', {
     class: 'account-menu-item',
-    onclick: function() { overlay.remove(); saveAuthUser(null); render(); }
+    onclick: function() { overlay.remove(); doEmisLogout(); }
   }, '退出登录'));
   overlay.appendChild(menu);
   document.body.appendChild(overlay);
 }
 
 function openLoginModal() {
-  const existing = $('.login-modal');
-  if (existing) existing.remove();
-  const overlay = el('div', { class: 'modal-overlay login-modal', onclick: function(e) { if (e.target === overlay) overlay.remove(); } });
-  const modal = el('div', { class: 'modal' });
-  modal.appendChild(el('h3', null, '登录'));
-  modal.appendChild(el('p', null, '登录后同步你的对话与偏好设置'));
-  const fields = el('div', { class: 'login-fields' });
-  const userInput = el('input', { class: 'form-input', placeholder: '用户名', 'aria-label': '用户名' });
-  const passInput = el('input', { class: 'form-input', type: 'password', placeholder: '密码', 'aria-label': '密码' });
-  fields.appendChild(userInput);
-  fields.appendChild(passInput);
-  modal.appendChild(fields);
-  const errEl = el('div', { class: 'login-error' });
-  modal.appendChild(errEl);
-  const actions = el('div', { class: 'login-actions' });
-  actions.appendChild(el('button', { class: 'login-btn', onclick: function() { overlay.remove(); } }, '取消'));
-  const submitBtn = el('button', { class: 'login-btn primary', onclick: doLogin }, '登录');
-  actions.appendChild(submitBtn);
-  modal.appendChild(actions);
-  overlay.appendChild(modal);
-  document.body.appendChild(overlay);
-  userInput.focus();
-  overlay.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') doLogin();
-    if (e.key === 'Escape') overlay.remove();
-  });
-
-  async function doLogin() {
-    const userName = userInput.value.trim();
-    const password = passInput.value;
-    if (!userName || !password) { errEl.textContent = '请输入用户名和密码'; return; }
-    submitBtn.disabled = true;
-    errEl.textContent = '';
-    try {
-      const cfg = loadAuthConfig();
-      const base = (cfg.uri || localStorage.getItem('dsh-auth-api') || '').replace(/\/+$/, '');
-      const resp = await fetch(base + '/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userName: userName, password: password })
-      });
-      const payload = await resp.json().catch(function() { return null; });
-      if (!resp.ok) {
-        if (resp.status === 404 && !base) {
-          errEl.textContent = '登录失败（404）：同源没有 /api/auth/login，请到 设置→个人登录 填写登录 URI（如 http://127.0.0.1:8080）';
-        } else {
-          errEl.textContent = (payload && (payload.message || payload.msg)) || ('登录失败（' + resp.status + '）');
-        }
-        return;
-      }
-      cfg.uri = base;
-      persistAuthConfig(cfg);
-      saveAuthUser(parseLoginPayload(payload, userName));
-      overlay.remove();
-      render();
-    } catch (e) {
-      errEl.textContent = '无法连接认证服务：' + (e && e.message ? e.message : e);
-    } finally {
-      submitBtn.disabled = false;
-    }
-  }
+  window.location.href = emisLoginUrl();
 }
 
 function renderSessionItem(sess) {
@@ -3569,7 +3543,7 @@ function renderSettingsPage() {
       { id: 'plugins', label: '插件', desc: '安装、启停与参数配置', icon: 'plugin', countKey: 'plugins' },
     ] },
     { label: '系统', items: [
-      { id: 'account', label: '个人登录', desc: '配置登录服务、账号密码与角色，支持测试验证与模拟登录', icon: 'user' },
+      { id: 'account', label: 'EMIS登录', desc: '企业身份（linlan-emis OIDC）登录状态与登录入口', icon: 'user' },
       { id: 'presets', label: '预设', desc: '会话默认行为', icon: 'panel' },
       { id: 'permissions', label: '权限', desc: '工具审批边界', icon: 'shield' },
     ] },
@@ -3628,7 +3602,7 @@ function renderSettingsPage() {
   return page;
 }
 
-// ── 个人登录（系统分组：URI/账号/角色配置，测试验证与模拟登录） ──
+// ── EMIS登录（企业身份：linlan-emis OIDC，令牌只保存在宿主会话） ──
 const AUTH_ROLE_OPTIONS = [
   { value: 0, label: '0 · 主任（超管）' },
   { value: 1, label: '1 · 管理员' },
@@ -3639,15 +3613,15 @@ const AUTH_ROLE_OPTIONS = [
 function loadAuthConfig() {
   try {
     const c = JSON.parse(localStorage.getItem('dsh-auth-config') || 'null');
-    if (!c) return { uri: '', userName: '', password: '', roleLevel: 2, enabled: false };
-    return Object.assign({ uri: '', userName: '', password: '', roleLevel: 2, enabled: false }, c);
+    if (!c) return { enabled: false };
+    return { enabled: !!c.enabled };
   } catch (e) {
-    return { uri: '', userName: '', password: '', roleLevel: 2, enabled: false };
+    return { enabled: false };
   }
 }
 
 function persistAuthConfig(cfg) {
-  localStorage.setItem('dsh-auth-config', JSON.stringify(cfg));
+  localStorage.setItem('dsh-auth-config', JSON.stringify({ enabled: !!cfg.enabled }));
 }
 
 function authRoleLabel(level) {
@@ -3655,107 +3629,49 @@ function authRoleLabel(level) {
   return found ? found.label : (level == null ? '未设置' : String(level));
 }
 
-/** 兼容 Result{data:{token,userInfo}} 与裸对象两种返回包装 */
-function parseLoginPayload(payload, fallbackName) {
-  const data = (payload && (payload.data || payload)) || {};
-  const u = data.userInfo || data.user || data;
-  return {
-    userName: u.userName || fallbackName,
-    nickName: u.nickName || u.nick_name || '',
-    avatarUrl: u.avatarUrl || u.avatar_url || '',
-    token: data.token || u.token || '',
-    userId: u.userId != null ? u.userId : (u.user_id != null ? u.user_id : null),
-    roleLevel: u.roleLevel != null ? u.roleLevel : (u.role_level != null ? u.role_level : null),
-    tenantId: u.tenantId != null ? u.tenantId : (u.tenant_id != null ? u.tenant_id : null),
-    source: 'real'
-  };
-}
-
-async function doUnregisterAccount() {
-  const user = state.authUser;
-  if (!user) return;
-  if (!window.confirm('确定注销用户「' + (user.nickName || user.userName) + '」吗？将尝试删除服务端账号并清除本机登录态。')) return;
-  let note;
-  if (user.source !== 'mock' && user.token && user.userId != null) {
-    try {
-      const base = (loadAuthConfig().uri || '').replace(/\/+$/, '');
-      const resp = await fetch(base + '/api/auth/user/' + user.userId, {
-        method: 'DELETE',
-        headers: { 'Authorization': 'Bearer ' + user.token }
-      });
-      const payload = await resp.json().catch(function() { return null; });
-      note = resp.ok ? '服务端账号已删除'
-        : ('服务端注销未成功（' + resp.status + (payload && payload.message ? '：' + payload.message : '') + '）');
-    } catch (e) {
-      note = '服务端不可达：' + (e && e.message ? e.message : e);
-    }
-  } else {
-    note = user.source === 'mock' ? '模拟账号仅存在于本机' : '缺少 userId 或 token，跳过服务端注销';
-  }
-  saveAuthUser(null);
-  render();
-  window.alert('注销完成：' + note + '；本机登录态已清除。');
-}
-
 function renderAccountSettings(body, footer) {
-  const panel = el('section', { class: 'settings-panel' });
-  panel.appendChild(el('div', { class: 'settings-panel-head' },
-    el('div', null,
-      el('h2', { class: 'settings-panel-title' }, '登录配置'),
-      el('p', { class: 'settings-panel-desc' }, '配置登录服务地址、账号密码与角色；支持测试验证、模拟登录，已登录可退出或注销。'))));
-
   const cfg = loadAuthConfig();
   const user = state.authUser;
 
-  // 已登录：当前登录卡片
+  const intro = el('section', { class: 'settings-panel' });
+  intro.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, '企业身份登录'),
+      el('p', { class: 'settings-panel-desc' },
+        '身份由 linlan-emis 统一管理：浏览器跳转 OIDC 授权（PKCE），RS256 令牌只保存在宿主会话，前端不接触 token。')),
+    el('span', { class: 'settings-pill' }, 'OIDC + RS256')));
+  body.appendChild(intro);
+
   if (user) {
     const current = el('section', { class: 'settings-panel' });
     current.appendChild(el('div', { class: 'settings-panel-head' },
       el('div', null,
         el('h2', { class: 'settings-panel-title' }, '当前登录'),
         el('p', { class: 'settings-panel-desc' },
-          (user.nickName ? user.nickName + '（' + user.userName + '）' : user.userName)
-          + ' · 来源：' + (user.source === 'mock' ? '模拟登录（本机会话）' : '服务端登录')
-          + (user.tenantId != null ? ' · 租户 ' + user.tenantId : ''))),
+          (user.nickName ? user.nickName + '（' + user.userName + '）' : (user.userName || '已登录'))
+          + (user.tenantId != null ? ' · 租户 ' + user.tenantId : '')
+          + (user.userId != null ? ' · 用户 ' + user.userId : '')
+          + (Array.isArray(user.scopes) && user.scopes.length ? ' · scope: ' + user.scopes.join(' ') : ''))),
       el('span', { class: 'settings-pill' }, authRoleLabel(user.roleLevel))));
-    const currentActions = el('div', { class: 'acct-actions' });
-    currentActions.appendChild(el('button', {
-      class: 'btn btn-secondary',
-      onclick: function() { saveAuthUser(null); render(); }
-    }, '退出登录'));
-    currentActions.appendChild(el('button', { class: 'btn btn-secondary acct-danger', onclick: doUnregisterAccount }, '注销用户'));
-    current.appendChild(currentActions);
+    const actions = el('div', { class: 'acct-actions' });
+    actions.appendChild(el('button', { class: 'btn btn-secondary', onclick: doEmisLogout }, '退出登录'));
+    current.appendChild(actions);
     body.appendChild(current);
   }
 
-  // 登录配置表单
-  function acctField(labelText, input) {
-    const group = el('div', { class: 'form-group' });
-    group.appendChild(el('label', { class: 'form-label' }, labelText));
-    group.appendChild(input);
-    return group;
-  }
-  const uriInput = el('input', { class: 'form-input', value: cfg.uri, placeholder: 'http://127.0.0.1:8080（留空则走同源 /api/auth/login）' });
-  const nameInput = el('input', { class: 'form-input', value: cfg.userName, placeholder: 'userName' });
-  const passInput = el('input', { class: 'form-input', type: 'password', value: cfg.password, placeholder: 'password' });
-  const roleSelect = el('select', { class: 'form-input' });
-  for (const opt of AUTH_ROLE_OPTIONS) {
-    const option = el('option', { value: String(opt.value) }, opt.label);
-    if (cfg.roleLevel === opt.value) option.selected = true;
-    roleSelect.appendChild(option);
-  }
+  const panel = el('section', { class: 'settings-panel' });
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, '登录入口'),
+      el('p', { class: 'settings-panel-desc' },
+        '服务端配置 DSH_EMIS_OIDC_*（client-id/secret 只走环境变量）；前端仅保存“是否显示登录入口”。'))));
+
   const enabledChk = el('input', { type: 'checkbox' });
   enabledChk.checked = !!cfg.enabled;
   const enabledRow = el('div', { class: 'form-group form-group-inline' });
   enabledRow.appendChild(enabledChk);
   enabledRow.appendChild(el('label', { class: 'form-label-inline', onclick: function() { enabledChk.checked = !enabledChk.checked; } },
-    '开启登录入口（在首页底部「设置」旁显示登录按钮；需同时填写登录 URI）'));
-  const form = el('div', { class: 'settings-form-grid' });
-  form.appendChild(acctField('登录 URI', uriInput));
-  form.appendChild(acctField('用户名 userName', nameInput));
-  form.appendChild(acctField('密码 password', passInput));
-  form.appendChild(acctField('角色 roleLevel', roleSelect));
-  panel.appendChild(form);
+    '开启登录入口（在首页底部「设置」旁显示登录按钮）'));
   panel.appendChild(enabledRow);
 
   const msgEl = el('div', { class: 'acct-msg' });
@@ -3764,96 +3680,32 @@ function renderAccountSettings(body, footer) {
     msgEl.className = 'acct-msg' + (kind ? ' ' + kind : '');
   }
 
-  function readForm() {
-    cfg.uri = uriInput.value.trim();
-    cfg.userName = nameInput.value.trim();
-    cfg.password = passInput.value;
-    cfg.roleLevel = parseInt(roleSelect.value, 10);
-    cfg.enabled = enabledChk.checked;
-    return cfg;
-  }
-
-  async function requestLogin() {
-    readForm();
-    if (!cfg.userName) throw new Error('请先填写用户名');
-    if (!cfg.password) throw new Error('请先填写密码');
-    const base = cfg.uri.replace(/\/+$/, '');
-    const resp = await fetch(base + '/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userName: cfg.userName, password: cfg.password })
-    });
-    const payload = await resp.json().catch(function() { return null; });
-    if (!resp.ok) {
-      if (resp.status === 404 && !base) {
-        throw new Error('登录失败（404）：同源没有 /api/auth/login，请在「登录 URI」填写后端地址，如 http://127.0.0.1:8080');
-      }
-      if (resp.status === 404) {
-        throw new Error('登录失败（404）：' + base + '/api/auth/login 不存在，请确认后端地址是否正确');
-      }
-      throw new Error((payload && (payload.message || payload.msg)) || ('登录失败（' + resp.status + '）'));
-    }
-    return parseLoginPayload(payload, cfg.userName);
-  }
-
   const actions = el('div', { class: 'acct-actions' });
   actions.appendChild(el('button', {
     class: 'btn btn-secondary',
-    onclick: function() { persistAuthConfig(readForm()); showMsg('登录配置已保存到本机', 'ok'); }
-  }, '保存配置'));
-  const testBtn = el('button', {
-    class: 'btn btn-secondary',
-    onclick: async function() {
-      testBtn.disabled = true;
-      showMsg('验证中…');
-      try {
-        const u = await requestLogin();
-        persistAuthConfig(cfg);
-        showMsg('验证通过：' + u.userName + ' · ' + authRoleLabel(u.roleLevel), 'ok');
-      } catch (e) {
-        showMsg('验证失败：' + (e && e.message ? e.message : e), 'err');
-      } finally {
-        testBtn.disabled = false;
-      }
+    onclick: function() {
+      persistAuthConfig({ enabled: enabledChk.checked });
+      showMsg('登录入口配置已保存', 'ok');
+      setTimeout(function() { render(); }, 400);
     }
-  }, '测试验证');
-  actions.appendChild(testBtn);
+  }, '保存设置'));
+  actions.appendChild(el('button', {
+    class: 'btn btn-primary',
+    onclick: function() { persistAuthConfig({ enabled: enabledChk.checked }); window.location.href = emisLoginUrl(); }
+  }, '使用企业账号登录'));
   actions.appendChild(el('button', {
     class: 'btn btn-secondary',
-    onclick: function() {
-      readForm();
-      if (!cfg.userName) { showMsg('请先填写用户名', 'err'); return; }
-      persistAuthConfig(cfg);
-      saveAuthUser({
-        userName: cfg.userName,
-        nickName: '', avatarUrl: '', token: 'mock-' + Date.now(),
-        userId: null, roleLevel: cfg.roleLevel, tenantId: null, source: 'mock'
-      });
-      render();
-    }
-  }, '模拟登录'));
-  const loginBtn = el('button', {
-    class: 'btn btn-primary',
     onclick: async function() {
-      loginBtn.disabled = true;
-      showMsg('登录中…');
-      try {
-        const u = await requestLogin();
-        persistAuthConfig(cfg);
-        saveAuthUser(u);
-        render();
-      } catch (e) {
-        showMsg('登录失败：' + (e && e.message ? e.message : e), 'err');
-        loginBtn.disabled = false;
-      }
+      showMsg('刷新中…');
+      await refreshEmisIdentity();
+      showMsg(state.authUser ? '身份已刷新' : '未登录或身份服务未启用', state.authUser ? 'ok' : 'err');
     }
-  }, '登录');
-  actions.appendChild(loginBtn);
+  }, '刷新身份'));
   panel.appendChild(actions);
   panel.appendChild(msgEl);
   panel.appendChild(el('p', { class: 'acct-hint' },
-    '测试验证只校验凭据，不生成本机会话；模拟登录跳过服务器，直接以所选角色建立本机会话（token 以 mock- 开头）；'
-    + '注销用户会调用 DELETE {uri}/api/auth/user/{id} 删除服务端账号（需 roleLevel=0）。'));
+    '登录会跳转 /api/emis/login，由宿主完成授权码回调并写入会话；退出登录调用 /api/emis/logout，'
+    + '并在配置了 post-logout 时跳转 emis 的 /connect/logout。'));
   body.appendChild(panel);
 }
 
@@ -7193,6 +7045,10 @@ document.addEventListener('keydown', function(e) {
 
 async function init() {
   initTheme();
+  if (state.authUser && state.authUser.token) {
+    state.authUser.token = '';
+    saveAuthUser(state.authUser);
+  }
   loadSessionsFromStorage(); // v28: 先从 localStorage 恢复
   await loadWorkspaces();
   await loadAvailableModels();
@@ -7200,6 +7056,7 @@ async function init() {
   await loadPlugins();
   await loadPendingApprovals();
   await loadSessionHistory(); // P1: 恢复会话列表
+  await refreshEmisIdentity();
   render();
   if ($('#composer-input')) $('#composer-input').focus();
 }

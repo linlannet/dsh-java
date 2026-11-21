@@ -9,7 +9,7 @@
 | `whoami` | 校验 RS256 OIDC access token，返回 `subject/userId`、`tenantId`、`roleLevel`、`userName`、`scopes`、`expiresAt` |
 | `scope_check` | 校验 token 是否包含指定 scope（如 `binding:write`、`user:read`） |
 
-- 完整工具名由宿主角标加前缀：`plugin__emis-identity__whoami`、`plugin__emis-identity__scope_check`。
+- 完整工具名由宿主角标加前缀：`plugin__dsh-emis-plugin__whoami`、`plugin__dsh-emis-plugin__scope_check`。
 - 只接受 **RS256**（emis OIDC）；**HS256 平台令牌拒绝**，错误码 `EMIS_TOKEN_INVALID`。
 - 验签使用 emis `/oauth2/jwks`，按 `kid` 缓存（默认 10 分钟）；JWKS 不可达时 fail-closed。
 - 不记录 token、secret、PEM；错误信息只含稳定错误码与安全文案。
@@ -37,7 +37,7 @@ mvn -pl plugins/dsh-emis-plugin -am -DskipTests package
 ```
 
 - 将 JAR 放入 harness `plugins/` 目录，通过 preset 或插件加载 API 安装。
-- `META-INF/plugin.yaml`：`id=emis-identity`、`entrypoint=net.linlan.dsh.plugin.emis.EmisIdentityPlugin`。
+- `META-INF/plugin.yaml`：`id=dsh-emis-plugin`、`entrypoint=net.linlan.dsh.plugin.emis.EmisIdentityPlugin`。
 - `META-INF/services/net.linlan.dsh.domain.spi.JavaHarnessPlugin` 已声明入口。
 
 ## 错误码

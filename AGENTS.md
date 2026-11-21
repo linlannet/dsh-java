@@ -10,6 +10,8 @@ Java 17 + Spring Boot 3.5.16 **Agent Harness** (ReAct loop, tools, approvals, pl
 - `dsh-java-api` interfaces, DTOs, `Response` envelope
 - `dsh-java-trigger` HTTP/SSE controllers, filters
 - `dsh-java-app` Spring Boot app + static web console
+- `dsh-java-trigger/http/EmisOidcController` — enterprise identity OIDC login/callback/me/logout (PKCE; RS256 token kept in HttpSession)
+- `dsh-java-api/dto/EmisIdentityDTO` — identity DTO returned to the web console
 - `plugins/sample-tools-plugin`
 - `plugins/dsh-emis-plugin` (linlan-emis identity: RS256 JWKS, whoami/scope_check)
 

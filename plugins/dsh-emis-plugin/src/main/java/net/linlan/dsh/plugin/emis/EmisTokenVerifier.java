@@ -153,7 +153,7 @@ public final class EmisTokenVerifier {
         } catch (TokenException ex) {
             throw ex;
         } catch (Exception ex) {
-            log.warn("[emis-identity] JWKS fetch failed: {}", ex.getClass().getSimpleName());
+            log.warn("[dsh-emis-plugin] JWKS fetch failed: {}", ex.getClass().getSimpleName());
             throw new TokenException("EMIS_JWKS_UNAVAILABLE", "JWKS 拉取失败");
         }
     }

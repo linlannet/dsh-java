@@ -6,6 +6,7 @@
 - 详情：docs/spec/0.2.3/release-v0.2.3-development-notes.md
 
 - **新增**：
+  - **企业身份登录（linlan-emis OIDC）**：`dsh-java-trigger` 新增 `EmisOidcController`（`GET /api/emis/login|callback|me`、`POST /api/emis/logout`）：授权码 + PKCE + state，回调用 JWKS 验签 RS256 id_token，access/id_token 只存 `HttpSession`；`dsh-java-api` 新增 `EmisIdentityDTO`；`application.yml` 新增 `dsh.emis.oidc.*`（client-secret 仅环境变量）；static 控制台「个人登录」改为企业账号 SSO，移除直连 `/api/auth/login` 与前端 token 持久化
   - **plugins/dsh-emis-plugin**：新增 linlan-emis 企业身份鉴权插件（P0）：RS256 JWT + JWKS 本地验签，提供 `whoami` / `scope_check` 工具；拒绝 HS256；JWKS 不可达 fail-closed；不记录 token；已在根 `pom.xml` 注册模块
   - **dsh-java-api**：新增 `IMiniAppApi`（微信小程序登录用例接口）与 `MiniAppLoginRequestDTO`/`MiniAppLoginResponseDTO`
   - **dsh-java-trigger**：新增 `MiniAppController`（`POST /api/miniapp/login`）
