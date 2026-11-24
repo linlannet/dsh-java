@@ -28,6 +28,8 @@ import java.security.KeyFactory;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.security.Signature;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.RSAPublicKeySpec;
 import java.time.Duration;
@@ -59,8 +61,15 @@ public class EmisOidcController {
     /** 桌面端浏览器登录回传票据：ticket -> (身份, 过期时间)，一次性消费，5 分钟有效。 */
     private final Map<String, TicketEntry> tickets = new ConcurrentHashMap<>();
     private static final long TICKET_TTL_MS = 5 * 60 * 1000L;
+    /** 桌面端跨重启会话凭据：HMAC 自包含身份串，默认 7 天有效。 */
+    private static final long SESSION_TTL_MS = 7L * 24 * 60 * 60 * 1000L;
+    private static final String SESSION_SIGN_PREFIX = "dsh-emis-session-v1";
 
-    private record TicketEntry(EmisIdentityDTO identity, long expiresAt) {}
+    /** ticket 回传：身份 + 持久化 session 串 + 过期时间。 */
+    private record TicketEntry(EmisIdentityDTO identity, String session, long expiresAt) {}
+
+    /** /ticket 返回：展示用身份 + 跨重启会话凭据。 */
+    public record EmisSessionResult(EmisIdentityDTO identity, String session) {}
 
     private final EmisOidcProperties props;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -152,10 +161,11 @@ public class EmisOidcController {
             session.setAttribute(SESSION_IDENTITY, identity);
             session.setAttribute("emis_access_token", accessToken);
             session.setAttribute("emis_id_token", idToken);
-            // 桌面端票据：把身份挂到一次性 ticket，回跳 bridge.html 后桌面端轮询取回
+            // 桌面端票据：把身份 + 跨重启 session 挂到一次性 ticket，回跳 bridge.html 后桌面端轮询取回
             if (ticket != null && !ticket.isBlank()) {
                 purgeExpiredTickets();
-                tickets.put(ticket, new TicketEntry(identity, System.currentTimeMillis() + TICKET_TTL_MS));
+                String session = issueSession(identity);
+                tickets.put(ticket, new TicketEntry(identity, session, System.currentTimeMillis() + TICKET_TTL_MS));
                 response.sendRedirect("/bridge.html?ticket=" + enc(ticket) + "&status=success");
                 return;
             }
@@ -186,19 +196,81 @@ public class EmisOidcController {
      */
     @GetMapping("/ticket")
     @RouteAuth(RouteAuth.Level.ANONYMOUS)
-    public Response<EmisIdentityDTO> consumeTicket(@RequestParam(name = "ticket") String ticket) {
+    public Response<EmisSessionResult> consumeTicket(@RequestParam(name = "ticket") String ticket) {
         purgeExpiredTickets();
-        TicketEntry entry = tickets.get(ticket);
+        TicketEntry entry = tickets.remove(ticket);
         if (entry == null) {
             return Response.fail("40100", "票据无效或已过期");
         }
-        tickets.remove(ticket);
-        return Response.success(entry.identity());
+        return Response.success(new EmisSessionResult(entry.identity(), entry.session()));
+    }
+
+    /**
+     * 跨重启身份恢复：桌面端从 Tauri 安全凭据读出 session 串，这里验签后返回身份。
+     * session 自包含（身份 JSON + 过期时间 + HMAC），不落 OIDC token、不依赖 HttpSession。
+     */
+    @GetMapping("/session")
+    @RouteAuth(RouteAuth.Level.ANONYMOUS)
+    public Response<EmisIdentityDTO> restoreSession(@RequestParam(name = "session") String session) {
+        EmisIdentityDTO identity = verifySession(session);
+        if (identity == null) {
+            return Response.fail("40100", "会话凭据无效或已过期");
+        }
+        return Response.success(identity);
     }
 
     private void purgeExpiredTickets() {
         long now = System.currentTimeMillis();
         tickets.entrySet().removeIf(e -> e.getValue().expiresAt() <= now);
+    }
+
+    /** 签发自包含会话凭据：base64url(身份JSON + "|" + 过期毫秒) + "." + HMAC-SHA256。 */
+    private String issueSession(EmisIdentityDTO identity) {
+        try {
+            long expiresAt = System.currentTimeMillis() + SESSION_TTL_MS;
+            String body = mapper.writeValueAsString(identity) + "|" + expiresAt;
+            String payload = Base64.getUrlEncoder().withoutPadding()
+                    .encodeToString(body.getBytes(StandardCharsets.UTF_8));
+            return payload + "." + hmac(payload);
+        } catch (Exception e) {
+            throw new OidcException("50200", "会话凭据签发失败");
+        }
+    }
+
+    /** 校验会话凭据；无效/过期/篡改均返回 null。 */
+    private EmisIdentityDTO verifySession(String session) {
+        if (session == null || session.isBlank()) return null;
+        try {
+            String[] parts = session.split("\\.");
+            if (parts.length != 2) return null;
+            String expected = hmac(parts[0]);
+            if (!MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8),
+                    parts[1].getBytes(StandardCharsets.UTF_8))) {
+                return null;
+            }
+            String body = new String(Base64.getUrlDecoder().decode(parts[0]), StandardCharsets.UTF_8);
+            int sep = body.lastIndexOf('|');
+            if (sep <= 0) return null;
+            long expiresAt = Long.parseLong(body.substring(sep + 1));
+            if (System.currentTimeMillis() > expiresAt) return null;
+            return mapper.readValue(body.substring(0, sep), EmisIdentityDTO.class);
+        } catch (Exception e) {
+            log.debug("会话凭据校验失败: {}", e.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    /** HMAC 密钥由 SESSION_SIGN_PREFIX + client-secret 派生，稳定且随环境变量注入。 */
+    private String hmac(String payload) {
+        try {
+            byte[] key = MessageDigest.getInstance("SHA-256")
+                    .digest((SESSION_SIGN_PREFIX + ":" + props.getClientSecret()).getBytes(StandardCharsets.UTF_8));
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(key, "HmacSHA256"));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(mac.doFinal(payload.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception e) {
+            throw new OidcException("50200", "HMAC 初始化失败");
+        }
     }
 
     @PostMapping("/logout")
