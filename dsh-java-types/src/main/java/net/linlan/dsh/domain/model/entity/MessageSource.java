@@ -12,12 +12,20 @@ package net.linlan.dsh.domain.model.entity;
  */
 public sealed interface MessageSource permits
         MessageSource.UserSource,
+        MessageSource.AgentMessageSource,
         MessageSource.PluginSource,
         MessageSource.ModelMessageSource,
         MessageSource.ToolMessageSource {
 
     /** 由人类用户产生的消息。 */
     record UserSource() implements MessageSource {}
+
+    /** 由父 agent 委派产生的初始任务消息（agent-message）。 */
+    record AgentMessageSource(String from) implements MessageSource {
+        public AgentMessageSource {
+            java.util.Objects.requireNonNull(from, "from");
+        }
+    }
 
     /** 由插件产生的消息。 */
     record PluginSource(String plugin) implements MessageSource {

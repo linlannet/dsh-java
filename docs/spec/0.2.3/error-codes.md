@@ -1,7 +1,7 @@
 # 0.2.3 错误码总表与迁移映射
 
 > 适用范围：`dsh-java` 全部工具与子系统错误。实现基线为 `HarnessError` + `ToolExecutionResult.error={name, code}`。
-> 本文是 0.2.3 迭代二的码表基线，新增错误码必须先更新本表。
+> 本文是 0.2.3 迭代二的码表基线（参考源对齐至 `dsh-v0.2.3-alpha.2`），新增错误码必须先更新本表。
 
 ## 1. 命名契约
 
@@ -168,6 +168,51 @@
 | --- | --- |
 | `unexpected-package` | 带 expected 的安装命中其他包或版本 |
 
+### 3.18 DeepSeek 请求与内容（`DeepSeekError` / `DeepSeekAuthError`）
+
+| code | 触发场景 |
+| --- | --- |
+| `CONTENT_REFUSED` | 模型流式内容拒答（替代 `MALFORMED_RESPONSE`） |
+| `DEEPSEEK_AUTH_MISSING` | 未挂载认证提供方或缺少凭据 |
+| `DEEPSEEK_FILE_POLICY_INVALID` | 文件上传策略缺失或非法 |
+| `IMAGE_TARGET_BYTES_EXCEEDED` | 编码后图片超过硬上限 |
+
+### 3.19 会话查询与 fork（`SessionQueryError` / `SessionForkError`）
+
+| code | 触发场景 |
+| --- | --- |
+| `SESSION_PARENT_PREFIX_REQUIRED` | 创建共享 fork 未提供父前缀 |
+| `SESSION_QUERY_HANDLE_CLOSED` | 只读会话句柄已关闭 |
+| `COMPACTION_SUMMARY_UNAVAILABLE` | 会话事件中无可用压缩摘要 |
+
+### 3.20 Subagent 运行期（`SubagentError` 扩展）
+
+| code | 触发场景 |
+| --- | --- |
+| `SUBAGENT_MODEL_UNAVAILABLE` | 运行期读取的宿主模型不可用 |
+| `SUBAGENT_CAPACITY_EXCEEDED` | 并发子 agent 超过共享容量 |
+| `LIST_AGENTS_EMPTY_CAPACITY` | 容量信息缺失或不可读 |
+
+### 3.21 PTC / MCP 输入输出（`PtcRuntimeError` / `McpError` 扩展）
+
+| code | 触发场景 |
+| --- | --- |
+| `PTC_OUTPUT_TRUNCATED` | 展示输出超过上限被截断（程序继续执行） |
+| `PTC_MCP_IMAGE_INVALID` | MCP 图片块无法转为附件引用 |
+| `PTC_RESULT_RENDER_FAILED` | 工具对象/数组结果渲染失败 |
+
+### 3.22 连接器与账号（`ConnectorError` / `ConnectorAuthError`）
+
+| code | 触发场景 |
+| --- | --- |
+| `CONNECTOR_NOT_CONFIGURED` | 连接器缺少应用凭据或端点 |
+| `CONNECTOR_AUTH_FAILED` | 授权失败（用户拒绝、回调校验失败） |
+| `CONNECTOR_TOKEN_EXPIRED` | 令牌过期且被动刷新失败 |
+| `CONNECTOR_NETWORK_ERROR` | 连接器上游网络不可达 |
+| `CONNECTOR_UNSUPPORTED` | 该连接器在 Java 侧未接入或能力不支持 |
+| `MCP_OAUTH_REQUIRED` | 需要用户重新授权 MCP 账号 |
+| `MCP_ACCOUNT_NOT_FOUND` | MCP 账号不存在或已登出 |
+
 ## 4. 旧 → 新映射
 
 | 旧 | 新 | 范围 | 说明 |
@@ -183,6 +228,11 @@
 | 未知异常 `name=code` | `ToolInternalError` / `TOOL_ERROR` | 工具管线 | 保留原始 message 与 cause |
 | Hook 失败 `name=HOOK_BLOCKED` | `HookError` / `HOOK_BLOCKED` | 工具管线 | name 与 code 分离 |
 | Web 抓取返回成功文本 `Fetch error: ...` | `WebFetchError(WEB_FETCH_*)` | 本地抓取 | 失败不再伪装为成功结果 |
+| `MALFORMED_RESPONSE`（内容拒答） | `CONTENT_REFUSED` | DeepSeek 流式响应 | 拒答与其他解析失败区分 |
+| `list_agents` 裸数组 | `{capacity, agents}` | Subagent 列表 | 结构破坏性变更，编译期暴露 |
+| `create_worktree` 工具 | 删除，由 `enter_worktree` 承载 | 工作树 | 提示词与工具 schema 同步 |
+| `working_directory` 工具 / 子代理 `cwd` | 删除 | 工作树 | 目录移动仅宿主可操作 |
+| 图片无体积上限 | `imageTargetBytes` + 编码后硬上限 | 图片输入 | 超限压降或失败 |
 
 ## 5. 约束
 

@@ -1,16 +1,12 @@
 package net.linlan.dsh.domain.agent.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * RuntimeContextSnapshot 渲染运行时上下文提醒，区分首份与后续快照。
- *
- * <p>调用流程：读取快照状态 → 生成 system-reminder → 更新状态（清空/刷新）。</p>
- * <p>示例：首份输出 initial snapshot，后续输出 supersedes 文案；清空输出 {@code sections=[]}。</p>
- */
+/** RuntimeContextSnapshot 使用共用章节模型渲染运行时上下文提醒。 */
 public final class RuntimeContextSnapshot {
 
     public static final String FIRST_PREFIX = "Current runtime context (initial snapshot).";
@@ -19,40 +15,42 @@ public final class RuntimeContextSnapshot {
 
     private final Map<String, SnapshotState> states = new ConcurrentHashMap<>();
 
-    /**
-     * 标记一个旧快照：缺少 sections 且保留原前缀。
-     *
-     * @param key    快照键
-     * @param prefix 旧前缀
-     */
+    /** 标记缺少 sections 且需保留原前缀的旧快照。 */
     public void seedLegacy(String key, String prefix) {
-        states.put(key, new SnapshotState(prefix == null || prefix.isBlank() ? SUBSEQUENT_PREFIX
+        states.put(stateKey(key), new SnapshotState(prefix == null || prefix.isBlank() ? SUBSEQUENT_PREFIX
                 : prefix, null));
     }
 
-    /**
-     * 返回刷新次数，用于验证旧快照仅刷新一次。
-     *
-     * @param key 快照键
-     * @return 刷新次数
-     */
     public int refreshCount(String key) {
-        SnapshotState state = states.get(key);
+        SnapshotState state = states.get(stateKey(key));
         return state == null ? 0 : state.refreshCount();
     }
 
-    /**
-     * 渲染运行时上下文提醒。
-     *
-     * @param key      快照键（通常为 agentId）
-     * @param sections 当前上下文片段
-     * @return 提醒文本；无需提醒时为空
-     */
+    /** 保留既有字符串章节入口。 */
     public Optional<String> render(String key, List<String> sections) {
-        List<String> effective = sections == null ? List.of() : sections.stream()
-                .filter(s -> s != null && !s.isBlank())
+        List<SystemMessageSection> typedSections = new ArrayList<>();
+        if (sections != null) {
+            for (int index = 0; index < sections.size(); index++) {
+                String text = sections.get(index);
+                if (text != null) {
+                    typedSections.add(new SystemMessageSection("section-" + index, text));
+                }
+            }
+        }
+        return renderSections(key, typedSections);
+    }
+
+    /** 直接消费累计器合并后的来源章节。 */
+    public Optional<String> renderAccumulator(String key, SystemMessageAccumulator accumulator) {
+        return renderSections(key, accumulator == null ? List.of() : accumulator.sections());
+    }
+
+    public Optional<String> renderSections(String key, List<SystemMessageSection> sections) {
+        List<SystemMessageSection> effective = sections == null ? List.of() : sections.stream()
+                .filter(section -> section != null && !section.text().isBlank())
                 .toList();
-        String stateKey = key == null || key.isBlank() ? "default" : key;
+        String stateKey = stateKey(key);
+        List<String> renderedSections = effective.stream().map(SystemMessageSection::text).toList();
 
         if (effective.isEmpty()) {
             if (states.remove(stateKey) != null) {
@@ -63,13 +61,24 @@ public final class RuntimeContextSnapshot {
 
         SnapshotState state = states.get(stateKey);
         if (state == null) {
-            states.put(stateKey, new SnapshotState(SUBSEQUENT_PREFIX, List.copyOf(effective)));
-            return Optional.of(wrap(FIRST_PREFIX + "\n\n" + String.join("\n\n", effective)));
+            states.put(stateKey, new SnapshotState(SUBSEQUENT_PREFIX, effective));
+            return Optional.of(wrap(FIRST_PREFIX + "\n\n" + String.join("\n\n", renderedSections)));
         }
         if (state.sections() == null) {
             state.markRefreshed(effective);
+        } else {
+            state.replace(effective);
         }
-        return Optional.of(wrap(state.prefix() + "\n\n" + String.join("\n\n", effective)));
+        return Optional.of(wrap(state.prefix() + "\n\n" + String.join("\n\n", renderedSections)));
+    }
+
+    public List<SystemMessageSection> sections(String key) {
+        SnapshotState state = states.get(stateKey(key));
+        return state == null || state.sections() == null ? List.of() : state.sections();
+    }
+
+    private static String stateKey(String key) {
+        return key == null || key.isBlank() ? "default" : key;
     }
 
     private static String wrap(String body) {
@@ -78,19 +87,19 @@ public final class RuntimeContextSnapshot {
 
     private static final class SnapshotState {
         private final String prefix;
-        private List<String> sections;
+        private List<SystemMessageSection> sections;
         private int refreshCount;
 
-        SnapshotState(String prefix, List<String> sections) {
+        SnapshotState(String prefix, List<SystemMessageSection> sections) {
             this.prefix = prefix;
-            this.sections = sections;
+            this.sections = sections == null ? null : List.copyOf(sections);
         }
 
         String prefix() {
             return prefix;
         }
 
-        List<String> sections() {
+        List<SystemMessageSection> sections() {
             return sections;
         }
 
@@ -98,9 +107,13 @@ public final class RuntimeContextSnapshot {
             return refreshCount;
         }
 
-        void markRefreshed(List<String> refreshed) {
+        void markRefreshed(List<SystemMessageSection> refreshed) {
             this.sections = List.copyOf(refreshed);
             this.refreshCount++;
+        }
+
+        void replace(List<SystemMessageSection> refreshed) {
+            this.sections = List.copyOf(refreshed);
         }
     }
 }

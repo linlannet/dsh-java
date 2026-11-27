@@ -47,10 +47,4 @@ public record DeepSeekAdapterOptions(
                 ? filesConnectTimeoutMs : DEFAULT_FILES_CONNECT_TIMEOUT_MS;
     }
 
-    /**
-     * 解析e Api Key。
-     */
-    public String resolveApiKey() {
-        return apiKey;
-    }
 }

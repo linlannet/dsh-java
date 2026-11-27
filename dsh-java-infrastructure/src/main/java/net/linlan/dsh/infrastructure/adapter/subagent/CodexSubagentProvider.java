@@ -36,7 +36,6 @@ public class CodexSubagentProvider extends OutOfProcessSubagentProvider {
         try {
             ObjectNode root = mapper.createObjectNode();
             root.put("instructions", request.prompt());
-            if (request.parentCwd() != null) root.put("cwd", request.parentCwd());
             return mapper.writeValueAsString(root);
         } catch (Exception e) {
             return request.prompt();

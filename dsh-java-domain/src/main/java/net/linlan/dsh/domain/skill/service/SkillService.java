@@ -61,15 +61,7 @@ public class SkillService implements ISkillService {
 
     @Override
     public Optional<SkillDefinition> get(String name, String cwd) {
-        if (name == null || !SKILL_NAME.matcher(name).matches()) return Optional.empty();
-        List<SkillCandidate> all = discoverAll(cwd);
-        // Find the winning candidate for this name
-        SkillCandidate winner = null;
-        for (SkillCandidate c : all) {
-            if (c.name().equals(name) && (winner == null || c.rank() < winner.rank())) {
-                winner = c;
-            }
-        }
+        SkillCandidate winner = winner(name, cwd);
         if (winner == null) return Optional.empty();
         // Find the provider that produced this candidate
         for (ISkillProviderPort provider : providers) {
@@ -77,6 +69,28 @@ public class SkillService implements ISkillService {
             if (def.isPresent()) return def;
         }
         return Optional.empty();
+    }
+
+    @Override
+    public Optional<String> getResource(String name, String resourceName, String cwd) {
+        SkillCandidate winner = winner(name, cwd);
+        if (winner == null || resourceName == null || resourceName.isBlank()) return Optional.empty();
+        for (ISkillProviderPort provider : providers) {
+            Optional<String> resource = provider.loadResource(winner, resourceName);
+            if (resource.isPresent()) return resource;
+        }
+        return Optional.empty();
+    }
+
+    private SkillCandidate winner(String name, String cwd) {
+        if (name == null || !SKILL_NAME.matcher(name).matches()) return null;
+        SkillCandidate winner = null;
+        for (SkillCandidate candidate : discoverAll(cwd)) {
+            if (candidate.name().equals(name) && (winner == null || candidate.rank() < winner.rank())) {
+                winner = candidate;
+            }
+        }
+        return winner;
     }
 
     /**

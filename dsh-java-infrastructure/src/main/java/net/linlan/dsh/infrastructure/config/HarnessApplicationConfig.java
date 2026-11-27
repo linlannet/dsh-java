@@ -19,6 +19,7 @@ import net.linlan.dsh.infrastructure.adapter.llm.LlmAdapterFactory;
 import net.linlan.dsh.infrastructure.adapter.llm.openai.OpenAiCompatibleAdapter;
 import net.linlan.dsh.infrastructure.adapter.llm.deepseek.DeepSeekAdapter;
 import net.linlan.dsh.infrastructure.adapter.llm.deepseek.DeepSeekAdapterOptions;
+import net.linlan.dsh.infrastructure.adapter.llm.deepseek.DeepSeekAuthProvider;
 import net.linlan.dsh.infrastructure.adapter.llm.deepseek.DirectSeekCatalogModel;
 import net.linlan.dsh.infrastructure.adapter.sandbox.SandboxedShellExecutor;
 import net.linlan.dsh.infrastructure.adapter.shell.LocalShellExecutor;
@@ -44,6 +45,9 @@ import net.linlan.dsh.infrastructure.adapter.terminal.LocalTerminalPort;
 
 import net.linlan.dsh.domain.skill.adapter.port.ISkillProviderPort;
 import net.linlan.dsh.infrastructure.adapter.skill.FilesystemSkillProviderPort;
+import net.linlan.dsh.domain.skill.office.OfficeSkill;
+import net.linlan.dsh.domain.runtime.profile.bundle.BundleAssembler;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import net.linlan.dsh.domain.hooks.adapter.port.IHookRunnerPort;
 import net.linlan.dsh.infrastructure.adapter.hooks.LocalShellHookRunner;
@@ -124,10 +128,17 @@ public class HarnessApplicationConfig {
     }
 
     @Bean
+    public DeepSeekAuthProvider deepSeekAuthProvider(
+            @Value("${harness.llm.deepseek.api-key:${LLM_API_KEY:${DEEPSEEK_API_KEY:sk-local}}}") String apiKey
+    ) {
+        return DeepSeekAuthProvider.bearer(apiKey);
+    }
+
+    @Bean
     public DeepSeekAdapter deepSeekAdapter(
             ObjectMapper objectMapper,
+            DeepSeekAuthProvider deepSeekAuthProvider,
             @Value("${harness.llm.deepseek.base-url:${LLM_BASE_URL:${DEEPSEEK_BASE_URL:http://127.0.0.1:28080/v1}}}") String baseUrl,
-            @Value("${harness.llm.deepseek.api-key:${LLM_API_KEY:${DEEPSEEK_API_KEY:sk-local}}}") String apiKey,
             @Value("${harness.llm.deepseek.max-tokens:8192}") int maxTokens,
             @Value("${harness.llm.deepseek.context-window:128000}") int contextWindow,
             @Value("${harness.llm.deepseek.default-model:${LLM_DEFAULT_MODEL:${DEEPSEEK_DEFAULT_MODEL:deepseek}}}") String defaultModel
@@ -139,9 +150,9 @@ public class HarnessApplicationConfig {
                 500, 10_000, 0.1, 2,
                 LlmErrorCodes.DEFAULT_RETRYABLE_CODES
         );
-        var options = new DeepSeekAdapterOptions(baseUrl, apiKey, maxTokens, contextWindow,
+        var options = new DeepSeekAdapterOptions(baseUrl, "", maxTokens, contextWindow,
                 DeepSeekAdapter.DEFAULT_STREAM_IDLE_TIMEOUT_MS, models, retryPolicy);
-        return new DeepSeekAdapter(options, objectMapper);
+        return new DeepSeekAdapter(options, objectMapper, deepSeekAuthProvider);
     }
     /**
      * openai Adapter。
@@ -158,7 +169,8 @@ public class HarnessApplicationConfig {
                 System.getenv("OPENAI_API_KEY") != null ? System.getenv("OPENAI_API_KEY") : "",
                 4096, 128000, DeepSeekAdapter.DEFAULT_STREAM_IDLE_TIMEOUT_MS,
                 List.of(), null);
-        return new OpenAiCompatibleAdapter("openai", options, objectMapper);
+        return new OpenAiCompatibleAdapter("openai", options, objectMapper,
+                DeepSeekAuthProvider.bearer(options.apiKey()));
     }
     /**
      * ollama Adapter。
@@ -175,7 +187,8 @@ public class HarnessApplicationConfig {
                 "ollama",
                 4096, 128000, DeepSeekAdapter.DEFAULT_STREAM_IDLE_TIMEOUT_MS,
                 List.of(), null);
-        return new OpenAiCompatibleAdapter("ollama", options, objectMapper);
+        return new OpenAiCompatibleAdapter("ollama", options, objectMapper,
+                DeepSeekAuthProvider.bearer(options.apiKey()));
     }
 
     // ── 第二阶段：Shell + 文件系统基础设施 Bean ────────────────────
@@ -287,6 +300,18 @@ public class HarnessApplicationConfig {
     }
 
     // ── 技能层 ──────────────────────────────────────────────
+
+    @Bean
+    @ConditionalOnProperty(prefix = "harness.extensions.skills", name = "enabled",
+            havingValue = "true", matchIfMissing = true)
+    public OfficeSkill officeSkill() {
+        return new OfficeSkill();
+    }
+
+    @Bean
+    public BundleAssembler bundleAssembler(HarnessExtensionsProperties extensions) {
+        return new BundleAssembler(extensions.getSkills().isEnabled());
+    }
 
     @Bean
     public FilesystemSkillProviderPort skillProviderPort(

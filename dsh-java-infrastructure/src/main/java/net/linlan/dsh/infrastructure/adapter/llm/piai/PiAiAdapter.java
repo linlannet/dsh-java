@@ -1,6 +1,7 @@
 package net.linlan.dsh.infrastructure.adapter.llm.piai;
 
 import net.linlan.dsh.infrastructure.adapter.llm.deepseek.DeepSeekAdapterOptions;
+import net.linlan.dsh.infrastructure.adapter.llm.deepseek.DeepSeekAuthProvider;
 import net.linlan.dsh.infrastructure.adapter.llm.openai.OpenAiCompatibleAdapter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -21,6 +22,12 @@ public final class PiAiAdapter extends OpenAiCompatibleAdapter {
      */
     public PiAiAdapter(DeepSeekAdapterOptions options, ObjectMapper objectMapper) {
         super(PROVIDER_ID, options, objectMapper);
+    }
+
+    /** 使用路由提供的认证提供方创建 Pi-AI 适配器。 */
+    public PiAiAdapter(DeepSeekAdapterOptions options, ObjectMapper objectMapper,
+                       DeepSeekAuthProvider authProvider) {
+        super(PROVIDER_ID, options, objectMapper, authProvider);
     }
 
     /**

@@ -20,7 +20,7 @@ class SubagentControlToolsTest {
     void sendMessageByName() {
         var driver = new InProcessSubagentDriver();
         String id = driver.spawn(new InProcessSubagentDriver.SubagentSpec(
-                "general", "/tmp", null, "reviewer", "reviews code"));
+                "general", null, "reviewer", "reviews code"));
         var tool = new SendMessageTool(driver);
 
         var result = tool.execute(Map.of("agent", "reviewer", "message", "hello"));
@@ -36,7 +36,7 @@ class SubagentControlToolsTest {
     @DisplayName("SendMessageTool 兼容会话 id 寻址")
     void sendMessageBySessionId() {
         var driver = new InProcessSubagentDriver();
-        String id = driver.spawn(new InProcessSubagentDriver.SubagentSpec("general", "/tmp", null));
+        String id = driver.spawn(new InProcessSubagentDriver.SubagentSpec("general", null));
         var tool = new SendMessageTool(driver);
 
         tool.execute(Map.of("agent", id, "message", "hello"));
@@ -70,7 +70,7 @@ class SubagentControlToolsTest {
     void interruptByName() {
         var driver = new InProcessSubagentDriver();
         String id = driver.spawn(new InProcessSubagentDriver.SubagentSpec(
-                "general", "/tmp", null, "checker", null));
+                "general", null, "checker", null));
         var tool = new InterruptTool(driver);
 
         var result = tool.execute(Map.of("agent", "checker"));
@@ -94,9 +94,9 @@ class SubagentControlToolsTest {
     void listAgentsReturnsStructuredRows() {
         var driver = new InProcessSubagentDriver();
         String reviewer = driver.spawn(new InProcessSubagentDriver.SubagentSpec(
-                "a", "/tmp", null, "reviewer", "reviews code"));
+                "a", null, "reviewer", "reviews code"));
         String checker = driver.spawn(new InProcessSubagentDriver.SubagentSpec(
-                "b", "/tmp", null, "reviewer/checker", null));
+                "b", null, "reviewer/checker", null));
         driver.shutdown(checker);
         var tool = new ListAgentsTool(driver);
         tool.register(reviewer);
@@ -105,7 +105,10 @@ class SubagentControlToolsTest {
         var result = tool.execute(Map.of());
         var agents = (List<Map<String, Object>>) result.get("agents");
 
-        assertEquals(2, result.get("count"));
+        @SuppressWarnings("unchecked")
+        var capacity = (Map<String, Object>) result.get("capacity");
+        assertEquals(2, capacity.get("total"));
+        assertEquals(driver.capacityLimit(), capacity.get("limit"));
         assertEquals("reviewer", agents.get(0).get("name"));
         assertEquals("running", agents.get(0).get("status"));
         assertEquals("reviews code", agents.get(0).get("description"));
@@ -114,23 +117,27 @@ class SubagentControlToolsTest {
     }
 
     @Test
-    @DisplayName("ListAgentsTool 空注册返回 count=0")
+    @DisplayName("ListAgentsTool 空注册返回容量对象 total=0")
     void listAgentsEmpty() {
-        var tool = new ListAgentsTool(new InProcessSubagentDriver());
+        var driver = new InProcessSubagentDriver();
+        var tool = new ListAgentsTool(driver);
         var result = tool.execute(Map.of());
-        assertEquals(0, result.get("count"));
+        @SuppressWarnings("unchecked")
+        var capacity = (Map<String, Object>) result.get("capacity");
+        assertEquals(0, capacity.get("total"));
+        assertEquals(driver.capacityLimit(), capacity.get("limit"));
     }
 
     @Test
     @DisplayName("默认名称使用会话 id，重名创建被拒绝")
     void defaultNameAndDuplicateRejected() {
         var driver = new InProcessSubagentDriver();
-        String id = driver.spawn(new InProcessSubagentDriver.SubagentSpec("a", "/tmp", null));
+        String id = driver.spawn(new InProcessSubagentDriver.SubagentSpec("a", null));
 
         assertEquals(id, driver.info(id).name());
-        driver.spawn(new InProcessSubagentDriver.SubagentSpec("b", "/tmp", null, "lead", null));
+        driver.spawn(new InProcessSubagentDriver.SubagentSpec("b", null, "lead", null));
         assertThrows(IllegalArgumentException.class, () -> driver.spawn(
-                new InProcessSubagentDriver.SubagentSpec("c", "/tmp", null, "lead", null)));
+                new InProcessSubagentDriver.SubagentSpec("c", null, "lead", null)));
     }
 
     @Test

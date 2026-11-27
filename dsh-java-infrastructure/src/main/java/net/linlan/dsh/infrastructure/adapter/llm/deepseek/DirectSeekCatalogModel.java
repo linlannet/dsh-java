@@ -16,10 +16,21 @@ public record DirectSeekCatalogModel(
         String name,
         String description,
         Integer contextWindow,
-        Integer maxTokens
+        Integer maxTokens,
+        Integer imageTargetBytes
 ) {
     public DirectSeekCatalogModel {
         java.util.Objects.requireNonNull(id, "id");
+        if (imageTargetBytes != null
+                && (imageTargetBytes <= 0 || imageTargetBytes > ImageEncoder.MAX_IMAGE_BYTES)) {
+            throw new IllegalArgumentException("imageTargetBytes must be positive and no greater than 32 MiB");
+        }
+    }
+
+    /** 兼容原五参数目录项。 */
+    public DirectSeekCatalogModel(String id, String name, String description,
+                                  Integer contextWindow, Integer maxTokens) {
+        this(id, name, description, contextWindow, maxTokens, null);
     }
 
     /**
@@ -46,4 +57,6 @@ public record DirectSeekCatalogModel(
      * @return 方法执行结果。
      */
     public Optional<Integer> maxTokensOpt() { return Optional.ofNullable(maxTokens); }
+    /** 当前模型的编码字节软目标。 */
+    public Optional<Integer> imageTargetBytesOpt() { return Optional.ofNullable(imageTargetBytes); }
 }

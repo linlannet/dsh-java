@@ -22,8 +22,11 @@ public record BundleDefinition(
 
     public static final BundleDefinition BASE = new BundleDefinition(
             "base",
-            List.of("core", "fs", "shell"),
-            Map.of()
+            List.of("core", "fs", "shell", "upstream-skills"),
+            Map.of(
+                    "upstream-skills.repository", "https://github.com/linlannet/dsh-java",
+                    "upstream-skills.commit", "ca6aadb548a1aea47e8eb96db0aa980af46ad8d0"
+            )
     );
 
     public static final BundleDefinition HEADLESS = new BundleDefinition(

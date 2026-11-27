@@ -16,28 +16,19 @@ public final class InProcessSubagentDriver {
      * 子代理创建规格。
      *
      * @param agentPreset   代理预设
-     * @param cwd           工作目录
      * @param initialMessage 初始消息
      * @param name          可选名称；为空时使用生成的会话 id
      * @param description   可选描述，用于 list_agents
      */
-    public record SubagentSpec(String agentPreset, String cwd, String initialMessage,
+    public record SubagentSpec(String agentPreset, String initialMessage,
                                String name, String description) {
 
         public SubagentSpec {
             Objects.requireNonNull(agentPreset, "agentPreset must not be null");
-            Objects.requireNonNull(cwd, "cwd must not be null");
         }
 
-        /**
-         * 兼容不带名称的创建规格。
-         *
-         * @param agentPreset    代理预设
-         * @param cwd            工作目录
-         * @param initialMessage 初始消息
-         */
-        public SubagentSpec(String agentPreset, String cwd, String initialMessage) {
-            this(agentPreset, cwd, initialMessage, null, null);
+        public SubagentSpec(String agentPreset, String initialMessage) {
+            this(agentPreset, initialMessage, null, null);
         }
     }
 
@@ -52,12 +43,43 @@ public final class InProcessSubagentDriver {
     public record AgentInfo(String id, String name, boolean alive, String description) {
     }
 
+    private static final int DEFAULT_CAPACITY_LIMIT = 16;
+
     private final Map<String, SubagentHandle> handles = new ConcurrentHashMap<>();
     private final Map<String, String> nameToId = new ConcurrentHashMap<>();
     private final AtomicInteger idCounter = new AtomicInteger(0);
+    private final int capacityLimit;
+
+    public InProcessSubagentDriver() {
+        this(DEFAULT_CAPACITY_LIMIT);
+    }
+
+    /**
+     * 以指定共享容量上限创建驱动。
+     *
+     * @param capacityLimit 容量上限，必须为正数
+     */
+    public InProcessSubagentDriver(int capacityLimit) {
+        if (capacityLimit <= 0) {
+            throw new IllegalArgumentException("capacityLimit must be positive");
+        }
+        this.capacityLimit = capacityLimit;
+    }
+
+    /**
+     * 返回共享容量上限。
+     *
+     * @return 上限值
+     */
+    public int capacityLimit() {
+        return capacityLimit;
+    }
 
     public String spawn(SubagentSpec spec) {
         Objects.requireNonNull(spec, "spec must not be null");
+        if (handles.size() >= capacityLimit) {
+            throw new IllegalStateException("subagent capacity exceeded: limit=" + capacityLimit);
+        }
         String id = "subagent-" + idCounter.incrementAndGet();
         String name = spec.name() == null || spec.name().isBlank() ? id : spec.name().trim();
         if (nameToId.putIfAbsent(name, id) != null) {

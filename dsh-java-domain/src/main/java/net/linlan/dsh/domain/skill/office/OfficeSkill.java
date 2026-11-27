@@ -6,104 +6,101 @@ import net.linlan.dsh.domain.skill.model.entity.SkillDefinition;
 import net.linlan.dsh.domain.skill.model.valobj.SkillInvocationPolicy;
 import net.linlan.dsh.domain.skill.model.valobj.SkillSource;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 
 /**
- * OfficeSkill 提供 Office 路由与 docx/pptx/xlsx 写作技能。
- *
- * <p>调用流程：发现候选技能 → 按需加载内置内容 → 引导模型使用 Office 工具。</p>
- * <p>示例：加载 {@code office-docx} 获得 python-docx 写作指引。</p>
+ * OfficeSkill 提供单一 Office 技能；各格式写作指导作为内置资源按需读取。
  */
 public class OfficeSkill implements ISkillProviderPort {
 
-    private static final String ROUTER = "office";
-    private static final Map<String, String> DESCRIPTIONS = descriptions();
-    private static final Map<String, String> CONTENTS = contents();
+    public static final String NAME = "office";
+
+    private static final String DESCRIPTION =
+            "Create, edit, render, convert and recalculate Office documents.";
+    private static final String RESOURCE_ROOT = "/net/linlan/dsh/domain/skill/office/";
+    private static final Set<String> FORMAT_RESOURCES = Set.of("docx.md", "pptx.md", "xlsx.md");
+    private static final String CONTENT = """
+            # Office
+
+            - Preview or export: `office_render(path=...)` writes a PDF under the office-kit outputs.
+            - Format conversion: `office_convert(path=..., format=pdf|docx|xlsx|pptx|odt|ods|odp)`.
+            - Spreadsheet formulas: `office_recalculate(path=...)` re-saves the workbook as xlsx.
+            - Before writing Word, PowerPoint or Excel content, use `skill(name="office", resource="docx|pptx|xlsx")` to read only the matching format guide.
+            - Outputs are artifacts; report the returned path instead of pasting binary content.
+            """;
 
     @Override
     public List<SkillCandidate> discover(String cwd) {
-        return DESCRIPTIONS.entrySet().stream()
-                .map(entry -> new SkillCandidate(
-                        entry.getKey(),
-                        entry.getValue(),
-                        Optional.of("When working with Office documents"),
-                        SkillInvocationPolicy.both(),
-                        SkillSource.BUNDLED,
-                        entry.getKey(),
-                        Optional.empty(),
-                        0,
-                        "office-skill"
-                ))
-                .toList();
+        return List.of(new SkillCandidate(
+                NAME,
+                DESCRIPTION,
+                Optional.of("When working with Office documents"),
+                SkillInvocationPolicy.both(),
+                SkillSource.BUNDLED,
+                NAME,
+                Optional.empty(),
+                0,
+                "office-skill"
+        ));
     }
 
     @Override
     public Optional<SkillDefinition> load(SkillCandidate candidate) {
-        if (candidate == null || !CONTENTS.containsKey(candidate.name())) {
+        if (candidate == null || !NAME.equals(candidate.name())) {
             return Optional.empty();
         }
-        String name = candidate.name();
-        SkillDefinition def = new SkillDefinition(
-                name,
-                DESCRIPTIONS.get(name),
+        return Optional.of(new SkillDefinition(
+                NAME,
+                DESCRIPTION,
                 Optional.of("When working with Office documents"),
                 SkillInvocationPolicy.both(),
                 SkillSource.BUNDLED,
-                name,
-                CONTENTS.get(name),
+                NAME,
+                CONTENT,
                 Optional.empty()
-        );
-        return Optional.of(def);
+        ));
     }
 
-    private static Map<String, String> descriptions() {
-        Map<String, String> map = new LinkedHashMap<>();
-        map.put(ROUTER, "Office routing skill: choose render/convert/recalculate or a writing skill.");
-        map.put("office-docx", "Create and edit Word documents with python-docx.");
-        map.put("office-pptx", "Create and edit PowerPoint decks with python-pptx.");
-        map.put("office-xlsx", "Create and edit Excel workbooks with openpyxl, then recalculate.");
-        return Collections.unmodifiableMap(map);
+    /**
+     * 按格式名或资源名读取写作指导，不在发现技能时加载。
+     *
+     * @param resourceName docx/pptx/xlsx 或对应的 .md 资源名
+     * @return 资源内容；未知或不可读资源为空
+     */
+    public Optional<String> loadResource(String resourceName) {
+        String normalized = resourceName == null ? ""
+                : resourceName.trim().toLowerCase(Locale.ROOT);
+        if (!normalized.endsWith(".md")) {
+            normalized = normalized + ".md";
+        }
+        if (!FORMAT_RESOURCES.contains(normalized)) {
+            return Optional.empty();
+        }
+        try (InputStream input = OfficeSkill.class.getResourceAsStream(RESOURCE_ROOT + normalized)) {
+            if (input == null) {
+                return Optional.empty();
+            }
+            return Optional.of(new String(input.readAllBytes(), StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            return Optional.empty();
+        }
     }
 
-    private static Map<String, String> contents() {
-        Map<String, String> map = new LinkedHashMap<>();
-        map.put(ROUTER, """
-                # Office routing
+    @Override
+    public Optional<String> loadResource(SkillCandidate candidate, String resourceName) {
+        if (candidate == null || !NAME.equals(candidate.name())) {
+            return Optional.empty();
+        }
+        return loadResource(resourceName);
+    }
 
-                - Preview or export: `office_render(path=...)` writes a PDF under the office-kit outputs.
-                - Format conversion: `office_convert(path=..., format=pdf|docx|xlsx|pptx|odt|ods|odp)`.
-                - Spreadsheet formulas: `office_recalculate(path=...)` re-saves the workbook as xlsx.
-                - New Word/PowerPoint/Excel content: load `office-docx`, `office-pptx` or `office-xlsx`.
-                - Outputs are artifacts; report the returned path instead of pasting binary content.
-                """);
-        map.put("office-docx", """
-                # Word writing (python-docx)
-
-                1. Write a Python script using `python-docx` in the active workspace.
-                2. Use `fs_write` for the script and `shell` to run it with the workspace Python environment.
-                3. Insert headings, paragraphs, tables and images explicitly; avoid manual XML unless required.
-                4. Verify the generated file with `office_render` when a visual check is needed.
-                """);
-        map.put("office-pptx", """
-                # PowerPoint writing (python-pptx)
-
-                1. Write a Python script using `python-pptx` in the active workspace.
-                2. Build slides from layouts, set titles/bullets, and add charts or images deliberately.
-                3. Keep one message per slide and avoid overflowing text boxes.
-                4. Verify the deck with `office_render` when a visual check is needed.
-                """);
-        map.put("office-xlsx", """
-                # Excel writing (openpyxl)
-
-                1. Write a Python script using `openpyxl` in the active workspace.
-                2. Prefer formulas over hard-coded results; keep sheets and column widths readable.
-                3. Run `office_recalculate` after writing so formula caches are refreshed.
-                4. Verify key cells by reading the workbook back before reporting completion.
-                """);
-        return Collections.unmodifiableMap(map);
+    public Optional<String> formatGuide(String format) {
+        return loadResource(format);
     }
 }

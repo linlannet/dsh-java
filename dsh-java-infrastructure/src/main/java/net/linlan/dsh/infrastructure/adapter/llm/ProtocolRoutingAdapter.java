@@ -4,6 +4,7 @@ import net.linlan.dsh.domain.llm.adapter.LlmAdapter;
 import net.linlan.dsh.domain.llm.adapter.ResolvedRetryPolicy;
 import net.linlan.dsh.domain.llm.model.valobj.GenerateOptions;
 import net.linlan.dsh.domain.llm.model.valobj.StreamChunk;
+import net.linlan.dsh.infrastructure.adapter.llm.deepseek.DeepSeekAuthProvider;
 import java.util.List;
 import java.util.concurrent.Flow;
 
@@ -21,24 +22,32 @@ public class ProtocolRoutingAdapter implements LlmAdapter {
 
     private final String providerId;
     private final String defaultBaseUrl;
-    private final String defaultApiKey;
     private final String defaultProtocol;
     private final LlmAdapterFactory factory;
+    private final DeepSeekAuthProvider authProvider;
+
+    /**
+     * 兼容旧调用方；静态密钥立即封装到认证提供方，路由自身不保存或读取密钥。
+     */
+    public ProtocolRoutingAdapter(String providerId, String defaultBaseUrl, String defaultApiKey,
+                                  String defaultProtocol, LlmAdapterFactory factory) {
+        this(providerId, defaultBaseUrl, DeepSeekAuthProvider.bearer(defaultApiKey), defaultProtocol, factory);
+    }
 
     /**
      * @param providerId      该实例服务的 provider 编码
      * @param defaultBaseUrl  模板默认地址（请求未携带 baseUrl 时使用）
-     * @param defaultApiKey   模板默认 key（本地渠道为占位值，其余为空串）
+     * @param authProvider    请求认证提供方
      * @param defaultProtocol 模板默认协议（请求未携带 protocol 时使用）
      * @param factory         协议适配器工厂
      */
-    public ProtocolRoutingAdapter(String providerId, String defaultBaseUrl, String defaultApiKey,
+    public ProtocolRoutingAdapter(String providerId, String defaultBaseUrl, DeepSeekAuthProvider authProvider,
                                   String defaultProtocol, LlmAdapterFactory factory) {
         this.providerId = providerId;
         this.defaultBaseUrl = defaultBaseUrl;
-        this.defaultApiKey = defaultApiKey;
         this.defaultProtocol = defaultProtocol;
         this.factory = factory;
+        this.authProvider = DeepSeekAuthProvider.require(authProvider);
     }
 
     @Override
@@ -79,24 +88,22 @@ public class ProtocolRoutingAdapter implements LlmAdapter {
         String protocol = options != null && options.protocol() != null && !options.protocol().isBlank()
                 ? options.protocol()
                 : defaultProtocol;
-        return factory.createForProtocol(providerId, protocol);
+        return factory.createForProtocol(providerId, protocol, authProvider);
     }
 
     /**
-     * 补齐请求中缺省的 baseUrl / apiKey / protocol，以模板默认值兜底。
+     * 补齐请求中缺省的 baseUrl / protocol；凭据由认证提供方解析。
      */
     private GenerateOptions fillDefaults(GenerateOptions options) {
         String baseUrl = options.baseUrl() != null && !options.baseUrl().isBlank()
                 ? options.baseUrl() : defaultBaseUrl;
-        String apiKey = options.apiKey() != null && !options.apiKey().isBlank()
-                ? options.apiKey() : defaultApiKey;
         String protocol = options.protocol() != null && !options.protocol().isBlank()
                 ? options.protocol() : defaultProtocol;
         return new GenerateOptions(
                 options.provider(), options.model(), options.reasoningEffort(),
                 options.messages(), options.system(), options.tools(),
                 options.temperature(), options.maxTokens(), options.stop(),
-                options.sessionId(), options.purpose(), baseUrl, apiKey, protocol
+                options.sessionId(), options.purpose(), baseUrl, options.apiKey(), protocol
         );
     }
 }

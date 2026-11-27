@@ -2,7 +2,7 @@ package net.linlan.dsh.domain.agent.service.subagent.adapter.port;
 
 public interface ISubagentDriverPort {
 
-    String spawn(String agentPreset, String cwd, String command);
+    String spawn(String agentPreset, String command);
 
     String send(String subagentId, String message);
 

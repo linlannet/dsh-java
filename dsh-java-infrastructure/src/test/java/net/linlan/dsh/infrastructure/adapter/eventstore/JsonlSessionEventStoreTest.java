@@ -85,4 +85,24 @@ class JsonlSessionEventStoreTest {
         assertEquals(1, message.data().usage().cacheWriteTokens());
         assertEquals(3, message.data().usage().reasoningTokens());
     }
+
+    @Test
+    void shouldRoundTripAgentMessageSource() {
+        JsonlSessionEventStore store = new JsonlSessionEventStore(tempDir.toString());
+        store.saveHeader(SessionHeader.create("agent-message", Instant.EPOCH, null, null));
+        store.append("agent-message", SessionEventFactory.userMessage(
+                1,
+                1,
+                Message.createUser(
+                        java.util.List.of(new TextBlock("delegated")),
+                        new MessageSource.AgentMessageSource("parent-session")
+                )
+        ));
+
+        var event = (net.linlan.dsh.domain.session.event.model.entity.SessionEvent.UserMessage)
+                store.readAll("agent-message").get(0);
+
+        var source = (MessageSource.AgentMessageSource) event.data().message().source();
+        assertEquals("parent-session", source.from());
+    }
 }

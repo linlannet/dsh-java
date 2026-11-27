@@ -11,7 +11,7 @@ import net.linlan.dsh.domain.tool.web.browser.adapter.port.IBrowserUsePort;
 import net.linlan.dsh.domain.tool.web.computer.ComputerUseError;
 import net.linlan.dsh.domain.tool.web.computer.ComputerUseTool;
 import net.linlan.dsh.domain.tool.web.computer.adapter.port.IComputerUsePort;
-import net.linlan.dsh.domain.tool.worktree.WorktreeTool;
+import net.linlan.dsh.domain.tool.worktree.EnterWorktreeTool;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -29,13 +29,13 @@ class SubsystemErrorInheritanceTest {
     @DisplayName("Worktree 非 Git 仓库错误保留错误码")
     void worktreeNotGitRepo() throws Exception {
         Path directory = Files.createTempDirectory("dsh-worktree-test");
-        var tool = new WorktreeTool();
+        var tool = new EnterWorktreeTool();
 
-        var error = assertThrows(WorktreeTool.NotGitRepoException.class,
-                () -> tool.create(directory.toString(), "feature"));
+        var error = assertThrows(EnterWorktreeTool.NotGitRepoException.class,
+                () -> tool.enter(directory.toString(), "feature"));
 
         assertInstanceOf(HarnessError.class, error);
-        assertEquals(WorktreeTool.NotGitRepoException.NOT_GIT_REPO, error.errorCode());
+        assertEquals(EnterWorktreeTool.NotGitRepoException.NOT_GIT_REPO, error.errorCode());
         assertEquals("NotGitRepoException", error.errorName());
     }
 

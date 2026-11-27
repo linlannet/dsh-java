@@ -164,8 +164,8 @@ public class EmisOidcController {
             // 桌面端票据：把身份 + 跨重启 session 挂到一次性 ticket，回跳 bridge.html 后桌面端轮询取回
             if (ticket != null && !ticket.isBlank()) {
                 purgeExpiredTickets();
-                String session = issueSession(identity);
-                tickets.put(ticket, new TicketEntry(identity, session, System.currentTimeMillis() + TICKET_TTL_MS));
+                String desktopSession = issueSession(identity);
+                tickets.put(ticket, new TicketEntry(identity, desktopSession, System.currentTimeMillis() + TICKET_TTL_MS));
                 response.sendRedirect("/bridge.html?ticket=" + enc(ticket) + "&status=success");
                 return;
             }

@@ -25,6 +25,7 @@ public class SubagentTool implements ToolDefinition {
     private final SubagentRegistry registry;
     private final String providerName;
     private final Supplier<AgentOptions> parentOptionsSupplier;
+    private final String parentSessionId;
     private final AtomicInteger nameCounter = new AtomicInteger(0);
 
     /**
@@ -59,10 +60,25 @@ public class SubagentTool implements ToolDefinition {
             String toolName,
             Supplier<AgentOptions> parentOptionsSupplier
     ) {
+        this(registry, providerName, toolName, parentOptionsSupplier, null);
+    }
+
+    /**
+     * 初始化携带父会话 id 的子智能体工具。
+     * <p>父会话 id 用于将初始委派任务标记为 agent-message 来源。</p>
+     */
+    public SubagentTool(
+            SubagentRegistry registry,
+            String providerName,
+            String toolName,
+            Supplier<AgentOptions> parentOptionsSupplier,
+            String parentSessionId
+    ) {
         this.registry = registry;
         this.providerName = providerName;
         this.toolName = toolName;
         this.parentOptionsSupplier = parentOptionsSupplier;
+        this.parentSessionId = parentSessionId;
     }
 
     @Override
@@ -166,8 +182,7 @@ public class SubagentTool implements ToolDefinition {
         SubagentProvider.SubagentStartRequest request = new SubagentProvider.SubagentStartRequest(
                 prompt,
                 parentOptionsSupplier == null ? null : parentOptionsSupplier.get(),
-                null,           // parentSessionId
-                null,           // parentCwd
+                parentSessionId,
                 0,              // delegationDepth (top-level)
                 List.of(),      // enabledTools (all)
                 List.of(),      // allowedToolNames (all)

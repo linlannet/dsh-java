@@ -76,6 +76,26 @@ class AgentModelSettingResolverTest {
         assertEquals("file-model", options.model());
     }
 
+    @Test
+    void subagentModelResolutionReadsLatestActiveSetting() {
+        var settings = new SettingsService(Map.of(
+                "deepseek", setting("deepseek", "deepseek", "model-a",
+                        "http://a.example/v1", "a-key", true),
+                "qwen", setting("qwen", "qwen", "model-b",
+                        "http://b.example/v1", "b-key", false)
+        ));
+        AgentModelSettingResolver delegate = resolver(settings);
+        net.linlan.dsh.domain.agent.service.subagent.SubagentModelResolver resolver =
+                () -> delegate.resolve(null, 4096);
+
+        assertEquals("model-a", resolver.resolve().model());
+        settings.settings.put("deepseek", setting("deepseek", "deepseek", "model-a",
+                "http://a.example/v1", "a-key", false));
+        settings.settings.put("qwen", setting("qwen", "qwen", "model-b",
+                "http://b.example/v1", "b-key", true));
+        assertEquals("model-b", resolver.resolve().model());
+    }
+
     private AgentModelSettingResolver resolver(IModelSettingQueryService settings) {
         return new AgentModelSettingResolver(settings, "default", "file-model", "http://file.example/v1", "file-key");
     }

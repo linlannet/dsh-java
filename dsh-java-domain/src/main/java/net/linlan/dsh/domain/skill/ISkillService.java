@@ -30,4 +30,9 @@ public interface ISkillService {
      * @return 领域处理结果。
      */
     Optional<SkillDefinition> get(String name, String cwd);
+
+    /** 按需读取技能附属资源。 */
+    default Optional<String> getResource(String name, String resourceName, String cwd) {
+        return Optional.empty();
+    }
 }

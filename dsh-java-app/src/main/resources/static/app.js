@@ -16,6 +16,7 @@ const MODEL_DISCOVER_API = '/api/harness/settings/models/discover';
 const CHANNEL_PRESETS_API = '/api/harness/channels/presets';
 const DEFAULT_CHANNEL = '';
 const PLUGIN_API = '/api/harness/plugins';
+const CONNECTOR_API = '/api/harness/connectors';
 const CONSOLE_API = '/api/harness/console';
 const APPROVAL_API = '/api/harness/approvals';
 const DIGITAL_HUMAN_API = '/api/digital-humans';
@@ -188,6 +189,12 @@ const state = {
   plugins: [],
   pluginConfigs: {},
   selectedPluginId: null,
+  connectorAssessments: [],
+  connectorAccounts: [],
+  connectorLoaded: false,
+  connectorLoading: false,
+  connectorError: null,
+  connectorBusy: null,
   // v11: 审批队列
   pendingApprovals: [],
   // 契约 v1（docs/spec/0.2.2/contract）：待回答提问，形状 RuntimeQuestion{questionId, agentId, questions[], createdAt}
@@ -4520,6 +4527,7 @@ function renderPluginSettings(body, footer) {
   }
   body.appendChild(summary);
 
+  renderConnectorSettings(body);
   renderPluginInstall(body);
 
   const listPanel = el('section', { class: 'settings-panel' });
@@ -4548,6 +4556,169 @@ function renderPluginSettings(body, footer) {
   body.appendChild(listPanel);
   const selected = list.find(function(plugin) { return plugin.pluginId === state.selectedPluginId; });
   if (selected) body.appendChild(renderPluginConfigEditor(selected));
+  loadConnectorData();
+}
+
+function connectorLocale() {
+  return String(navigator.language || '').toLowerCase().startsWith('zh') ? 'zh-CN' : 'en-US';
+}
+
+function connectorCopy(zh, en) {
+  return connectorLocale() === 'zh-CN' ? zh : en;
+}
+
+async function loadConnectorData() {
+  if (state.connectorLoading || state.connectorLoaded) return;
+  state.connectorLoading = true;
+  state.connectorError = null;
+  try {
+    const results = await Promise.all([
+      apiRequest(CONNECTOR_API + '/assessments'),
+      apiRequest(CONNECTOR_API + '/accounts')
+    ]);
+    state.connectorAssessments = Array.isArray(results[0]) ? results[0] : [];
+    state.connectorAccounts = Array.isArray(results[1]) ? results[1] : [];
+  } catch (error) {
+    state.connectorError = error.message;
+  } finally {
+    state.connectorLoading = false;
+    state.connectorLoaded = true;
+    if (state.activeMainTab === 'settings' && state.activeSettingsTab === 'plugins') render();
+  }
+}
+
+function connectorStatusLabel(status) {
+  const labels = {
+    CONNECTED: ['已连接', 'Connected'],
+    DISCONNECTED: ['未连接', 'Disconnected'],
+    AUTHORIZATION_REQUIRED: ['等待授权', 'Authorization required'],
+    EXPIRED: ['授权已过期', 'Authorization expired'],
+    ERROR: ['连接异常', 'Connection error']
+  };
+  const label = labels[status] || [status || '未知', status || 'Unknown'];
+  return connectorCopy(label[0], label[1]);
+}
+
+function renderConnectorSettings(body) {
+  const panel = el('section', { class: 'settings-panel connector-settings-panel' });
+  const refreshBtn = el('button', { class: 'btn btn-secondary btn-sm' },
+    state.connectorLoading ? connectorCopy('加载中…', 'Loading…') : connectorCopy('刷新', 'Refresh'));
+  refreshBtn.disabled = Boolean(state.connectorLoading);
+  refreshBtn.onclick = function() {
+    state.connectorLoaded = false;
+    loadConnectorData();
+  };
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, connectorCopy('连接器账号', 'Connector accounts')),
+      el('p', { class: 'settings-panel-desc' }, connectorCopy(
+        '品牌、功能预览与连接状态由服务端提供；令牌仅保存在服务端。',
+        'Branding, feature previews and connection status come from the server; tokens remain server-side.'))),
+    refreshBtn));
+
+  if (state.connectorError) {
+    panel.appendChild(el('div', { class: 'connector-diagnostic', role: 'alert' },
+      connectorCopy('读取连接器失败：', 'Failed to load connectors: ') + state.connectorError));
+  }
+  const assessments = state.connectorAssessments || [];
+  if (!assessments.length) {
+    panel.appendChild(el('div', { class: 'empty' }, state.connectorLoading
+      ? connectorCopy('正在加载连接器…', 'Loading connectors…')
+      : connectorCopy('暂无连接器评估信息', 'No connector assessments available')));
+  } else {
+    const grid = el('div', { class: 'settings-cards connector-grid' });
+    assessments.forEach(function(assessment) {
+      grid.appendChild(renderConnectorCard(assessment));
+    });
+    panel.appendChild(grid);
+  }
+  body.appendChild(panel);
+}
+
+function renderConnectorCard(assessment) {
+  const locale = connectorLocale();
+  const account = (state.connectorAccounts || []).find(function(item) {
+    return item.connectorId === assessment.connectorId;
+  });
+  const names = assessment.localizedNames || {};
+  const previews = (assessment.featurePreviews || {})[locale]
+    || (assessment.featurePreviews || {})['en-US'] || [];
+  const card = el('article', { class: 'plugin-card connector-card' });
+  const brandKey = String(assessment.brandIcon || assessment.connectorId).replace(/[^a-z0-9-]/gi, '');
+  const initials = {
+    feishu: 'Fe', wecom: 'We', dingtalk: 'Di', notion: 'No', linear: 'Li',
+    'tencent-docs': 'TD', 'tencent-meeting': 'TM'
+  }[assessment.connectorId] || String(assessment.displayName || '?').slice(0, 2);
+  const heading = el('div', { class: 'settings-card-top' },
+    el('div', { class: 'connector-heading' },
+      el('div', { class: 'plugin-avatar connector-brand connector-brand-' + brandKey,
+        'data-brand-icon': assessment.brandIcon || assessment.connectorId }, initials),
+      el('div', { class: 'plugin-meta' },
+        el('div', { class: 'plugin-name' }, names[locale] || assessment.displayName),
+        el('div', { class: 'plugin-sub' }, assessment.connectorId + ' · ' + assessment.upstreamForm))),
+    el('span', { class: 'settings-pill' }, assessment.decision));
+  card.appendChild(heading);
+  card.appendChild(el('ul', { class: 'connector-preview-list' }, previews.map(function(preview) {
+    return el('li', null, preview);
+  })));
+  card.appendChild(el('div', { class: 'connector-strategy' }, assessment.javaStrategy));
+  card.appendChild(el('div', { class: 'connector-account-state' },
+    el('span', { class: 'plugin-status-tag ' + (account && account.connected ? 'is-active' : 'is-idle') },
+      account ? connectorStatusLabel(account.state) : connectorCopy('提供方未注册', 'Provider not registered')),
+    account && account.expiresAt ? el('span', { class: 'connector-expiry' },
+      connectorCopy('到期：', 'Expires: ') + account.expiresAt) : null));
+  if (account && account.diagnostic) {
+    card.appendChild(el('div', { class: 'connector-diagnostic', role: 'alert' },
+      account.diagnostic.code + ' · ' + account.diagnostic.message
+        + (account.diagnostic.retryable ? connectorCopy('（可重试）', ' (retryable)') : '')));
+  }
+
+  const actions = el('div', { class: 'settings-card-actions connector-actions' });
+  const connectBtn = el('button', { class: 'btn btn-primary btn-sm' }, account && account.connected
+    ? connectorCopy('重新授权', 'Reauthorize') : connectorCopy('连接', 'Connect'));
+  connectBtn.disabled = !account || state.connectorBusy === assessment.connectorId;
+  if (!account) connectBtn.title = connectorCopy('请先由插件注册账号提供方', 'Register an account provider through a plugin first');
+  connectBtn.onclick = function() { runConnectorAction(assessment.connectorId, 'connect'); };
+  actions.appendChild(connectBtn);
+  if (account && account.state !== 'DISCONNECTED') {
+    const disconnectBtn = el('button', { class: 'btn btn-secondary btn-sm' }, connectorCopy('断开', 'Disconnect'));
+    disconnectBtn.disabled = state.connectorBusy === assessment.connectorId;
+    disconnectBtn.onclick = function() { runConnectorAction(assessment.connectorId, 'disconnect'); };
+    actions.appendChild(disconnectBtn);
+  }
+  card.appendChild(actions);
+  return card;
+}
+
+async function runConnectorAction(connectorId, action) {
+  state.connectorBusy = connectorId;
+  render();
+  try {
+    const account = await apiRequest(CONNECTOR_API + '/accounts/' + encodeURIComponent(connectorId) + '/' + action, {
+      method: 'POST'
+    });
+    state.connectorAccounts = (state.connectorAccounts || []).filter(function(item) {
+      return item.connectorId !== connectorId;
+    });
+    state.connectorAccounts.push(account);
+    state.connectorError = null;
+    if (action === 'connect' && account.state === 'AUTHORIZATION_REQUIRED' && account.authorizationUrl) {
+      const target = new URL(account.authorizationUrl, window.location.origin);
+      if (target.protocol !== 'https:' && target.protocol !== 'http:') {
+        throw new Error(connectorCopy('授权地址协议不受支持', 'Unsupported authorization URL protocol'));
+      }
+      window.location.assign(target.toString());
+      return;
+    }
+    showToast(action === 'disconnect'
+      ? connectorCopy('连接器已断开', 'Connector disconnected')
+      : connectorStatusLabel(account.state));
+  } catch (error) {
+    showToast(connectorCopy('连接器操作失败：', 'Connector operation failed: ') + error.message);
+  } finally {
+    state.connectorBusy = null;
+    if (state.activeMainTab === 'settings' && state.activeSettingsTab === 'plugins') render();
+  }
 }
 
 function renderPluginInstall(body) {

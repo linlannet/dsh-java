@@ -1,5 +1,7 @@
 package net.linlan.dsh.domain.agent.service.subagent;
 
+import net.linlan.dsh.domain.model.entity.MessageSource;
+
 import java.util.UUID;
 
 /**
@@ -34,5 +36,18 @@ public final class SubagentSessions {
      */
     public static boolean isSubagent(String sessionId) {
         return sessionId != null && sessionId.startsWith(SESSION_PREFIX);
+    }
+
+    /**
+     * 构造父 agent 委派初始任务的消息来源（agent-message，from=父会话 id）。
+     *
+     * @param parentSessionId 父会话 id；缺失时回退为 "parent"
+     * @return agent-message 来源
+     */
+    public static MessageSource delegationSource(String parentSessionId) {
+        String from = parentSessionId != null && !parentSessionId.isBlank()
+                ? parentSessionId
+                : "parent";
+        return new MessageSource.AgentMessageSource(from);
     }
 }

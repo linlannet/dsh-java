@@ -15,6 +15,8 @@ import net.linlan.dsh.domain.plan.service.PlanModeService;
 import net.linlan.dsh.domain.schedule.IScheduleService;
 import net.linlan.dsh.domain.session.event.model.entity.SessionLog;
 import net.linlan.dsh.domain.session.IConversationQueryService;
+import net.linlan.dsh.domain.session.event.adapter.repository.ISessionEventStore;
+import net.linlan.dsh.domain.storage.deliverable.adapter.port.IGitPort;
 import net.linlan.dsh.domain.todo.service.TodoWriteService;
 import net.linlan.dsh.domain.todo.service.TodoWriteTool;
 import net.linlan.dsh.domain.tool.adapter.ToolRegistry;
@@ -33,9 +35,7 @@ import net.linlan.dsh.domain.tool.jobs.JobListTool;
 import net.linlan.dsh.domain.tool.jobs.JobOutputTool;
 import net.linlan.dsh.domain.tool.jobs.JobRunTool;
 import net.linlan.dsh.domain.tool.lsp.LspTool;
-import net.linlan.dsh.domain.tool.office.OfficeConvertTool;
-import net.linlan.dsh.domain.tool.office.OfficeRecalculateTool;
-import net.linlan.dsh.domain.tool.office.OfficeRenderTool;
+import net.linlan.dsh.domain.tool.office.ToolOfficeRegistrar;
 import net.linlan.dsh.domain.tool.web.model.valobj.WebToolConfig;
 import net.linlan.dsh.domain.document.office.model.valobj.OfficeKitConfig;
 import net.linlan.dsh.domain.storage.conversion.adapter.port.IOfficeConverterPort;
@@ -51,6 +51,7 @@ import net.linlan.dsh.domain.tool.web.adapter.port.IWebPort;
 import net.linlan.dsh.domain.tool.web.computer.CuaRunCodeTool;
 import net.linlan.dsh.domain.tool.web.computer.CuaTool;
 import net.linlan.dsh.domain.tool.web.computer.adapter.port.IComputerUsePort;
+import net.linlan.dsh.domain.tool.worktree.EnterWorktreeTool;
 import net.linlan.dsh.domain.skill.ISkillService;
 import net.linlan.dsh.domain.tool.skill.SkillTool;
 import net.linlan.dsh.domain.plugin.IPluginRuntimeService;
@@ -83,6 +84,8 @@ public final class AgentToolCatalog {
     private final OfficeKitConfig officeKitConfig;
     private final WebToolConfig webToolConfig;
     private final IComputerUsePort computerUsePort;
+    private final IGitPort gitPort;
+    private final ISessionEventStore sessionEventStore;
 
     public AgentToolCatalog(
             IShellExecutor shellExecutor,
@@ -106,7 +109,9 @@ public final class AgentToolCatalog {
             IOfficeConverterPort officeConverter,
             OfficeKitConfig officeKitConfig,
             WebToolConfig webToolConfig,
-            IComputerUsePort computerUsePort
+            IComputerUsePort computerUsePort,
+            IGitPort gitPort,
+            ISessionEventStore sessionEventStore
     ) {
         this.shellExecutor = shellExecutor;
         this.fsPort = fsPort;
@@ -130,6 +135,8 @@ public final class AgentToolCatalog {
         this.officeKitConfig = officeKitConfig == null ? OfficeKitConfig.defaults() : officeKitConfig;
         this.webToolConfig = webToolConfig == null ? WebToolConfig.defaults() : webToolConfig;
         this.computerUsePort = computerUsePort;
+        this.gitPort = gitPort;
+        this.sessionEventStore = sessionEventStore;
     }
 
     public ToolRegistry createRegistry(AgentToolContext context, ToolRegistry sharedRegistry) {
@@ -143,15 +150,15 @@ public final class AgentToolCatalog {
         IFsPort effectiveFsPort = unrestrictedFsPort == null || optionsSupplier == null
                 ? fsPort
                 : new ApprovalAwareFsPort(fsPort, unrestrictedFsPort, optionsSupplier);
-        CwdResolvingFsPort agentFsPort = new CwdResolvingFsPort(
-                effectiveFsPort,
-                context.cwdRef() != null ? context.cwdRef() : new AtomicReference<>(context.cwd()));
-        Supplier<String> cwdSupplier = context.cwdRef() != null ? context.cwdRef()::get : () -> context.cwd();
+        AtomicReference<String> cwdRef = context.cwdRef() != null
+                ? context.cwdRef() : new AtomicReference<>(context.cwd());
+        CwdResolvingFsPort agentFsPort = new CwdResolvingFsPort(effectiveFsPort, cwdRef);
+        Supplier<String> cwdSupplier = cwdRef::get;
 
         localRegistry.register(new TodoWriteTool(context.session(), false, todoWriteService));
         localRegistry.register(new AskUserTool(context.userQuestions(), context.agentId()));
         localRegistry.register(new ExitPlanModeTool(context.session(), planState, planModeService));
-        localRegistry.register(new ShellExecuteTool(effectiveShellExecutor, context.cwd()));
+        localRegistry.register(new ShellExecuteTool(effectiveShellExecutor, cwdSupplier));
         localRegistry.register(new FsReadTool(agentFsPort));
         localRegistry.register(new FsWriteTool(agentFsPort, cwdSupplier));
         localRegistry.register(new FsSearchTool(agentFsPort));
@@ -160,12 +167,10 @@ public final class AgentToolCatalog {
         localRegistry.register(new FsReadImageTool(agentFsPort));
         localRegistry.register(new FsEditTool(agentFsPort, cwdSupplier));
         localRegistry.register(new PluginStatusTool(pluginRepository, pluginRuntimeService));
-        registerComputerUse(localRegistry, context);
-        if (officeConverter != null) {
-            localRegistry.register(new OfficeRenderTool(officeConverter, officeKitConfig));
-            localRegistry.register(new OfficeConvertTool(officeConverter, officeKitConfig));
-            localRegistry.register(new OfficeRecalculateTool(officeConverter, officeKitConfig));
+        if (gitPort != null) {
+            localRegistry.register(new EnterWorktreeTool(gitPort, sessionEventStore, context.sessionId(), cwdRef));
         }
+        registerComputerUse(localRegistry, context);
         localRegistry.register(new WebSearchTool(webPort, webToolConfig));
         localRegistry.register(new WebFetchTool(webPort, webToolConfig));
         if (lspService != null) {
@@ -203,13 +208,16 @@ public final class AgentToolCatalog {
             localRegistry.register(new SessionSearchTool(conversationQueryService));
         }
         if (skillService != null) {
-            localRegistry.register(new SkillTool(skillService, context.cwd()));
+            ToolOfficeRegistrar officeRegistrar = new ToolOfficeRegistrar(officeConverter, officeKitConfig);
+            localRegistry.register(new SkillTool(skillService, context.cwd(),
+                    skill -> officeRegistrar.register(localRegistry, skill)));
         }
 
         if (subagentRegistry != null && !subagentRegistry.listProviderNames().isEmpty()) {
             String providerName = subagentRegistry.listProviderNames().get(0);
             localRegistry.register(new SubagentTool(
-                    subagentRegistry, providerName, "subagent", context.optionsSupplier()));
+                    subagentRegistry, providerName, "subagent", context.optionsSupplier(),
+                    context.sessionId()));
         }
 
         return new CompositeToolRegistry(localRegistry, sharedRegistry);

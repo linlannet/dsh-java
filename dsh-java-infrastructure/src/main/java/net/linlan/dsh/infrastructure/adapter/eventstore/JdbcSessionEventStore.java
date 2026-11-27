@@ -573,6 +573,9 @@ public class JdbcSessionEventStore implements SessionPersistenceSeam {
                 default -> new MessageSource.UserSource();
             };
         }
+        if (node.has("from")) {
+            return new MessageSource.AgentMessageSource(node.path("from").asText("parent"));
+        }
         String kind = node.path("kind").asText("");
         if (kind.equals("user") || role.equals("user")) {
             return new MessageSource.UserSource();

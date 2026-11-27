@@ -376,8 +376,9 @@ C --> MP : Response<...>
 
 # **8. 参考源升级项对齐（平台能力对齐 · 迭代二）**
 
-> 来源：参考源 `deepseek-harness` 最新发布 tag `dsh-v0.2.2-rc.3`（该 tag 无新增升级指南），本版对齐基线取 `docs/upgrade-guide/v0.2.2-alpha.3/`、`v0.2.2-rc.1/`、`v0.2.2-rc.2/` 共 42 条升级项中**适用于 Java 服务端**的部分。
-> 说明：v0.2.2 已对齐 `v0.2.2-alpha.2` 的 3 条平台能力；本节补齐其后新增能力。参考源 master 上尚未进入任何发布 tag 的改动（Timeline 实验插件、Forge Panel、CUA Windows 提供方、Plugin Market 等）不在本版范围。
+> 来源：参考源 `deepseek-harness` 最新发布 tag `dsh-v0.2.3-alpha.2`（2026-11-22）。本版对齐基线取 `docs/upgrade-guide/v0.2.2-alpha.3/`、`v0.2.2-rc.1/`、`v0.2.2-rc.2/`、`v0.2.2-rc.3/`、`v0.2.2-rc.4/`、`v0.2.2-rc.5/`、`v0.2.3-alpha.1/` 共 82 条升级项中**适用于 Java 服务端**的部分。
+> 说明：v0.2.2 已对齐 `v0.2.2-alpha.2` 的 3 条平台能力；§8.1–§8.12 对齐至 `v0.2.2-rc.2`，§8.14–§8.21 补齐 `v0.2.2-rc.3` 起新增的 40 条升级项（rc.3 22 条、rc.4 3 条、rc.5 14 条、alpha.1 1 条）。参考源 master 上尚未进入任何发布 tag 的改动不在本版范围。
+> 版本联动：Java `0.2.3` 对应参考源 tag `dsh-v0.2.3-alpha.2`；后续 Java 版本按“主.次.修订”与参考源 tag 对齐，Java 版本号不携带 `alpha`/`rc` 后缀，参考 tag 记录于本文档。
 
 ## **8.1 统一错误码与 HarnessError 体系**
 
@@ -408,7 +409,8 @@ C --> MP : Response<...>
 2. **控制工具按名称寻址**：`send_message` 与 `interrupt_agent` 参数由 `agent_id` 改为 `agent`，接受名称或 Session id；仍传 `agent_id` 必须参数校验失败。
    a. Acceptance criteria: [send_message 仅传 agent_id] → [参数校验失败]
 3. **创建工具名称参数**：`subagent`、`subagent_fork`、`subagent_oar` 接受可选 `name`，返回 `started subagent <name>`，结果为 `{kind:'activation', name}`。
-4. **列表契约**：`list_agents` 返回 `{name, status, description?}`；不可读分支以 `corrupt`/`unsupported`/`unavailable` 表示；文本行为 `<name> [<status>] — <description>`。
+4. **列表契约**：`list_agents` 返回 `{capacity, agents}`——`capacity` 为共享容量（总数与上限），`agents` 为 `{name, status, description?}` 数组；不可读分支以 `corrupt`/`unsupported`/`unavailable` 表示；文本行为 `<name> [<status>] — <description>`。
+   a. 修订说明：参考源 rc.5 `list-agents-capacity` 将原“直接返回数组”改为容量对象，本版按新契约实现，详见 §8.15。
 5. **Team 负责人**：`team_task_list`/`team_task_update` 以 `owner`（名称）取代 `ownerId`；无主任务用 `unowned: true` 查询。
 6. **目录载荷版本**：`subagent/catalog` 写入第 3 版载荷；`SubagentActivation` 新增必填 `name`，`SubagentActivationSpec` 接受可选 `name`。
 7. **中断默认关闭**：内置组合（base、standard、ptc 等）的 subagent 控制工具默认 `interrupt=false`，模型不再获得 `interrupt_agent`；中断 API 本身仍可用。
@@ -422,7 +424,8 @@ C --> MP : Response<...>
 
 1. **工具替代技能动作**：注册 `office_render`、`office_convert`、`office_recalculate` 三个 Office 工具；不再注册 `office-render`、`office-recalculate`、`office-export-pdf` 技能。
    a. Acceptance criteria: [加载 Office 技能后的下一步] → [工具目录含 3 个 office_* 工具]
-2. **技能保留**：保留 `office` 路由技能与 `office-docx`、`office-pptx`、`office-xlsx` 编写技能。
+2. **技能收敛**：保留 `office` 路由技能；rc.5 起移除 `office-docx`、`office-pptx`、`office-xlsx` 三个独立技能，Word/PowerPoint/Excel 指导以精简正文内联到 `office` 技能，`tool-office` 默认仅在加载 `office` 时激活。
+   a. Acceptance criteria: [技能清单] → [仅含 `office` 一个 Office 技能]
 3. **配置收敛**：删除 `skill-office` 的 `node`/`cli` 配置键与 `DSH_BUNDLED_OFFICE_CLI`、`DSH_BUNDLED_OFFICE_NODE`、`DSH_BUNDLED_OFFICE_SKILLS`；`DSH_BUNDLED_PRIMARY_RUNTIME` 统一为 `DSH_PRIMARY_RUNTIME`。
 4. **Python 环境声明**：`skill-office` 新增 `pythonEnvironment`，默认 `workspace-dependencies`；未挂载 workspace 依赖工具的组合须设为 `user`。
 5. **转换治理**：`office-kit` 配置新增 `outputDirectory`（默认 `$DSH_HOME/office-kit/outputs`）、`outputRetentionMs`、`maxOutputStoreBytes`。
@@ -439,6 +442,8 @@ C --> MP : Response<...>
 2. **凭据来源有序**：账号与 API 密钥来源各自携带地址，按列表顺序解析；顶层 `baseURL` 移除。
 3. **显式覆盖优先**：非空 `*BaseURL`、`*ApiKeyEnv` 仍优先于计费模式。
 4. **取消语义**：`AbortSignal` 取消时返回 `WEB_ABORTED`；凭据读取错误保留原始 `cause`。
+5. **提供方不固定**（rc.4 `web-search-deepseek-model-default`）：交付组合不再固定搜索提供方；DeepSeek 模型会话使用旧版 Messages 搜索，而不是 DeepSeek Search API。Java 侧以“按模型路由选择搜索实现”落地。
+   a. Acceptance criteria: [DeepSeek 模型会话发起 web_search] → [走 Messages 搜索实现]
 
 ## **8.5 Worktree 归档清理**
 
@@ -451,6 +456,8 @@ C --> MP : Response<...>
 3. **保留语义**：分支与提交保留；`retainOnArchive` 默认关闭，开启后保留全部检出目录。
    a. Acceptance criteria: [干净工作树归档] → [目录删除、分支保留]
 4. **失败提示**：Git 拒绝删除（如内嵌仓库）时保留目录，并在归档提示中显示清理失败。
+5. **只读策略与沙箱**（rc.5 `archive-worktrees-without-sandbox-policy`）：创建者沙箱策略为只读的检出目录同样执行归档清理，且清理所用的 Git 命令不经沙箱执行。
+   a. 修订说明：本节第 2 条“创建者策略非只读”不再作为跳过条件。
 
 ## **8.6 运行时上下文提醒**
 
@@ -506,6 +513,9 @@ C --> MP : Response<...>
 3. **显式标记**：新增 `mark(sessionId, unread)`；在 `readingReady` 报告取得宿主基线前调用必须拒绝。
 4. **事件批量写入**：`Session.append` 同时支持单事件与事件数组两种签名；既有单事件调用保持兼容。
    a. Acceptance criteria: [批量 append 事件数组] → [按顺序写入并可重放]
+5. **fork 共享父前缀**（rc.3 `session-fork-source`）：创建 fork 时除 `seed` 外须由调用方显式指定共享的父前缀；等父前缀持久化后再创建共享 fork。
+   a. Acceptance criteria: [缺少父前缀创建 fork] → [调用失败并点名参数]
+6. **压缩摘要读取**（rc.5 `compaction-summary-preview`）：压缩摘要统一从会话事件读取，不再依赖独立查询通道。
 
 ## **8.11 CUA 工具暴露一致性**
 
@@ -534,13 +544,118 @@ C --> MP : Response<...>
 
 | 类别 | 升级项 | 原因 |
 | --- | --- | --- |
-| Cordis / 包导出 | `cordis-root-and-intercept-metadata`、`package-export-cleanup` | Java 无 Cordis 运行期与 npm 导出体系 |
-| Client / Desktop UI | `chat-process-activity-context`、`window-drag-regions`、`client-module-metadata`、`terminal-bundle-sidebar-backend`、`shared-search-filter` | 客户端渲染与桌面窗口行为 |
-| macOS 原生 CUA | `cua-ax-read-limits`、`cua-hover-ax-only`、`cua-native-platform`、`cua-partial-observations`、`cua-macos-provider` | Java CUA 基于 AWT Robot，无 AX 树与 macOS 原生 helper |
-| Python / Node 运行时 | `python-ptc-removal`、`ptc-bootstrap-protocol`、`ptc-scoped-repl-default` | Java PTC 无 Node REPL bootstrap 与 Python 绑定层 |
-| Forge | `forge-change-request-overview`、`forge-pinned-diff`、`forge-review-reads` | Java 无 Forge 评审体系 |
+| Cordis / 包导出 | `cordis-root-and-intercept-metadata`、`package-export-cleanup`、`cordis-inspect-tool`、`cordis-loader-entry-validation`、`profile-context-overlay-paths` | Java 无 Cordis 运行期与 npm 导出体系 |
+| Client / Desktop UI | `chat-process-activity-context`、`window-drag-regions`、`client-module-metadata`、`terminal-bundle-sidebar-backend`、`shared-search-filter`、`client-hmr-plugin-events-stream`、`session-panel-entries`、`session-retain-conversation-facet`、`settings-section-plugins-page` | 客户端渲染与桌面窗口行为 |
+| macOS 原生 CUA | `cua-ax-read-limits`、`cua-hover-ax-only`、`cua-native-platform`、`cua-partial-observations`、`cua-macos-provider`、`cua-activity-helper`、`cua-held-inputs`、`cua-system-input` | Java CUA 基于 AWT Robot，无 AX 树与 macOS 原生 helper |
+| Python / Node 运行时 | `python-ptc-removal`、`ptc-bootstrap-protocol`、`ptc-scoped-repl-default`、`ptc-default-scoped-repl`、`node-24-22-3` | Java PTC 无 Node REPL bootstrap 与 Python 绑定层；Node 版本前置仅约束 TS 工具链 |
+| Forge | `forge-change-request-overview`、`forge-pinned-diff`、`forge-review-reads`、`forge-command-rules`、`forge-provider-hosts`、`forge-rate-limited-failure` | Java 无 Forge 评审体系 |
 | 账号体系 | `account-notification-fields`、`account-remote-provider` | Java 未实现 DeepSeek 账号与远程账号命名空间 |
 | 文档技能 | `dsh-doc-skill` | 参考源内部文档工作流，不影响运行时能力 |
+
+> 判定口径：以上项目的共同点是依赖 Cordis 运行期、客户端渲染、macOS 原生 CUA、Node/Python REPL 绑定或 Forge 评审；Java 服务端无对应体系，强行移植会引入不可维护的模拟层。
+
+## **8.14 会话 fork、压缩摘要与冷会话查询**
+
+对应升级项：`session-fork-source`、`compaction-summary-preview`、`session-query-inspect-session-removed`、`sdk-prompt-time-zone`。
+
+### **8.14.1 Business Rules**
+
+1. **fork 父前缀**：创建共享 fork 时由调用方传入父前缀，持久化完成后再创建 fork（与 §8.10 第 5 条一致）。
+2. **压缩摘要来源**：压缩摘要只从会话事件投影，读取方不得再走独立查询。
+   a. Acceptance criteria: [读取压缩摘要] → [返回事件投影结果]
+3. **移除 `inspectSession`**：废弃 `ctx.sessionQuery.inspectSession`，冷会话读取统一走“预备 Session 对象 + 只读查询”；直接调用旧接口须编译期失败。
+4. **时区上报**：未指定时区的 SDK prompt 向模型上报运行时进程时区，不再上报“时区不可用”。
+   a. Acceptance criteria: [未设置时区的 prompt] → [请求含进程时区]
+
+## **8.15 Subagent 运行期契约**
+
+对应升级项：`subagent-model-selection-live-setting`、`subagent-initial-task-source`、`list-agents-capacity`。
+
+### **8.15.1 Business Rules**
+
+1. **初始任务来源**：可续聊子 agent 的初始委派任务记录为来自父 agent 的 `agent-message`，不得再记为 `user` 消息。
+   a. Acceptance criteria: [子 agent 初始任务] → [来源为父 agent 的 agent-message]
+2. **模型选择实时读取**：Subagent 模型选择在每次调用时读取宿主当前设置，不再使用 Session 创建时记录的策略。
+3. **列表容量契约**：`list_agents` 返回 `{capacity, agents}`，`capacity` 含总数与上限（修订 §8.2.1 第 4 条）。
+   a. Acceptance criteria: [工具调用] → [结果为容量对象而非裸数组]
+
+## **8.16 工作树与写入边界收敛**
+
+对应升级项：`create-worktree-tool-merged`、`working-directory-tool-removed`、`workspace-write-boundary-follows-root`、`archive-worktrees-without-sandbox-policy`。
+
+### **8.16.1 Business Rules**
+
+1. **工具合并**：移除模型工具 `create_worktree`；`enter_worktree` 负责创建工作树，或进入同名已有工作树。
+   a. Acceptance criteria: [工具目录] → [不含 create_worktree]
+2. **目录移动收敛**：移除模型工具 `working_directory` 及其包，并移除子代理工具的 `cwd` 参数；只有宿主操作可移动 Session 目录。
+3. **写入边界**：`workspace-write` 边界跟随 Session 当前工作目录而非原始项目根，worktree 中的 Session 不得写入仓库 `.git` 目录。
+   a. Acceptance criteria: [worktree 内 Session 写入 .git] → [拒绝]
+4. **归档与沙箱解耦**：归档清理不因创建者只读策略跳过，Git 命令不经沙箱执行（见 §8.5 第 5 条）。
+
+## **8.17 PTC 与 MCP 输入输出**
+
+对应升级项：`ptc-output-limit`、`ptc-mcp-image-values`、`ptc-tool-result-inspection`。
+
+### **8.17.1 Business Rules**
+
+1. **输出截断**：程序展示输出超过上限时截断展示内容，程序本身继续执行；截断提示须可读。
+   a. Acceptance criteria: [超限输出] → [被截断且程序未中断]
+2. **MCP 图片值**：已接受的 MCP 图片块携带附件引用，并以 `Image` 值传给程序，不再以 base64 JSON 传递。
+   a. Acceptance criteria: [MCP 返回图片] → [程序收到 Image 引用]
+3. **结果渲染**：直接展示未修改的 PTC 工具对象/数组结果时使用工具渲染文本；自定义 Node bootstrap 须升级协议版本（Java 无此层，仅对齐渲染语义）。
+
+## **8.18 DeepSeek 请求认证、拒答与文件策略**
+
+对应升级项：`deepseek-request-auth`、`deepseek-refusal-code`、`deepseek-file-policy`、`pi-image-resize-defaults`。
+
+### **8.18.1 Business Rules**
+
+1. **认证提供方**：DeepSeek 模型路由与 Web 提供方须挂载独立认证提供方；移除路由内的凭据辅助函数、LLM 层的 API 密钥检查与配置导出。
+   a. Acceptance criteria: [未挂载认证提供方] → [启动失败并给出可读原因]
+2. **拒答错误码**：流式内容拒答的错误码由 `MALFORMED_RESPONSE` 改为 `CONTENT_REFUSED`。
+   a. Acceptance criteria: [内容拒答] → [错误码 `CONTENT_REFUSED`]
+3. **文件上传策略**：直接调用文件存储的代码须传入解析后的上传策略，不得使用隐式默认。
+4. **图片体积上限**：请求图片在编码后执行字节硬上限；DeepSeek 软目标改用 `imageTargetBytes`。
+   a. Acceptance criteria: [超限图片] → [编码失败或按上限压缩]
+
+## **8.19 技能、推荐与 Action 卡片**
+
+对应升级项：`office-single-skill`、`upstream-skills-base-row`、`personalized-recommendations-bundle-retired`、`independent-action-cards`、`action-card-blocks`。
+
+### **8.19.1 Business Rules**
+
+1. **Office 单技能**：移除三个独立编写技能，保留单一 `office` 技能并内联格式指导（修订 §8.3 第 2 条）。
+2. **upstream-skills 基础行**：基础 bundle 新增 `upstream-skills` 行；禁用 `skill` 行的组合中该行保持等待状态，启动时输出一条警告。
+3. **推荐 bundle 退役**：移除“个性化推荐”可选 bundle，改由 Web 组合自行挂载且默认开启，开关位于“设置 → 通用设置”。
+4. **Action 卡片来源**：卡片由回答中的 `action-card` 代码块提出；移除 `propose_action` 工具、`queuedMessageLimit` 字段与卡片 `callId` 字段。
+   a. Acceptance criteria: [回答含 action-card 块] → [生成可操作卡片]
+5. **卡片生命周期**：后续轮次出现新卡片时，早先卡片仍可操作，不因新轮次失效。
+
+## **8.20 系统提示与上下文章节**
+
+对应升级项：`system-prompt-integrations`。
+
+### **8.20.1 Business Rules**
+
+1. **章节累计**：系统消息消费方必须累计各来源推送的章节更新，不得覆盖已有章节。
+2. **来源通知**：消费方须识别各来源的通知语义，并与 §8.6 `runtime-context` 快照协同。
+   a. Acceptance criteria: [多来源章节更新] → [合并后无丢失]
+
+## **8.21 连接器插件与账号套件**
+
+对应升级项：`cli-account 套件`、`feishu`、`wecom`、`dingtalk`、`notion`、`linear`、`tencent-docs`、`tencent-meeting`、`mcp-account`、`upstream-skills`（参考源 0.2.3 新增能力，非兼容性升级指南）。
+
+### **8.21.1 Business Rules**
+
+1. **统一账号套件**：CLI 类连接器共享账号注册表、命令运行器与操作集合；插件 CLI 以运行期上下文给出的绝对路径执行；Windows 下路径上下文按 PowerShell 语法书写。
+2. **连接器接入面**：每个连接器提供插件页连接入口、品牌图标、功能预览与多语言文案；登录失败须给出分类诊断。
+3. **MCP 账号与 OAuth**：新增 MCP 账号注册表，支持 OAuth 授权、被动刷新、显式重新授权与登出；连接中仍可发起再次授权。
+4. **upstream-skills**：从固定 GitHub commit 下载连接器上游技能，按 profile 独立缓存并替换旧版本。
+5. **Java 接入口径**：先评估 `wecom`/`dingtalk`/`notion`/`linear`/`tencent-docs`/`tencent-meeting` 与 Java 侧能力映射，再按现有 `dsh-emis-plugin`／飞书插件模式接入，不引入 Node CLI 运行时；无法复用官方 CLI 的连接器以 REST 端口实现。
+   a. Acceptance criteria: [连接器评估表] → [逐项给出“接入/不接入/替代实现”结论]
+   b. Acceptance criteria: [已接入连接器] → [插件页可完成连接/断开，令牌不落前端]
+
+> 连接器为 0.2.3 新增能力面（对上游无破坏性升级指南），本版纳入对齐范围但按插件分期落地；评估结论记录于 `design.md` 3.13.8 与 `tasks.md` 11.20。
 
 ---
 
@@ -566,5 +681,15 @@ C --> MP : Response<...>
 | 16 | WebServer 默认鉴权 | §8.9 | 默认 required、显式 anonymous |
 | 17 | 会话状态与事件写入 | §8.10 | 阅读记录、`completionFailed`、批量 append |
 | 18 | CUA / PTC 部分对齐 | §8.11–§8.12 | 无 preset Agent 的 `cua_run_code`、`inspect` 输出 |
+| 19 | 会话 fork/压缩摘要/冷会话查询 | §8.14 | 父前缀、摘要由事件投影、移除 `inspectSession`、时区上报 |
+| 20 | Subagent 运行期契约 | §8.15 | 初始任务为 agent-message、模型选择实时读取、`list_agents` 容量对象 |
+| 21 | 工作树与写入边界 | §8.16 | 移除 `create_worktree`/`working_directory`、写入边界跟随 Session 目录 |
+| 22 | PTC 与 MCP 输入输出 | §8.17 | 输出截断不断执行、MCP 图片以 Image 值传递 |
+| 23 | DeepSeek 认证/拒答/文件策略 | §8.18 | 认证提供方、`CONTENT_REFUSED`、上传策略与图片上限 |
+| 24 | 技能、推荐与 Action 卡片 | §8.19 | Office 单技能、upstream-skills 行、推荐 bundle 退役、action-card 块 |
+| 25 | 系统提示与上下文章节 | §8.20 | 章节累计与来源通知合并 |
+| 26 | 连接器插件与账号套件 | §8.21 | CLI 账号套件、MCP OAuth、连接器分期接入评估 |
 
+> **参考源对齐基线**：v0.2.3 对应参考源 tag `dsh-v0.2.3-alpha.2`；§8.1–§8.12 覆盖至 `v0.2.2-rc.2`，§8.13–§8.21 覆盖 `v0.2.2-rc.3`~`v0.2.3-alpha.2`。参考源 0.2.3 另有大量新增包（会话 SQLite 持久化、Forge/GitLab、CUA Windows、Timeline、desktop-publisher 等）因无 Java 对应体系未纳入，见 §8.13。
+>
 > **与 v0.2.2 修订记录的关系**：v0.2.2 修订期曾下线移动设备配对（原 `DevicePairRequest`/`DevicePairResult` 命名、`InMemoryDeviceRepository`、无开关控制）；v0.2.3 重构回归后 DTO 统一 `*DTO` 后缀、聚合建模（`DeviceCredentialAggregate`）、新增移动访问开关与单元测试。

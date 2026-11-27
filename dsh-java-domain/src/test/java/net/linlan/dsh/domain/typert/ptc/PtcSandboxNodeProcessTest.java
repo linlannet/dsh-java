@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import net.linlan.dsh.domain.typert.model.valobj.PtcProgramOutput;
+
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -92,6 +94,20 @@ class PtcSandboxNodeProcessTest {
         process.start();
 
         assertThrows(IllegalArgumentException.class, () -> process.execute("  "));
+    }
+
+    @Test
+    void outputTruncationDoesNotChangeSuccessfulExitCode() {
+        PtcProgramOutput output = new PtcProgramOutput(4);
+        PtcSandboxNodeProcess process = new PtcSandboxNodeProcess("node", "/sandbox.js");
+        process.start();
+
+        output.inspect("output beyond the display budget");
+        PtcSandboxNodeProcess.PtcResult result = process.execute("continue after output truncation");
+
+        assertTrue(output.isTruncated());
+        assertTrue(result.success());
+        assertEquals(0, result.exitCode());
     }
 
     @Test

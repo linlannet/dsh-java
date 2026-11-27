@@ -1,6 +1,6 @@
 # DeepSeek Harness Java v0.2.3 开发说明
 
-> 版本：`v0.2.3` | 开发周期：2026-11-06 ~ 2026-11-12 | 基线：v0.2.2
+> 版本：`v0.2.3` | 开发周期：2026-11-06 ~ 2026-11-27 | 基线：v0.2.2
 
 ## 1. 版本概览
 
@@ -56,6 +56,8 @@ v0.2.3 以**移动端接入**为主线，包含三块内容：
 - `mvn clean install` 全模块构建通过；ArchUnit `triggerMustOnlyDependOnApiAndCase` 等架构规则回归通过；
 - `DevicePairingUseCaseTest` 覆盖开关默认值、关闭拒绝、配对码一次性/过期、指纹重复、限流、轮换与吊销后失效等关键用例；
 - 桌面端端到端链路验证通过：开开关 → 生成配对码 → 配对成功 → `devt_` 请求通过拦截器 → 吊销/轮换后 401。
+- 2026-11-27 执行单线程 `mvn clean test`：根 reactor 11 个模块全部 `SUCCESS`，ArchUnit 与应用启动集成测试通过；
+- `node --check dsh-java-app/src/main/resources/static/app.js` 通过；连接器 DTO 序列化、OAuth/刷新/断开、工作树真实 Git 端口调用与工具目录均有自动化断言。
 
 ## 5. 已知限制
 
@@ -64,17 +66,21 @@ v0.2.3 以**移动端接入**为主线，包含三块内容：
 3. **openid 未绑定业务账号**：本版本仅完成登录换取会话令牌。
 4. **设备 token 无细粒度权限**：通过校验即等价主 Key 放行，不做按设备裁剪。
 5. **0.2.3 详情路径**：`CHANGELOG.md` 中 0.2.3 的详情链接最初误写为 `docs/spec/0.2.2/`，已随四件套归档至 `docs/spec/0.2.3/`。
+6. **连接器缓存不跨重启**：账号状态、待授权 state 与 AES-GCM 令牌缓存均为进程内实现，重启后需重新连接，多实例之间不共享；
+7. **厂商提供方由插件注册**：本版交付通用账号/OAuth 契约、评估目录与插件页；WeCom、DingTalk、Notion、Linear 等具体提供方须由所属插件注册，未注册时页面明确显示“提供方未注册”，不会伪报已连接；
+8. **upstream-skills 仅元数据**：当前环境未提供可核验的参考源提交哈希，`BundleDefinition.BASE` 中 40 位值 `ca6aadb548a1aea47e8eb96db0aa980af46ad8d0` 是本项目实现基线提交，并非声称的上游技能提交；本版不包含下载器、profile 缓存或旧版本替换器。
 
 ## 6. 依赖与体积增量
 
 - **新增第三方依赖：无**。HTTP 调用使用 JDK `java.net.http.HttpClient`，JSON 使用既有 Jackson；
 - **新增数据库表：无**（进程内存储）；
 - **新增 Maven 模块：无**（全部落在既有 7 模块 + 2 插件内）；
-- 制品体积增量可忽略（新增类约 15 个 + 3 份文档）。
+- 制品随本轮领域代码与静态控制台资源小幅增长；未做精确二进制体积差分。
 
-## 7. 迭代二范围（参考源平台能力对齐，规划中）
+## 7. 迭代二范围（参考源平台能力对齐）
 
-> 状态：**未实现**，仅完成需求、设计与任务拆解；代码落地与验证记录待本轮开发完成后补入本节。
+> 对齐基线：参考源 tag `dsh-v0.2.3-alpha.2`（2026-11-22），升级指南覆盖 `v0.2.2-alpha.3` ~ `v0.2.3-alpha.1` 共 82 条。
+> 状态：§8.1–§8.12（tasks 11.1–11.12）与 §8.14–§8.21（tasks 11.13–11.20）均已实现并通过自动化回归。
 
 | 能力域 | 参考源升级项 | 归属 |
 | --- | --- | --- |
@@ -89,7 +95,15 @@ v0.2.3 以**移动端接入**为主线，包含三块内容：
 | WebServer 默认鉴权 | `connection-page-peer`（部分） | spec §8.9 / design §3.10 / tasks §11.9 |
 | 会话状态与事件写入 | `session-status-package`（部分）、`session-append-overloads` | spec §8.10 / design §3.11 / tasks §11.10 |
 | CUA / PTC 部分对齐 | `cua-agents-without-preset`、`ptc-inspect-output` | spec §8.11–§8.12 / design §3.12 / tasks §11.11 |
+| 会话 fork/摘要/冷查询 | `session-fork-source`、`compaction-summary-preview`、`session-query-inspect-session-removed`、`sdk-prompt-time-zone` | spec §8.14 / design §3.13.1 / tasks §11.13 |
+| Subagent 运行期契约 | `subagent-model-selection-live-setting`、`subagent-initial-task-source`、`list-agents-capacity` | spec §8.15 / design §3.13.2 / tasks §11.14 |
+| 工作树与写入边界 | `create-worktree-tool-merged`、`working-directory-tool-removed`、`workspace-write-boundary-follows-root`、`archive-worktrees-without-sandbox-policy` | spec §8.16 / design §3.13.3 / tasks §11.15 |
+| PTC / MCP 输入输出 | `ptc-output-limit`、`ptc-mcp-image-values`、`ptc-tool-result-inspection` | spec §8.17 / design §3.13.4 / tasks §11.16 |
+| DeepSeek 认证/拒答/图片 | `deepseek-request-auth`、`deepseek-refusal-code`、`deepseek-file-policy`、`pi-image-resize-defaults` | spec §8.18 / design §3.13.5 / tasks §11.17 |
+| 技能/推荐/Action 卡片 | `office-single-skill`、`upstream-skills-base-row`、`personalized-recommendations-bundle-retired`、`action-card-blocks`、`independent-action-cards` | spec §8.19 / design §3.13.6 / tasks §11.18 |
+| 系统提示与上下文章节 | `system-prompt-integrations` | spec §8.20 / design §3.13.7 / tasks §11.19 |
+| 连接器插件与账号套件 | `cli-account`、`feishu`、`wecom`、`dingtalk`、`notion`、`linear`、`tencent-docs`、`tencent-meeting`、`mcp-account`、`upstream-skills` | spec §8.21 / design §3.13.8 / tasks §11.20 |
 
-**不纳入**：Cordis/包导出、Client/Desktop、macOS AX、Python/Node 运行时、Forge、账号、文档技能，原因见 spec §8.13。
+**不纳入**：Cordis/包导出、Client/Desktop、macOS AX、Python/Node 运行时、Forge、账号、文档技能、Node 版本前置，原因见 spec §8.13。
 
-**发布口径**：本节能力未完成前，0.2.3 不标记为"已发布"；完成后需补齐验证结论、已知限制与依赖/体积增量。
+**发布口径**：§8.14–§8.21 的代码、任务清单与自动化验证已完成；正式发布仍须遵循项目发布审核，并保留上述内存态、插件提供方与 upstream-skills 元数据边界。

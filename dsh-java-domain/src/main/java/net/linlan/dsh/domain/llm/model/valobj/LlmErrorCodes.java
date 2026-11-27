@@ -27,7 +27,9 @@ public final class LlmErrorCodes {
     public static final String TRANSPORT = "TRANSPORT";
     public static final String AUTH = "AUTH";
     public static final String INVALID_REQUEST = "INVALID_REQUEST";
+    /** 保留旧码用于其他解析失败；内容拒答使用 CONTENT_REFUSED。 */
     public static final String MALFORMED_RESPONSE = "MALFORMED_RESPONSE";
+    public static final String CONTENT_REFUSED = "CONTENT_REFUSED";
     public static final String STREAM_CLOSED = "STREAM_CLOSED";
     public static final String ABORTED = "ABORTED";
     public static final String UNKNOWN = "UNKNOWN";

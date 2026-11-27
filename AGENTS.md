@@ -1,7 +1,7 @@
 # AGENTS.md — dsh-java
 
 ## Project
-Java 17 + Spring Boot 3.5.16 **Agent Harness** (ReAct loop, tools, approvals, plugins, event sourcing). Version 0.2.3.
+Java 17 + Spring Boot 3.5.16 **Agent Harness** (ReAct loop, tools, approvals, plugins, connector accounts/OAuth, event sourcing). Version 0.2.3.
 
 ## Layout
 - `dsh-java-domain` models, events, ports
@@ -26,7 +26,8 @@ Dependency direction: `trigger -> api <- case -> domain`, `infrastructure` imple
 ## Conventions
 - Java 17 records for DTOs / value objects
 - Return `net.linlan.dsh.api.response.Response<T>` from use cases
-- Controllers only translate protocol; business rules live in `cases`
+- Controllers only translate protocol; business rules live in `cases`; `*CaseImpl` delegates through a `*Factory`
+- Connector tokens stay behind domain ports/server cache and never enter DTOs, browser state or logs
 - No new third-party dependency without explicit justification
 - Docs are Chinese by default; keep `README.md` and `README.en.md` in sync
 

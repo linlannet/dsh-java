@@ -2,47 +2,69 @@
 
 > 各版本详情见 `docs/md/release-vX.Y.Z-development-notes.md`；以下按 7 个模块记录包级功能更新。
 ## 版本号：0.2.3
-- 更新日期：2026-11-08
+- 更新日期：2026-11-27
 - 详情：docs/spec/0.2.3/release-v0.2.3-development-notes.md
 
 - **新增**：
-  - **企业身份登录（linlan-emis OIDC）**：`dsh-java-trigger` 新增 `EmisOidcController`（`GET /api/emis/login|callback|me`、`POST /api/emis/logout`）：授权码 + PKCE + state，回调用 JWKS 验签 RS256 id_token，access/id_token 只存 `HttpSession`；`dsh-java-api` 新增 `EmisIdentityDTO`；`application.yml` 新增 `dsh.emis.oidc.*`（client-secret 仅环境变量）；static 控制台「个人登录」改为企业账号 SSO，移除直连 `/api/auth/login` 与前端 token 持久化
-  - **plugins/dsh-emis-plugin**：新增 linlan-emis 企业身份鉴权插件（P0）：RS256 JWT + JWKS 本地验签，提供 `whoami` / `scope_check` 工具；拒绝 HS256；JWKS 不可达 fail-closed；不记录 token；已在根 `pom.xml` 注册模块
-  - **dsh-java-api**：新增 `IMiniAppApi`（微信小程序登录用例接口）与 `MiniAppLoginRequestDTO`/`MiniAppLoginResponseDTO`
-  - **dsh-java-trigger**：新增 `MiniAppController`（`POST /api/miniapp/login`）
-  - **dsh-java-case**：新增 `MiniAppLoginUseCase`——以 `wx.login` 临时 code 调用微信 `jscode2session` 换取 `openid`，签发 2 小时短期会话令牌（`mini_` 前缀）；未配置 appid/secret 时返回 `50300`，不降级为匿名登录
-  - **dsh-java-app**：`application.yml` 新增 `dsh.miniapp.wechat.appid/secret`（通过 `DSH_MINIAPP_WECHAT_APPID`/`DSH_MINIAPP_WECHAT_SECRET` 环境变量注入，AppSecret 仅服务端配置）
-  - **移动端能力（移动访问开关 + 设备配对，重构回归）**：
-    - **dsh-java-api**：`IDeviceApi` 新增 `getMobileAccess`/`setMobileAccess` 开关接口；新增 `MobileAccessDTO`；DTO 统一 `*DTO` 后缀（`DevicePairRequestDTO`、`DevicePairResponseDTO`）
-    - **dsh-java-trigger**：`DeviceController` 新增 `GET/PUT /api/devices/mobile-access`
-    - **dsh-java-case**：`DevicePairingUseCase` 移动访问默认关闭，需桌面端显式开启；新增 `DevicePairingUseCaseTest`
-    - **dsh-java-domain**：设备凭据改为聚合 `DeviceCredentialAggregate`（仅存 Token SHA-256 摘要，不存明文）
-    - **dsh-java-infrastructure**：新增 `DeviceRepository`（内存最小闭环实现，后续可替换为数据库仓储）
-  - **AI 可发现性**：新增 `AGENTS.md`（AI 编码助手的构建/测试命令与约定）、`llms.txt`（面向 LLM 的项目摘要）、`docs/md/ai-discoverability.md`（系列仓库 About/topics 配置清单）
+  - **dsh-java-api**：
+    - 企业身份 `EmisIdentityDTO`；`IMiniAppApi` 与 `MiniAppLoginRequestDTO`/`MiniAppLoginResponseDTO`
+    - `IDeviceApi` 新增 `getMobileAccess`/`setMobileAccess`；新增 `MobileAccessDTO`，设备 DTO 统一 `*DTO` 后缀（`DevicePairRequestDTO`/`DevicePairResponseDTO`）
+    - `IConnectorApi` 与 `ConnectorAssessmentDTO`/`ConnectorAccountStatusDTO`/`ConnectorDiagnosticDTO`：只交换状态、诊断与 OAuth 回调参数，不交换令牌
+  - **dsh-java-domain**：
+    - 设备凭据聚合 `DeviceCredentialAggregate`（仅保存 Token 的 SHA-256 摘要，不存明文）
+    - 统一错误体系 `HarnessError`/`ToolArgsError`/`TerminalError`：CUA、浏览器、Worktree、Ralph、Hook、MCP、附件、Web 抓取与终端错误类接入；新增 `CUA_*`、`BROWSER_*`、`WORKTREE_NOT_GIT_REPO`、`RALPH_LOOP_*`、`HOOK_BLOCKED`、`MCP_RECONNECT_EXHAUSTED`、`CLEANUP_FAILED` 等码；`ToolCallExecutor.mapFailure` 在 `tool/result` 中保留 `error.name`/`error.code`，不再回落 `TOOL_ERROR`
+    - `ToolExecutionResult` 新增结构化失败重载；`ToolErrorCodes` 新增 `TOOL_ERROR`、`MODEL_DOES_NOT_SUPPORT_IMAGES`
+    - `WebFetchTool` 新增 `WEB_FETCH_DNS_FAILED` 等 7 个传输错误码
+    - Office 工具化：新增 `office_render`/`office_convert`/`office_recalculate`；`OfficeSkill` 收敛为 `office` 单技能（`office-docx`/`office-pptx`/`office-xlsx` 内置），格式指导按需读取
+    - Worktree：新增 `WorktreeArchiveCleaner`/`WorktreeArchivePolicy`/`IWorktreeCleanupPort` 归档清理与 `plugin:worktree/created` 事件；`EnterWorktreeTool` 成为正式工具，按 `IGitPort` 创建或进入同名工作树
+    - `WorkspaceWritePolicy`：写入边界跟随 Session 当前目录并拒绝写入 `.git`
+    - `RuntimeContextSnapshot` 统一 `runtime-context` 快照；`SessionStatus`/`SessionReadState`/`SessionReadingRegistry` 维护运行与阅读状态
+    - `CompactionSummaryProjection` 从会话事件投影压缩摘要；`SessionHandle` 提供冷会话只读访问
+    - `PluginBundleInfo`（`update=registry|git`）与 `PluginBundleUpdateService`
+    - `CuaTool`/`CuaRunCodeTool` 与 `PtcProgramOutput`（`inspect(...)` 显式选择输出）
+    - `ActionCardParser`（`domain.actioncard`）解析回答内 `action-card` 代码块，新旧轮次卡片互不影响
+    - 连接器领域：`ConnectorAccountRegistry`/`ConnectorAccountService`/`IConnectorAccountPort`/`IConnectorTokenCache`/`ConnectorAssessmentCatalog`；评估目录覆盖 feishu、wecom、dingtalk、notion、linear、tencent-docs、tencent-meeting，逐项给出“接入/不接入/替代实现”结论
+    - 基础 bundle 增加 `upstream-skills` 行与固定元数据（`upstream-skills.repository`、`upstream-skills.commit`）；不包含下载器
+  - **dsh-java-case**：
+    - `MiniAppLoginUseCase`：以 `wx.login` 临时 code 调用 `jscode2session` 换取 `openid`，签发 2 小时 `mini_` 会话令牌；未配置 appid/secret 时返回 `50300`，不降级为匿名登录
+    - `DevicePairingUseCase`：移动访问默认关闭，桌面端显式开启后完成配对并签发 `devt_` 令牌
+    - `SessionForkService`：要求显式父前缀，先持久化父前缀再返回共享 fork
+    - `ConnectorAccountCaseImpl` 经 `ConnectorAccountFactory` 委托领域服务，满足用例层分层约束
+  - **dsh-java-infrastructure**：
+    - `DeviceRepository` 内存仓储（最小闭环实现，后续可替换为数据库仓储）
+    - `LocalWebService` 按异常类型分类抓取失败；`LocalTerminalPort` 清理失败抛出 `CLEANUP_FAILED`
+    - `DeepSeekAuthProvider` 收敛 DeepSeek 认证；`EncryptedConnectorTokenCache` 以 AES-GCM 在进程内缓存连接器令牌；`ConnectorBeanConfig` 装配账号注册表
+    - `JGitWorktree` 实现工作树状态检查、移除与 `createWorktree`
+  - **dsh-java-trigger**：
+    - `EmisOidcController`（`GET /api/emis/login|callback|me`、`POST /api/emis/logout`）：授权码 + PKCE + state，回调用 JWKS 验签 RS256 id_token，access/id_token 只存 `HttpSession`
+    - `MiniAppController`（`POST /api/miniapp/login`）
+    - `DeviceController` 新增 `GET/PUT /api/devices/mobile-access`
+    - `ConnectorController`（`/api/harness/connectors`）：评估、账号列表/详情、连接、OAuth 回调、断开与刷新；OAuth 回调显式匿名，其余端点默认鉴权
+    - `@RouteAuth`/`RouteAuthResolver`/`WebAuthProvider`/`DefaultWebAuthProvider`/`ConnectionOriginGuard`：未声明路由默认要求认证
+  - **dsh-java-app**：
+    - `application.yml` 新增 `dsh.miniapp.wechat.appid/secret`（`DSH_MINIAPP_WECHAT_APPID`/`DSH_MINIAPP_WECHAT_SECRET` 注入）、`dsh.emis.oidc.*`（client-secret 仅环境变量）与 `harness.auth.*`
+    - 静态控制台新增连接器设置卡片（品牌、`zh-CN`/`en-US` 文案、功能预览、连接/断开/OAuth 跳转/诊断）；「个人登录」改为企业账号 SSO
+  - **plugins/dsh-emis-plugin**：linlan-emis 企业身份鉴权插件（P0）：RS256 JWT + JWKS 本地验签，提供 `whoami`/`scope_check` 工具；拒绝 HS256，JWKS 不可达 fail-closed，不记录 token；已在根 `pom.xml` 注册模块
+  - **文档与 AI 可发现性**：新增 `AGENTS.md`、`llms.txt`、`docs/md/ai-discoverability.md` 与 [docs/spec/0.2.3/error-codes.md](docs/spec/0.2.3/error-codes.md)（通用码、17 个子系统码表、旧→新映射）
 - **更新**：
   - 全模块 pom 版本 `0.2.2` → `0.2.3`
   - `ApiKeyAuthInterceptor` 重新接入设备级 Bearer Token 校验（`devt_` 前缀，吊销后立即 401）
-  - Web 控制台（`app.js`/`app.css`）适配移动访问开关与设备管理面板
-- **迭代二（进行中）**：参考源平台能力对齐
-  - **dsh-java-domain**：新增 `HarnessError` 统一错误基类与 `ToolArgsError`；`StorageException`/`AttachmentError`/`WebFetchError`/`TerminalBackendCleanupError` 接入统一体系
-  - **dsh-java-domain**：`ToolCallExecutor` 新增 `mapFailure`，工具抛出 `HarnessError` 时在 `tool/result` 中保留 `error.name` 与 `error.code`，不再统一回落 `TOOL_ERROR`
-  - **dsh-java-domain**：`ToolExecutionResult` 新增结构化失败重载；`ToolErrorCodes` 新增 `TOOL_ERROR`、`MODEL_DOES_NOT_SUPPORT_IMAGES`
-  - **dsh-java-domain**：`WebFetchTool` 捕获抓取分类错误；新增 `WEB_FETCH_DNS_FAILED` 等 7 个传输错误码
-  - **dsh-java-infrastructure**：`LocalWebService` 按异常类型分类抓取失败；`LocalTerminalPort` 清理失败抛出 `CLEANUP_FAILED`
-  - **dsh-java-domain**：CUA、浏览器、Worktree、Ralph、Hook、MCP 错误类统一继承 `HarnessError`，新增 `CUA_*`、`BROWSER_*`、`WORKTREE_NOT_GIT_REPO`、`RALPH_LOOP_*`、`HOOK_BLOCKED`、`MCP_RECONNECT_EXHAUSTED` 错误码
-  - **dsh-java-domain**：Shell/FS 参数错误由 `MISSING_PARAM` 收敛为 `ToolArgsError`/`INVALID_ARGS`，统一 `invalid arguments: ` 前缀；修复缺省参数被当作字符串 `"null"` 继续执行的问题
-  - **dsh-java-domain / infrastructure**：新增 `TerminalError` 基类；`TerminalBackendCleanupError` 聚合启动与清理失败（`cause` + `suppressed`），终端会话查找/运行状态错误改用 `TERMINAL_*` 码
-  - **错误码总表**：新增 [docs/spec/0.2.3/error-codes.md](docs/spec/0.2.3/error-codes.md)，覆盖通用码、17 个子系统码表与旧→新映射
-  - **Office 能力工具化**：新增 `office_render`/`office_convert`/`office_recalculate` 并注册到工具目录；`OfficeSkill` 收敛为 `office` 路由 + `office-docx`/`office-pptx`/`office-xlsx` 内置写作技能；新增 `dsh.office.*` 输出治理配置与 `OfficeKitOutputStore` 过期/容量清理；LibreOffice 缺失映射为 `OFFICE_KIT_UNAVAILABLE`，不阻断启动
-  - **Subagent 名称寻址**：`InProcessSubagentDriver` 增加名称索引与同级唯一校验、名称/会话 id 解析、`listAgents` 投影；`send_message`/`interrupt_agent` 改用 `agent` 参数并拒绝 `agent_id`；`SubagentTool` 支持可选 `name`，返回 `started subagent <name>` 与 `{kind:'activation', name}`；`list_agents` 返回 `{name, status, description?}`
-  - **Web 计费与凭据**：新增 `searchBilling`/`fetchBilling`（`auto|account|api-key`）与有序凭据来源，`WebToolConfig`/`WebCredentialResolver` 解析优先级；`web_search`/`web_fetch` 按解析结果传递凭据；取消异常映射 `WEB_ABORTED`，`WebBillingError` 保留 cause
-  - **Worktree 归档清理**：新增 `WorktreeArchiveCleaner`/`WorktreeArchivePolicy`/`IWorktreeCleanupPort`，归档时按脏树、子模块、锁、分离 HEAD 条件跳过，非 force 移除且保留分支与提交；`JGitWorktree` 实现状态检查与移除；新增 `plugin:worktree/created` 事件类型与载荷
-  - **运行时上下文提醒**：新增 `RuntimeContextSnapshot`，`runtime-context` 统一包裹 `<system-reminder>`，首份/后续快照文案区分，清空输出 `form=snapshot`/`sections=[]`；旧快照缺 `sections` 仅刷新一次并保留原前缀
-  - **Plugin Bundle 更新**：新增 `PluginBundleInfo`（可选 `update=registry|git`）、`PluginBundleUpdateService`（Git 仅固定完整提交可更新）、`unexpected-package` 错误码；`PluginRegistryService` 新增带 `expectedPluginId/expectedVersion` 的安装校验
-  - **DeepSeek 文件上传超时**：`DeepSeekAdapterOptions` 新增 `filesApiTimeoutMs`（默认 20s）与 `filesConnectTimeoutMs`（默认 5s）；新增 `DeepSeekImageAttachmentPolicy`，上传超时降级内联 data URL，超时预算按 2 倍退避（上限 8 倍），成功后复位
-  - **WebServer 默认鉴权**：新增 `@RouteAuth`（`required|anonymous`）与 `RouteAuthResolver`，未声明路由默认要求认证，`.well-known` 公开路由显式匿名；认证逻辑抽为 `WebAuthProvider`/`DefaultWebAuthProvider`，支持 `X-API-Key`、`Bearer` 与 `dsh_session` Cookie；`ConnectionOriginGuard` 在连接监听器活动时对匿名路由执行同源/白名单来源检查；新增 `harness.auth.cookie-name`、`harness.auth.connection-listener.enabled`、`harness.auth.allowed-origins`、`harness.webserver.auth-default` 配置
-  - **会话状态与事件写入**：新增 `SessionStatus`（`running`/`completionUnread`/`completionFailed`）与 `SessionReadState`；`SessionReadingRegistry` 维护宿主共享阅读记录，`mark` 在 `readingReady` 前拒绝，`turn/end` 自动更新完成位置，失败轮次驱动 `completionFailed`；`ISessionEventLogService.append` 新增事件数组重载（委托 `appendBatch`），单事件签名保持兼容
-  - **CUA / PTC 部分对齐**：新增 `CuaTool`（`cua`）与 `CuaRunCodeTool`（`cua_run_code`），`AgentToolCatalog` 按 `agentPreset` 选择，未组合 preset 默认获得 `cua_run_code`；CUA 运行时缺失时按 preset 抛出可读错误；新增 `PtcProgramOutput`，PTC 输出改为 `inspect(...)` 显式选择，图片按调用位置附加，返回值与末尾表达式不再自动输出
+  - 工具目录收敛：移除 `create_worktree`、`working_directory` 与子代理 `cwd` 参数，统一由 `enter_worktree` 创建/进入并切换当前目录
+  - Shell/FS 参数错误由 `MISSING_PARAM` 收敛为 `ToolArgsError`/`INVALID_ARGS`，统一 `invalid arguments: ` 前缀；修复缺省参数被当作字符串 `"null"` 继续执行
+  - 子代理工具改由 `agent` 名称寻址并拒绝 `agent_id`；`list_agents` 返回 `{name, status, description?}`，运行期补充 `{capacity, agents}` 视图；初始委派消息来源改为父 agent 的 `agent-message`；模型选择每次调用实时读取宿主设置
+  - `web_search`/`web_fetch` 支持 `auto|account|api-key` 计费与有序凭据；取消映射 `WEB_ABORTED`
+  - DeepSeek：文件上传新增 `filesApiTimeoutMs`/`filesConnectTimeoutMs`，超时降级内联 data URL 并按 2 倍退避；拒答码改为 `CONTENT_REFUSED`；文件策略显式传入存储；图片编码增加硬上限与 `imageTargetBytes` 软目标
+  - PTC/MCP：展示输出超限截断不终止程序；MCP 图片改用附件引用 + `Image` 值，不再透传 base64；对象/数组结果复用统一渲染文本
+  - 系统提示章节按来源累计合并，并与 `runtime-context` 快照协同
+  - 会话状态新增 `completionUnread`/`completionFailed`，`turn/end` 自动更新完成位置；`ISessionEventLogService.append` 新增事件数组重载（委托 `appendBatch`），单事件签名保持兼容
+  - SDK prompt 未设置时区时上报 `ZoneId.systemDefault()`
+  - 插件安装新增 `expectedPluginId`/`expectedVersion` 校验与 `unexpected-package` 错误码
+  - Web 控制台（`app.js`/`app.css`）适配移动访问开关与设备管理面板；连接器页仅使用服务端返回的状态与诊断
+- **破坏性变更**：
+  - 未声明 `@RouteAuth` 的路由默认要求认证（可用 `harness.webserver.auth-default=anonymous` 回滚）
+  - Shell/FS 参数错误统一为 `INVALID_ARGS`
+  - 子代理工具不再接受 `agent_id`；移除 `create_worktree`/`working_directory`
+  - `SessionStatus` 投影字段扩展
 
   **旧 → 新错误码映射**
 
@@ -62,10 +84,13 @@
   | `CancellationException` 归为网络错误 | `WEB_ABORTED` | Web 抓取取消 |
   | 无凭据/账户缺失静默失败 | `WEB_CREDENTIAL_MISSING` / `WEB_ACCOUNT_UNAVAILABLE` | Web 计费 |
 
-  **变更分类**
-  - 新增：`HarnessError` 体系与 `error-codes.md`、Office 三工具、Worktree 归档清理、Plugin Bundle 更新、运行时上下文快照、`SessionReadingRegistry`、`@RouteAuth`/`WebAuthProvider`、`CuaTool`/`CuaRunCodeTool`、`PtcProgramOutput`
-  - 更新：`send_message`/`interrupt_agent` 改用 `agent` 名称寻址；`web_search`/`web_fetch` 支持计费模式与有序凭据；DeepSeek 文件上传新增超时与内联降级；会话摘要新增 `completionUnread`/`completionFailed`；事件 API 新增数组重载
-  - 破坏性变更：未声明 `@RouteAuth` 的路由默认要求认证（可用 `harness.webserver.auth-default=anonymous` 回滚）；Shell/FS 参数错误统一为 `INVALID_ARGS`；子代理工具不再接受 `agent_id`；`SessionStatus` 投影字段扩展
+  **参考源对齐范围（文档更新，2026-11-25）**
+  - 对齐基线由 `v0.2.2-rc.3` 推进至 `dsh-v0.2.3-alpha.2`（2026-11-22），升级指南覆盖 `v0.2.2-alpha.3` ~ `v0.2.3-alpha.1` 共 82 条
+  - `docs/spec/0.2.3/spec.md`：§8 新增 §8.14–§8.21（会话 fork/摘要、Subagent 运行期契约、工作树与写入边界、PTC/MCP 输入输出、DeepSeek 认证与拒答、技能与 Action 卡片、系统提示章节、连接器插件），并修订 §8.2/§8.3/§8.4/§8.5/§8.10 与 §8.13 排除表
+  - `design.md`：新增 3.13 新增对齐项设计（含连接器评估表），3.14/3.15 落位与风险表补齐
+  - `tasks.md`：新增并完成 11.13–11.20 任务组
+  - `error-codes.md`：新增 3.18–3.22 码表（DeepSeek、会话、Subagent、PTC/MCP、连接器）与 5 条旧→新映射
+  - 版本联动：Java `0.2.3` 对应参考源 tag `dsh-v0.2.3-alpha.2`；后续 Java 版本按主.次.修订对齐，不带 `alpha`/`rc` 后缀
 
 ## 版本号：0.2.2
 - 更新日期：2026-11-02

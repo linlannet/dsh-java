@@ -2,6 +2,7 @@ package net.linlan.dsh.infrastructure.adapter.llm.openai;
 
 import net.linlan.dsh.infrastructure.adapter.llm.deepseek.DeepSeekAdapter;
 import net.linlan.dsh.infrastructure.adapter.llm.deepseek.DeepSeekAdapterOptions;
+import net.linlan.dsh.infrastructure.adapter.llm.deepseek.DeepSeekAuthProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -24,7 +25,13 @@ public class OpenAiCompatibleAdapter extends DeepSeekAdapter {
      * @return 方法执行结果。
      */
     public OpenAiCompatibleAdapter(String providerId, DeepSeekAdapterOptions options, ObjectMapper objectMapper) {
-        super(options, objectMapper);
+        this(providerId, options, objectMapper, DeepSeekAuthProvider.from(options));
+    }
+
+    /** 使用独立认证提供方创建适配器。 */
+    public OpenAiCompatibleAdapter(String providerId, DeepSeekAdapterOptions options, ObjectMapper objectMapper,
+                                   DeepSeekAuthProvider authProvider) {
+        super(options, objectMapper, authProvider);
         this.providerId = providerId;
     }
 

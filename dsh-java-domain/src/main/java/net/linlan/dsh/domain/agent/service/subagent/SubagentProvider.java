@@ -39,7 +39,6 @@ public interface SubagentProvider {
             String prompt,
             AgentOptions options,
             String parentSessionId,
-            String parentCwd,
             int delegationDepth,
             List<ToolSchema> enabledTools,
             List<String> allowedToolNames,

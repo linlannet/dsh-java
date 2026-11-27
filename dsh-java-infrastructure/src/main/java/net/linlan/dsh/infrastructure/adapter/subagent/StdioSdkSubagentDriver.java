@@ -3,7 +3,6 @@ package net.linlan.dsh.infrastructure.adapter.subagent;
 import net.linlan.dsh.domain.agent.service.subagent.adapter.port.ISubagentDriverPort;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -24,13 +23,10 @@ public final class StdioSdkSubagentDriver implements ISubagentDriverPort {
     private final AtomicInteger rpcIdCounter = new AtomicInteger(0);
 
     @Override
-    public String spawn(String agentPreset, String cwd, String command) {
+    public String spawn(String agentPreset, String command) {
         String id = "sdk-subagent-" + idCounter.incrementAndGet();
         List<String> cmd = parseCommand(command);
         ProcessBuilder pb = new ProcessBuilder(cmd);
-        if (cwd != null && !cwd.isBlank()) {
-            pb.directory(new File(cwd));
-        }
         pb.redirectErrorStream(false);
         try {
             Process process = pb.start();

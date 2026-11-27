@@ -1,6 +1,7 @@
 package net.linlan.dsh.infrastructure.adapter.llm.deepseek;
 
 import java.util.Base64;
+import java.util.Objects;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -24,13 +25,31 @@ public final class DeepSeekImageAttachmentPolicy {
 
     private final long baseTimeoutMs;
     private final FileUploader uploader;
+    private final DeepSeekFileStore fileStore;
+    private final DeepSeekFilePolicy filePolicy;
+    private final ImageEncoder imageEncoder;
     private long currentTimeoutMs;
     private int consecutiveTimeouts;
 
     public DeepSeekImageAttachmentPolicy(long baseTimeoutMs, FileUploader uploader) {
+        this(baseTimeoutMs, uploader, null, null, new ImageEncoder());
+    }
+
+    /** 使用显式文件存储和已解析策略；文件存储调用不会自行补默认策略。 */
+    public DeepSeekImageAttachmentPolicy(DeepSeekFileStore fileStore, DeepSeekFilePolicy filePolicy) {
+        this(requirePolicy(filePolicy).uploadTimeoutMs(), null,
+                Objects.requireNonNull(fileStore, "fileStore"), filePolicy, new ImageEncoder());
+    }
+
+    private DeepSeekImageAttachmentPolicy(long baseTimeoutMs, FileUploader uploader,
+                                          DeepSeekFileStore fileStore, DeepSeekFilePolicy filePolicy,
+                                          ImageEncoder imageEncoder) {
         this.baseTimeoutMs = baseTimeoutMs > 0 ? baseTimeoutMs : DeepSeekAdapterOptions.DEFAULT_FILES_API_TIMEOUT_MS;
         this.currentTimeoutMs = this.baseTimeoutMs;
         this.uploader = uploader;
+        this.fileStore = fileStore;
+        this.filePolicy = filePolicy;
+        this.imageEncoder = imageEncoder;
     }
 
     /**
@@ -41,13 +60,21 @@ public final class DeepSeekImageAttachmentPolicy {
      * @return Files API URL 或内联 data URL
      */
     public String imageUrl(byte[] data, String mimeType) {
-        byte[] bytes = data == null ? new byte[0] : data;
-        String mime = mimeType == null || mimeType.isBlank() ? "image/png" : mimeType;
-        if (uploader == null) {
+        return imageUrl(data, mimeType, ImageEncoder.DEFAULT_IMAGE_TARGET_BYTES);
+    }
+
+    /** 使用当前模型解析出的 imageTargetBytes 软目标编码后上传或内联。 */
+    public String imageUrl(byte[] data, String mimeType, int imageTargetBytes) {
+        ImageEncoder.EncodedImage encoded = imageEncoder.encode(data, mimeType, imageTargetBytes);
+        byte[] bytes = encoded.data();
+        String mime = encoded.mimeType();
+        if (uploader == null && fileStore == null) {
             return inlineUrl(bytes, mime);
         }
         try {
-            String url = uploader.upload(bytes, mime, currentTimeoutMs);
+            String url = fileStore != null
+                    ? fileStore.ensureUploaded(bytes, mime, currentTimeoutMs, filePolicy)
+                    : uploader.upload(bytes, mime, currentTimeoutMs);
             reset();
             return url == null || url.isBlank() ? inlineUrl(bytes, mime) : url;
         } catch (TimeoutException e) {
@@ -75,6 +102,13 @@ public final class DeepSeekImageAttachmentPolicy {
      */
     public int consecutiveTimeouts() {
         return consecutiveTimeouts;
+    }
+
+    private static DeepSeekFilePolicy requirePolicy(DeepSeekFilePolicy policy) {
+        if (policy == null) {
+            throw DeepSeekError.missingFilePolicy();
+        }
+        return policy;
     }
 
     private void reset() {

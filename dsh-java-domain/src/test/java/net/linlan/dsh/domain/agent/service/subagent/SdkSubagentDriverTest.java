@@ -19,7 +19,7 @@ class SdkSubagentDriverTest {
         int nextId = 0;
 
         @Override
-        public String spawn(String agentPreset, String cwd, String command) {
+        public String spawn(String agentPreset, String command) {
             String id = "stub-" + (++nextId);
             spawned.add(id + "|" + agentPreset + "|" + command);
             return id;
@@ -47,7 +47,7 @@ class SdkSubagentDriverTest {
     void spawnDelegatesToPort() {
         var port = new StubPort();
         var driver = new SdkSubagentDriver(port);
-        var spec = new SdkSubagentDriver.SubagentSpec("general", "/tmp", "node sdk.js", null);
+        var spec = new SdkSubagentDriver.SubagentSpec("general", "node sdk.js", null);
         String id = driver.spawn(spec);
         assertNotNull(id);
         assertEquals(1, port.spawned.size());
@@ -60,7 +60,7 @@ class SdkSubagentDriverTest {
     void spawnWithInitialMessageSends() {
         var port = new StubPort();
         var driver = new SdkSubagentDriver(port);
-        var spec = new SdkSubagentDriver.SubagentSpec("general", "/tmp", "node sdk.js", "hello");
+        var spec = new SdkSubagentDriver.SubagentSpec("general", "node sdk.js", "hello");
         driver.spawn(spec);
         assertEquals(1, port.sent.size());
         assertTrue(port.sent.get(0).endsWith("|hello"));
@@ -71,7 +71,7 @@ class SdkSubagentDriverTest {
     void spawnWithoutInitialMessageDoesNotSend() {
         var port = new StubPort();
         var driver = new SdkSubagentDriver(port);
-        var spec = new SdkSubagentDriver.SubagentSpec("general", "/tmp", "node sdk.js", null);
+        var spec = new SdkSubagentDriver.SubagentSpec("general", "node sdk.js", null);
         driver.spawn(spec);
         assertEquals(0, port.sent.size());
     }
@@ -81,7 +81,7 @@ class SdkSubagentDriverTest {
     void sendReturnsResponse() {
         var port = new StubPort();
         var driver = new SdkSubagentDriver(port);
-        var spec = new SdkSubagentDriver.SubagentSpec("general", "/tmp", "node sdk.js", null);
+        var spec = new SdkSubagentDriver.SubagentSpec("general", "node sdk.js", null);
         String id = driver.spawn(spec);
         String resp = driver.send(id, "ping");
         assertEquals("ack:ping", resp);
@@ -92,7 +92,7 @@ class SdkSubagentDriverTest {
     void shutdownDelegates() {
         var port = new StubPort();
         var driver = new SdkSubagentDriver(port);
-        var spec = new SdkSubagentDriver.SubagentSpec("general", "/tmp", "node sdk.js", null);
+        var spec = new SdkSubagentDriver.SubagentSpec("general", "node sdk.js", null);
         String id = driver.spawn(spec);
         assertTrue(driver.isAlive(id));
         driver.shutdown(id);
@@ -116,16 +116,15 @@ class SdkSubagentDriverTest {
     @Test
     @DisplayName("SubagentSpec null 字段校验")
     void specNullFieldsRejected() {
-        assertThrows(NullPointerException.class, () -> new SdkSubagentDriver.SubagentSpec(null, "/tmp", "cmd", null));
-        assertThrows(NullPointerException.class, () -> new SdkSubagentDriver.SubagentSpec("general", null, "cmd", null));
-        assertThrows(NullPointerException.class, () -> new SdkSubagentDriver.SubagentSpec("general", "/tmp", null, null));
+        assertThrows(NullPointerException.class, () -> new SdkSubagentDriver.SubagentSpec(null, "cmd", null));
+        assertThrows(NullPointerException.class, () -> new SdkSubagentDriver.SubagentSpec("general", null, null));
     }
 
     @Test
     @DisplayName("send null 参数校验")
     void sendNullArgsRejected() {
         var driver = new SdkSubagentDriver(new StubPort());
-        var spec = new SdkSubagentDriver.SubagentSpec("general", "/tmp", "node sdk.js", null);
+        var spec = new SdkSubagentDriver.SubagentSpec("general", "node sdk.js", null);
         String id = driver.spawn(spec);
         assertThrows(NullPointerException.class, () -> driver.send(null, "msg"));
         assertThrows(NullPointerException.class, () -> driver.send(id, null));

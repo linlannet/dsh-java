@@ -12,7 +12,7 @@ class InProcessSubagentDriverTest {
     @DisplayName("spawn 返回唯一 subagentId")
     void spawnReturnsUniqueId() {
         var driver = new InProcessSubagentDriver();
-        var spec = new InProcessSubagentDriver.SubagentSpec("general", "/tmp", "hello");
+        var spec = new InProcessSubagentDriver.SubagentSpec("general", "hello");
         String id1 = driver.spawn(spec);
         String id2 = driver.spawn(spec);
         assertNotNull(id1);
@@ -26,7 +26,7 @@ class InProcessSubagentDriverTest {
     @DisplayName("spawn 后 isAlive 为 true")
     void spawnMakesSubagentAlive() {
         var driver = new InProcessSubagentDriver();
-        var spec = new InProcessSubagentDriver.SubagentSpec("general", "/tmp", null);
+        var spec = new InProcessSubagentDriver.SubagentSpec("general", null);
         String id = driver.spawn(spec);
         assertTrue(driver.isAlive(id));
     }
@@ -35,7 +35,7 @@ class InProcessSubagentDriverTest {
     @DisplayName("send 投递消息到 inbox")
     void sendDeliversMessage() {
         var driver = new InProcessSubagentDriver();
-        var spec = new InProcessSubagentDriver.SubagentSpec("general", "/tmp", null);
+        var spec = new InProcessSubagentDriver.SubagentSpec("general", null);
         String id = driver.spawn(spec);
         driver.send(id, "ping");
         assertEquals(1, driver.pendingMessageCount(id));
@@ -46,7 +46,7 @@ class InProcessSubagentDriverTest {
     @DisplayName("initialMessage 自动进入 inbox")
     void initialMessageEntersInbox() {
         var driver = new InProcessSubagentDriver();
-        var spec = new InProcessSubagentDriver.SubagentSpec("general", "/tmp", "init");
+        var spec = new InProcessSubagentDriver.SubagentSpec("general", "init");
         String id = driver.spawn(spec);
         assertEquals(1, driver.pendingMessageCount(id));
         assertEquals("init", driver.pollMessage(id));
@@ -56,7 +56,7 @@ class InProcessSubagentDriverTest {
     @DisplayName("interrupt 标记中断状态")
     void interruptSetsFlag() {
         var driver = new InProcessSubagentDriver();
-        var spec = new InProcessSubagentDriver.SubagentSpec("general", "/tmp", null);
+        var spec = new InProcessSubagentDriver.SubagentSpec("general", null);
         String id = driver.spawn(spec);
         assertFalse(driver.isInterrupted(id));
         driver.interrupt(id);
@@ -68,7 +68,7 @@ class InProcessSubagentDriverTest {
     @DisplayName("shutdown 后 isAlive 为 false 且清空 inbox")
     void shutdownKillsAndClearsInbox() {
         var driver = new InProcessSubagentDriver();
-        var spec = new InProcessSubagentDriver.SubagentSpec("general", "/tmp", "init");
+        var spec = new InProcessSubagentDriver.SubagentSpec("general", "init");
         String id = driver.spawn(spec);
         driver.send(id, "second");
         driver.shutdown(id);
@@ -80,7 +80,7 @@ class InProcessSubagentDriverTest {
     @DisplayName("shutdown 后 send 抛异常")
     void sendAfterShutdownThrows() {
         var driver = new InProcessSubagentDriver();
-        var spec = new InProcessSubagentDriver.SubagentSpec("general", "/tmp", null);
+        var spec = new InProcessSubagentDriver.SubagentSpec("general", null);
         String id = driver.spawn(spec);
         driver.shutdown(id);
         assertThrows(IllegalStateException.class, () -> driver.send(id, "late"));
@@ -99,7 +99,7 @@ class InProcessSubagentDriverTest {
     @DisplayName("specOf 返回创建时的 spec")
     void specOfReturnsOriginalSpec() {
         var driver = new InProcessSubagentDriver();
-        var spec = new InProcessSubagentDriver.SubagentSpec("coder", "/work", "go");
+        var spec = new InProcessSubagentDriver.SubagentSpec("coder", "go");
         String id = driver.spawn(spec);
         assertEquals(spec, driver.specOf(id));
     }
@@ -114,12 +114,21 @@ class InProcessSubagentDriverTest {
     @Test
     @DisplayName("SubagentSpec null agentPreset 抛异常")
     void specNullAgentPresetRejected() {
-        assertThrows(NullPointerException.class, () -> new InProcessSubagentDriver.SubagentSpec(null, "/tmp", "x"));
+        assertThrows(NullPointerException.class, () -> new InProcessSubagentDriver.SubagentSpec(null, "x"));
     }
 
     @Test
-    @DisplayName("SubagentSpec null cwd 抛异常")
-    void specNullCwdRejected() {
-        assertThrows(NullPointerException.class, () -> new InProcessSubagentDriver.SubagentSpec("general", null, "x"));
+    @DisplayName("超出共享容量上限后 spawn 被拒绝")
+    void spawnBeyondCapacityRejected() {
+        var driver = new InProcessSubagentDriver(1);
+        driver.spawn(new InProcessSubagentDriver.SubagentSpec("general", null));
+        assertThrows(IllegalStateException.class, () -> driver.spawn(
+                new InProcessSubagentDriver.SubagentSpec("general", null)));
+    }
+
+    @Test
+    @DisplayName("非正容量上限抛异常")
+    void invalidCapacityLimitRejected() {
+        assertThrows(IllegalArgumentException.class, () -> new InProcessSubagentDriver(0));
     }
 }

@@ -30,4 +30,9 @@ public interface ISkillProviderPort {
      * @return 领域处理结果。
      */
     Optional<SkillDefinition> load(SkillCandidate candidate);
+
+    /** 按需加载技能附属资源；不支持资源的提供方保持空结果。 */
+    default Optional<String> loadResource(SkillCandidate candidate, String resourceName) {
+        return Optional.empty();
+    }
 }

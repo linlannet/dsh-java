@@ -22,6 +22,7 @@ import net.linlan.dsh.infrastructure.digitalhuman.AggregatingRuntimeApprovalGate
 import net.linlan.dsh.infrastructure.digitalhuman.RemoteEndpointCredentialRegistry;
 import net.linlan.dsh.domain.agent.service.SystemPromptAssembler;
 import net.linlan.dsh.domain.agent.service.ScopedSystemPromptAssembler;
+import net.linlan.dsh.domain.agent.service.subagent.SubagentModelResolver;
 import net.linlan.dsh.domain.agent.service.subagent.SubagentRegistry;
 import net.linlan.dsh.domain.agent.service.subagent.SpawnInProcessProvider;
 import net.linlan.dsh.domain.runtime.setting.service.AgentModelSettingResolver;
@@ -40,6 +41,7 @@ import net.linlan.dsh.domain.agent.service.compaction.BasicCompactionEngine;
 import net.linlan.dsh.domain.agent.service.compaction.CompactionEngine;
 import net.linlan.dsh.domain.plan.service.PlanModeService;
 import net.linlan.dsh.domain.session.event.adapter.repository.ISessionEventStore;
+import net.linlan.dsh.domain.storage.deliverable.adapter.port.IGitPort;
 import net.linlan.dsh.domain.session.event.model.entity.SessionHeader;
 import net.linlan.dsh.domain.session.event.model.entity.SessionLog;
 import net.linlan.dsh.domain.task.permission.adapter.port.IPermissionMatrixPort;
@@ -183,11 +185,12 @@ public class AgentRunBeanConfig {
             ObjectProvider<CodexSubagentProvider> codexProvider,
             ObjectProvider<AcpSubagentProvider> acpProvider
     ) {
+        SubagentModelResolver subagentModelResolver = () -> modelSettingResolver.resolve(null, 4096);
         var spawn = new SpawnInProcessProvider(
                 "spawn-in-process",
                 subagentRegistry,
                 agentRunFactory,
-                () -> modelSettingResolver.resolve(null, 4096)
+                subagentModelResolver::resolve
         );
         subagentRegistry.register(spawn);
         ClaudeCodeSubagentProvider claude = claudeProvider.getIfAvailable();
@@ -240,6 +243,7 @@ public class AgentRunBeanConfig {
             net.linlan.dsh.domain.tool.web.model.valobj.WebToolConfig webToolConfig,
             org.springframework.beans.factory.ObjectProvider<
                     net.linlan.dsh.domain.tool.web.computer.adapter.port.IComputerUsePort> computerUseProvider,
+            IGitPort gitPort,
             @Value("${harness.agent.tool-timeout-ms:300000}") long toolTimeoutMs
     ) {
         ISessionEventStore sessionEventStore = sessionEventStoreProvider.getIfAvailable();
@@ -272,7 +276,9 @@ public class AgentRunBeanConfig {
                 officeConverter,
                 officeKitConfig,
                 webToolConfig,
-                computerUseProvider.getIfAvailable()
+                computerUseProvider.getIfAvailable(),
+                gitPort,
+                sessionEventStore
         );
 
         return new AgentRunFactory(

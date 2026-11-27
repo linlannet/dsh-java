@@ -1,37 +1,47 @@
 package net.linlan.dsh.domain.runtime.profile.bundle;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
-/**
- * BundleAssembler 按 BundleDefinition 装配插件集与配置。
- *
- * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
- * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
- *
- */
+/** BundleAssembler 按 BundleDefinition 装配插件行、状态与配置。 */
 public class BundleAssembler {
 
+    private static final Logger log = LoggerFactory.getLogger(BundleAssembler.class);
+    private static final String UPSTREAM_SKILLS = "upstream-skills";
+
     private final Map<String, BundleDefinition> knownBundles;
+    private final boolean skillEnabled;
 
     public BundleAssembler() {
-        this(List.of(
-                BundleDefinition.BASE,
-                BundleDefinition.HEADLESS,
-                BundleDefinition.SDK_APP,
-                BundleDefinition.SDK_MINIMAL,
-                BundleDefinition.ACP_APP,
-                BundleDefinition.WEB_APP
-        ));
+        this(defaultBundles(), true, log::warn);
+    }
+
+    public BundleAssembler(boolean skillEnabled) {
+        this(defaultBundles(), skillEnabled, log::warn);
     }
 
     public BundleAssembler(List<BundleDefinition> bundles) {
+        this(bundles, true, log::warn);
+    }
+
+    public BundleAssembler(List<BundleDefinition> bundles, boolean skillEnabled,
+                           Consumer<String> startupWarning) {
         Map<String, BundleDefinition> indexed = new LinkedHashMap<>();
-        for (BundleDefinition b : bundles) {
-            indexed.put(b.name(), b);
+        for (BundleDefinition bundle : bundles) {
+            indexed.put(bundle.name(), bundle);
         }
-        this.knownBundles = Map.copyOf(indexed);
+        this.knownBundles = Collections.unmodifiableMap(indexed);
+        this.skillEnabled = skillEnabled;
+        if (!skillEnabled && indexed.values().stream()
+                .anyMatch(bundle -> bundle.plugins().contains(UPSTREAM_SKILLS))) {
+            startupWarning.accept("Bundle row 'upstream-skills' is waiting because the 'skill' row is disabled");
+        }
     }
 
     public AssembledBundle assemble(BundleDefinition definition) {
@@ -39,7 +49,12 @@ public class BundleAssembler {
             throw new IllegalArgumentException("bundle definition required");
         }
         BundleDefinition resolved = knownBundles.getOrDefault(definition.name(), definition);
-        return new AssembledBundle(resolved.name(), resolved.plugins(), resolved.config());
+        List<BundleRow> rows = resolved.plugins().stream()
+                .map(plugin -> new BundleRow(plugin,
+                        !skillEnabled && UPSTREAM_SKILLS.equals(plugin)
+                                ? RowStatus.WAITING : RowStatus.ACTIVE))
+                .toList();
+        return new AssembledBundle(resolved.name(), resolved.plugins(), resolved.config(), rows);
     }
 
     public AssembledBundle assembleByName(String name) {
@@ -53,14 +68,46 @@ public class BundleAssembler {
         return assemble(definition);
     }
 
+    private static List<BundleDefinition> defaultBundles() {
+        return List.of(
+                BundleDefinition.BASE,
+                BundleDefinition.HEADLESS,
+                BundleDefinition.SDK_APP,
+                BundleDefinition.SDK_MINIMAL,
+                BundleDefinition.ACP_APP,
+                BundleDefinition.WEB_APP
+        );
+    }
+
+    public enum RowStatus {
+        ACTIVE,
+        WAITING
+    }
+
+    public record BundleRow(String name, RowStatus status) { }
+
     public record AssembledBundle(
             String name,
             List<String> plugins,
-            Map<String, String> config
+            Map<String, String> config,
+            List<BundleRow> rows
     ) {
+        public AssembledBundle(String name, List<String> plugins, Map<String, String> config) {
+            this(name, plugins, config,
+                    (plugins == null ? List.<String>of() : plugins).stream()
+                            .map(plugin -> new BundleRow(plugin, RowStatus.ACTIVE))
+                            .toList());
+        }
+
         public AssembledBundle {
             plugins = plugins == null ? List.of() : List.copyOf(plugins);
             config = config == null ? Map.of() : Map.copyOf(config);
+            rows = rows == null ? List.of() : List.copyOf(rows);
+        }
+
+        public List<String> activePlugins() {
+            return rows.stream().filter(row -> row.status() == RowStatus.ACTIVE)
+                    .map(BundleRow::name).toList();
         }
     }
 }

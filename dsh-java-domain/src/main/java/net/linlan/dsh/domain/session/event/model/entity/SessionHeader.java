@@ -114,4 +114,29 @@ public record SessionHeader(
                 SessionFormatVersion.CURRENT
         );
     }
+
+    /**
+     * 创建共享 fork 的会话头，父前缀长度由调用方显式提供。
+     */
+    public static SessionHeader forFork(
+            String sessionId,
+            Instant createdAt,
+            String cwd,
+            String parentSession,
+            int seedLength,
+            String agentPreset
+    ) {
+        return new SessionHeader(
+                SESSION_FORMAT_VERSION,
+                sessionId,
+                createdAt,
+                cwd,
+                parentSession,
+                seedLength,
+                null,
+                0,
+                agentPreset,
+                SessionFormatVersion.CURRENT
+        );
+    }
 }

@@ -5,7 +5,6 @@ import net.linlan.dsh.domain.agent.model.valobj.InboxTarget;
 import net.linlan.dsh.domain.agent.service.run.AgentRun;
 import net.linlan.dsh.domain.agent.contract.inbound.AgentRunLifecycle;
 import net.linlan.dsh.domain.model.entity.Message;
-import net.linlan.dsh.domain.model.entity.MessageSource;
 import net.linlan.dsh.domain.model.valobj.ContentBlock;
 import net.linlan.dsh.domain.model.valobj.TextBlock;
 import net.linlan.dsh.domain.session.event.model.entity.SessionEvent;
@@ -80,18 +79,15 @@ public class ForkInProcessProvider implements SubagentProvider {
                     : Objects.requireNonNull(defaultOptionsSupplier.get(), "defaultOptionsSupplier returned null");
 
             // Create child agent with fresh session
-            AgentRun childAgent = agentFactory.create(
-                    childSessionId,
-                    childOptions,
-                    request.parentCwd() != null ? request.parentCwd() : "."
-            );
+            AgentRun childAgent = agentFactory.create(childSessionId, childOptions, ".");
 
             // Deliver the prompt as a user message
             List<ContentBlock> promptBlocks = List.of(
                     new TextBlock(request.prompt() != null && !request.prompt().isEmpty()
                             ? request.prompt() : "(empty task)")
             );
-            Message userMessage = Message.createUser(promptBlocks, new MessageSource.UserSource());
+            Message userMessage = Message.createUser(promptBlocks,
+                    SubagentSessions.delegationSource(request.parentSessionId()));
             childAgent.send(userMessage, InboxTarget.NEXT_TURN, true);
 
             // Wait for the turn to complete

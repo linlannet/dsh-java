@@ -1,10 +1,12 @@
 package net.linlan.dsh.domain.runtime.profile.bundle;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -19,6 +21,24 @@ class BundleAssemblerTest {
 
         assertEquals("base", result.name());
         assertTrue(result.plugins().contains("core"));
+    }
+
+    @Test
+    void shouldWaitForUpstreamSkillsAndWarnOnceWhenSkillIsDisabled() {
+        List<String> warnings = new ArrayList<>();
+        BundleAssembler assembler = new BundleAssembler(
+                List.of(BundleDefinition.BASE), false, warnings::add);
+
+        BundleAssembler.AssembledBundle result = assembler.assembleByName("base");
+
+        BundleAssembler.BundleRow upstream = result.rows().stream()
+                .filter(row -> row.name().equals("upstream-skills")).findFirst().orElseThrow();
+        assertEquals(BundleAssembler.RowStatus.WAITING, upstream.status());
+        assertFalse(result.activePlugins().contains("upstream-skills"));
+        assertEquals(1, warnings.size());
+        assertTrue(warnings.get(0).contains("upstream-skills"));
+        assembler.assembleByName("base");
+        assertEquals(1, warnings.size());
     }
 
     @Test

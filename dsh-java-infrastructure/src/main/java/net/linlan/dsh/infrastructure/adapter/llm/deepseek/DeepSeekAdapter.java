@@ -1,6 +1,7 @@
 package net.linlan.dsh.infrastructure.adapter.llm.deepseek;
 
 import net.linlan.dsh.domain.channel.service.OpenAiCompatibleUriResolver;
+import net.linlan.dsh.domain.common.error.HarnessError;
 import net.linlan.dsh.domain.llm.adapter.LlmAdapter;
 import net.linlan.dsh.domain.llm.adapter.ResolvedRetryPolicy;
 import net.linlan.dsh.domain.llm.model.valobj.*;
@@ -55,6 +56,7 @@ public class DeepSeekAdapter implements LlmAdapter {
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
     private final DeepSeekImageAttachmentPolicy imagePolicy;
+    private final DeepSeekAuthProvider authProvider;
 
     /**
      * 处理Deep Seek Adapter。
@@ -64,9 +66,25 @@ public class DeepSeekAdapter implements LlmAdapter {
      * @return 方法执行结果。
      */
     public DeepSeekAdapter(DeepSeekAdapterOptions options, ObjectMapper objectMapper) {
+        this(options, objectMapper, DeepSeekAuthProvider.from(options), null, null);
+    }
+
+    /** 使用独立认证提供方创建适配器；缺少提供方时立即失败。 */
+    public DeepSeekAdapter(DeepSeekAdapterOptions options, ObjectMapper objectMapper,
+                           DeepSeekAuthProvider authProvider) {
+        this(options, objectMapper, authProvider, null, null);
+    }
+
+    /** 可选挂载文件存储；其每次调用均接收已解析的文件策略。 */
+    public DeepSeekAdapter(DeepSeekAdapterOptions options, ObjectMapper objectMapper,
+                           DeepSeekAuthProvider authProvider, DeepSeekFileStore fileStore,
+                           DeepSeekFilePolicy filePolicy) {
         this.options = options;
         this.objectMapper = objectMapper;
-        this.imagePolicy = new DeepSeekImageAttachmentPolicy(options.filesApiTimeoutMs(), null);
+        this.authProvider = DeepSeekAuthProvider.require(authProvider);
+        this.imagePolicy = fileStore == null
+                ? new DeepSeekImageAttachmentPolicy(options.filesApiTimeoutMs(), null)
+                : new DeepSeekImageAttachmentPolicy(fileStore, filePolicy);
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(15))
                 .build();
@@ -180,8 +198,6 @@ public class DeepSeekAdapter implements LlmAdapter {
      * @param publisher publisher参数。
      */
     private void doStream(GenerateOptions genOptions, SubmissionPublisher<StreamChunk> publisher) throws Exception {
-        String apiKey = genOptions.apiKey() != null && !genOptions.apiKey().isBlank()
-                ? genOptions.apiKey() : options.resolveApiKey();
         String baseUrl = genOptions.baseUrl() != null && !genOptions.baseUrl().isBlank()
                 ? genOptions.baseUrl() : options.baseUrl();
         String effectiveModel = resolveEffectiveModel(genOptions.model());
@@ -204,8 +220,8 @@ public class DeepSeekAdapter implements LlmAdapter {
                 .timeout(Duration.ofSeconds(REQUEST_TIMEOUT_SECONDS))
                 .header("Content-Type", "application/json")
                 .header("Accept", "text/event-stream")
-                .header("Authorization", "Bearer " + apiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(payload));
+        authProvider.sign(builder, genOptions);
 
         if (genOptions.sessionId() != null) {
             builder.header("x-dsh-session-id", genOptions.sessionId());
@@ -246,8 +262,6 @@ public class DeepSeekAdapter implements LlmAdapter {
      * @param publisher publisher参数。
      */
     private void doNonStreamFallback(GenerateOptions genOptions, String effectiveModel, SubmissionPublisher<StreamChunk> publisher) throws Exception {
-        String apiKey = genOptions.apiKey() != null && !genOptions.apiKey().isBlank()
-                ? genOptions.apiKey() : options.resolveApiKey();
         String baseUrl = genOptions.baseUrl() != null && !genOptions.baseUrl().isBlank()
                 ? genOptions.baseUrl() : options.baseUrl();
         ObjectNode body = serializeRequest(withModel(genOptions, effectiveModel));
@@ -259,8 +273,8 @@ public class DeepSeekAdapter implements LlmAdapter {
                 .timeout(Duration.ofSeconds(REQUEST_TIMEOUT_SECONDS))
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(payload));
+        authProvider.sign(builder, genOptions);
 
         HttpResponse<String> response = httpClient.send(
                 builder.build(),
@@ -279,6 +293,10 @@ public class DeepSeekAdapter implements LlmAdapter {
         JsonNode choices = root.path("choices");
         if (!choices.isArray() || choices.isEmpty()) {
             throw new LlmAdapterException("non-stream response has no choices", LlmErrorCodes.EMPTY_RESPONSE);
+        }
+        if ("refusal".equals(choices.get(0).path("finish_reason").asText(null))) {
+            throw new LlmAdapterException("DeepSeek refused to answer under its content safety review",
+                    LlmErrorCodes.CONTENT_REFUSED);
         }
 
         JsonNode message = choices.get(0).path("message");
@@ -348,6 +366,7 @@ public class DeepSeekAdapter implements LlmAdapter {
         ObjectNode root = objectMapper.createObjectNode();
         root.put("model", options.model());
         root.put("stream", true);
+        int imageTargetBytes = resolveImageTargetBytes(options.model());
 
         // Messages
         ArrayNode messages = objectMapper.createArrayNode();
@@ -430,7 +449,7 @@ public class DeepSeekAdapter implements LlmAdapter {
                     String mime = ib.attachment() != null && ib.attachment().mimeType() != null
                             ? ib.attachment().mimeType() : "image/png";
                     byte[] data = ib.attachment() != null ? ib.attachment().data() : new byte[0];
-                    urlNode.put("url", imagePolicy.imageUrl(data, mime));
+                    urlNode.put("url", imagePolicy.imageUrl(data, mime, imageTargetBytes));
                     contentArr.add(imgPart);
                 }
                 msgNode.set("content", contentArr);
@@ -523,6 +542,15 @@ public class DeepSeekAdapter implements LlmAdapter {
         return preferredDiscoveredModel(discovered);
     }
 
+    private int resolveImageTargetBytes(String model) {
+        for (DirectSeekCatalogModel configured : options.models()) {
+            if (configured.id().equals(model) && configured.imageTargetBytes() != null) {
+                return configured.imageTargetBytes();
+            }
+        }
+        return ImageEncoder.DEFAULT_IMAGE_TARGET_BYTES;
+    }
+
     /**
      * 列出Available Catalog Models。
      */
@@ -548,16 +576,13 @@ public class DeepSeekAdapter implements LlmAdapter {
      * @return 方法执行结果。
      */
     private List<DirectSeekCatalogModel> discoverUpstreamModels() {
-        String apiKey = options.resolveApiKey();
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(OpenAiCompatibleUriResolver.resolveModelsUri(options.baseUrl()))
                 .timeout(Duration.ofSeconds(30))
                 .header("Accept", "application/json")
                 .GET();
-        if (apiKey != null && !apiKey.isBlank()) {
-            builder.header("Authorization", "Bearer " + apiKey);
-        }
         try {
+            authProvider.sign(builder, null);
             HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 log.warn("Failed to discover upstream models from {}: HTTP {} {}",
@@ -761,6 +786,9 @@ public class DeepSeekAdapter implements LlmAdapter {
             case "stop" -> new FinishReason.Stop();
             case "tool_calls" -> new FinishReason.ToolCalls();
             case "length" -> new FinishReason.MaxTokens();
+            case "refusal" -> new FinishReason.Error(new LlmFailure(
+                    "DeepSeek refused to answer under its content safety review", LlmErrorCodes.CONTENT_REFUSED
+            ));
             default -> new FinishReason.Error(new LlmFailure(
                     "model stopped: " + reason, reason.toUpperCase()
             ));
@@ -838,6 +866,8 @@ public class DeepSeekAdapter implements LlmAdapter {
         LlmFailure failure;
         if (e instanceof LlmAdapterException lae) {
             failure = new LlmFailure(lae.getMessage(), lae.code(), lae.status(), null, null);
+        } else if (e instanceof HarnessError harnessError) {
+            failure = new LlmFailure(harnessError.getMessage(), harnessError.errorCode());
         } else {
             failure = new LlmFailure(e.getMessage() != null ? e.getMessage() : "LLM adapter failed", LlmErrorCodes.UNKNOWN);
         }

@@ -4,6 +4,7 @@ import net.linlan.dsh.domain.skill.model.entity.SkillCandidate;
 import net.linlan.dsh.domain.skill.model.entity.SkillDefinition;
 import net.linlan.dsh.domain.skill.model.valobj.SkillInvocationPolicy;
 import net.linlan.dsh.domain.skill.model.valobj.SkillSource;
+import net.linlan.dsh.domain.skill.service.SkillService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -11,47 +12,58 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@DisplayName("Office 技能")
+@DisplayName("Office 单技能")
 class OfficeSkillTest {
 
     @Test
-    @DisplayName("发现路由与 docx/pptx/xlsx 三个写作技能")
-    void discoversRouterAndWritingSkills() {
+    @DisplayName("技能清单仅包含 office")
+    void discoversSingleOfficeSkill() {
         OfficeSkill skill = new OfficeSkill();
+
         List<SkillCandidate> candidates = skill.discover("/tmp");
 
-        assertEquals(4, candidates.size());
-        assertEquals(List.of("office", "office-docx", "office-pptx", "office-xlsx"),
-                candidates.stream().map(SkillCandidate::name).toList());
+        assertEquals(1, candidates.size());
+        assertEquals(OfficeSkill.NAME, candidates.get(0).name());
     }
 
     @Test
-    @DisplayName("加载每个技能都有内置内容")
-    void loadsBundledContent() {
+    @DisplayName("主技能不内联格式指导，格式资源按需读取")
+    void loadsFormatResourcesOnDemand() {
         OfficeSkill skill = new OfficeSkill();
+        SkillDefinition definition = skill.load(skill.discover("/tmp").get(0)).orElseThrow();
 
-        for (SkillCandidate candidate : skill.discover("/tmp")) {
-            Optional<SkillDefinition> def = skill.load(candidate);
-            assertTrue(def.isPresent());
-            assertEquals(candidate.name(), def.get().name());
-            assertTrue(def.get().content().contains("office_")
-                    || def.get().content().contains("python-"));
-        }
+        assertFalse(definition.content().contains("python-docx"));
+        assertTrue(skill.loadResource("docx").orElseThrow().contains("python-docx"));
+        assertTrue(skill.loadResource("pptx.md").orElseThrow().contains("python-pptx"));
+        assertTrue(skill.formatGuide("xlsx").orElseThrow().contains("openpyxl"));
+        assertTrue(skill.loadResource("unknown").isEmpty());
     }
 
     @Test
-    @DisplayName("未知与空候选返回空")
+    @DisplayName("SkillService 可按需读取胜出技能的资源")
+    void serviceLoadsWinningSkillResource() {
+        SkillService service = new SkillService(List.of(new OfficeSkill()));
+
+        assertTrue(service.getResource("office", "docx", "/tmp")
+                .orElseThrow().contains("python-docx"));
+        assertTrue(service.getResource("office", "", "/tmp").isEmpty());
+    }
+
+    @Test
+    @DisplayName("旧写作技能与空候选不再加载")
     void unknownCandidateReturnsEmpty() {
         OfficeSkill skill = new OfficeSkill();
-        SkillCandidate unknown = new SkillCandidate(
-                "unknown", "desc", Optional.empty(),
+        SkillCandidate legacy = new SkillCandidate(
+                "office-docx", "desc", Optional.empty(),
                 SkillInvocationPolicy.both(), SkillSource.BUNDLED,
                 "x", Optional.empty(), 0, "loc"
         );
 
-        assertTrue(skill.load(unknown).isEmpty());
+        assertTrue(skill.load(legacy).isEmpty());
         assertTrue(skill.load(null).isEmpty());
+        assertTrue(skill.loadResource(legacy, "docx").isEmpty());
     }
 }

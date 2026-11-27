@@ -10,6 +10,7 @@ import net.linlan.dsh.domain.model.entity.ToolRunContext;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 /**
  * ShellExecuteTool 定义ShellExecute的领域工具契约。
@@ -29,7 +30,7 @@ public class ShellExecuteTool implements ToolDefinition {
     private static final long DEFAULT_TIMEOUT_MS = 120_000; // 2 minutes
 
     private final IShellExecutor executor;
-    private final String defaultCwd;
+    private final Supplier<String> defaultCwd;
     private final DangerousCommandGuard guard;
 
     /**
@@ -52,6 +53,14 @@ public class ShellExecuteTool implements ToolDefinition {
      * @return 方法执行结果。
      */
     public ShellExecuteTool(IShellExecutor executor, String defaultCwd, DangerousCommandGuard guard) {
+        this(executor, () -> defaultCwd, guard);
+    }
+
+    public ShellExecuteTool(IShellExecutor executor, Supplier<String> defaultCwd) {
+        this(executor, defaultCwd, new DangerousCommandGuard());
+    }
+
+    public ShellExecuteTool(IShellExecutor executor, Supplier<String> defaultCwd, DangerousCommandGuard guard) {
         this.executor = executor;
         this.defaultCwd = defaultCwd;
         this.guard = guard == null ? new DangerousCommandGuard() : guard;
@@ -132,7 +141,7 @@ public class ShellExecuteTool implements ToolDefinition {
 
             String cwd = argMap.get("cwd") != null
                     ? String.valueOf(argMap.get("cwd"))
-                    : defaultCwd;
+                    : defaultCwd.get();
 
             long timeoutMs = DEFAULT_TIMEOUT_MS;
             if (argMap.get("timeout_ms") != null) {

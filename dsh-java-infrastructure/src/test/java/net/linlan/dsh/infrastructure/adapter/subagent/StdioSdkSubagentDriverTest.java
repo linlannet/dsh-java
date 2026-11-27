@@ -16,20 +16,20 @@ class StdioSdkSubagentDriverTest {
     @Test
     void spawnBlankCommandThrows() {
         StdioSdkSubagentDriver driver = new StdioSdkSubagentDriver();
-        assertThrows(IllegalArgumentException.class, () -> driver.spawn("preset", null, "   "));
+        assertThrows(IllegalArgumentException.class, () -> driver.spawn("preset", "   "));
     }
 
     @Test
     void spawnNullCommandThrows() {
         StdioSdkSubagentDriver driver = new StdioSdkSubagentDriver();
-        assertThrows(IllegalArgumentException.class, () -> driver.spawn("preset", null, null));
+        assertThrows(IllegalArgumentException.class, () -> driver.spawn("preset", null));
     }
 
     @Test
     void spawnReturnsUniqueId() {
         StdioSdkSubagentDriver driver = new StdioSdkSubagentDriver();
-        String id1 = driver.spawn("preset", null, "sleep 30");
-        String id2 = driver.spawn("preset", null, "sleep 30");
+        String id1 = driver.spawn("preset", "sleep 30");
+        String id2 = driver.spawn("preset", "sleep 30");
         assertNotEquals(id1, id2);
         assertTrue(id1.startsWith("sdk-subagent-"));
         assertTrue(id2.startsWith("sdk-subagent-"));
@@ -40,8 +40,8 @@ class StdioSdkSubagentDriverTest {
     @Test
     void spawnIdIsSequential() {
         StdioSdkSubagentDriver driver = new StdioSdkSubagentDriver();
-        String id1 = driver.spawn("preset", null, "sleep 30");
-        String id2 = driver.spawn("preset", null, "sleep 30");
+        String id1 = driver.spawn("preset", "sleep 30");
+        String id2 = driver.spawn("preset", "sleep 30");
         assertTrue(Integer.parseInt(id2.substring("sdk-subagent-".length()))
                 > Integer.parseInt(id1.substring("sdk-subagent-".length())));
         driver.shutdown(id1);
@@ -51,7 +51,7 @@ class StdioSdkSubagentDriverTest {
     @Test
     void isAliveReturnsTrueForSpawned() {
         StdioSdkSubagentDriver driver = new StdioSdkSubagentDriver();
-        String id = driver.spawn("preset", null, "sleep 30");
+        String id = driver.spawn("preset", "sleep 30");
         assertTrue(driver.isAlive(id));
         driver.shutdown(id);
     }
@@ -59,7 +59,7 @@ class StdioSdkSubagentDriverTest {
     @Test
     void isAliveReturnsFalseAfterShutdown() {
         StdioSdkSubagentDriver driver = new StdioSdkSubagentDriver();
-        String id = driver.spawn("preset", null, "sleep 30");
+        String id = driver.spawn("preset", "sleep 30");
         driver.shutdown(id);
         assertFalse(driver.isAlive(id));
     }
@@ -84,25 +84,9 @@ class StdioSdkSubagentDriverTest {
     }
 
     @Test
-    void spawnWithCwd() {
-        StdioSdkSubagentDriver driver = new StdioSdkSubagentDriver();
-        String id = driver.spawn("preset", System.getProperty("java.io.tmpdir"), "sleep 30");
-        assertTrue(driver.isAlive(id));
-        driver.shutdown(id);
-    }
-
-    @Test
-    void spawnWithBlankCwdUsesNoDirectory() {
-        StdioSdkSubagentDriver driver = new StdioSdkSubagentDriver();
-        String id = driver.spawn("preset", "  ", "sleep 30");
-        assertTrue(driver.isAlive(id));
-        driver.shutdown(id);
-    }
-
-    @Test
     void shutdownIsIdempotent() {
         StdioSdkSubagentDriver driver = new StdioSdkSubagentDriver();
-        String id = driver.spawn("preset", null, "sleep 30");
+        String id = driver.spawn("preset", "sleep 30");
         driver.shutdown(id);
         driver.shutdown(id);
         assertFalse(driver.isAlive(id));
@@ -111,7 +95,7 @@ class StdioSdkSubagentDriverTest {
     @Test
     void spawnParsesCommandWithArgs() {
         StdioSdkSubagentDriver driver = new StdioSdkSubagentDriver();
-        String id = driver.spawn("preset", null, "sleep 30");
+        String id = driver.spawn("preset", "sleep 30");
         assertTrue(driver.isAlive(id));
         driver.shutdown(id);
     }
@@ -123,7 +107,7 @@ class StdioSdkSubagentDriverTest {
                 "read line\necho '{\"jsonrpc\":\"2.0\",\"result\":\"pong\"}'\n");
         script.toFile().setExecutable(true);
         StdioSdkSubagentDriver driver = new StdioSdkSubagentDriver();
-        String id = driver.spawn("preset", null, "sh " + script);
+        String id = driver.spawn("preset", "sh " + script);
         try {
             String response = driver.send(id, "hello");
             assertEquals("pong", response);
@@ -140,7 +124,7 @@ class StdioSdkSubagentDriverTest {
                 "read line\necho '{\"jsonrpc\":\"2.0\",\"id\":1}'\n");
         script.toFile().setExecutable(true);
         StdioSdkSubagentDriver driver = new StdioSdkSubagentDriver();
-        String id = driver.spawn("preset", null, "sh " + script);
+        String id = driver.spawn("preset", "sh " + script);
         try {
             String response = driver.send(id, "hello");
             assertNotNull(response);
@@ -154,7 +138,7 @@ class StdioSdkSubagentDriverTest {
     @Test
     void sendThrowsWhenSubagentStdoutClosed() throws Exception {
         StdioSdkSubagentDriver driver = new StdioSdkSubagentDriver();
-        String id = driver.spawn("preset", null, "true");
+        String id = driver.spawn("preset", "true");
         Thread.sleep(200);
         try {
             assertThrows(java.io.UncheckedIOException.class, () -> driver.send(id, "msg"));
@@ -166,7 +150,7 @@ class StdioSdkSubagentDriverTest {
     @Test
     void sendToUnknownIdAfterShutdownThrows() {
         StdioSdkSubagentDriver driver = new StdioSdkSubagentDriver();
-        String id = driver.spawn("preset", null, "sleep 30");
+        String id = driver.spawn("preset", "sleep 30");
         driver.shutdown(id);
         assertThrows(IllegalArgumentException.class, () -> driver.send(id, "msg"));
     }

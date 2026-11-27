@@ -207,20 +207,23 @@ DOM <- REPO
 
 ## 3.1 适用性判定与总体策略
 
-参考源最新发布 tag 为 `dsh-v0.2.2-rc.3`；该 tag 未新增升级指南。因此对齐范围取 `v0.2.2-alpha.3`、`v0.2.2-rc.1`、`v0.2.2-rc.2` 的 42 条升级项，按"Java 服务端是否存在对应体系"筛分为纳入与不纳入两组。
+参考源最新发布 tag 为 `dsh-v0.2.3-alpha.2`（2026-11-22）。对齐范围取 `v0.2.2-alpha.3` ~ `v0.2.3-alpha.1` 的 82 条升级项，按"Java 服务端是否存在对应体系"筛分为纳入、部分纳入与不纳入三组。
 
 | 组 | 升级项 | 处理 |
 | --- | --- | --- |
 | 纳入 | `attachment-error-codes`、`experimental-tool-error-codes`、`shell-fs-tool-error-codes`、`terminal-backend-cleanup-error`、`web-fetch-transport-error-codes` | 统一到 `HarnessError` 与分类错误码 |
-| 纳入 | `subagent-names`、`subagent-interrupt-default` | Subagent catalog 与工具参数改造 |
-| 纳入 | `office-kit-package`、`office-operation-tools`、`office-skill-resources` | Office 工具化与配置收敛 |
-| 纳入 | `web-search-billing` | 计费模式与凭据来源 |
-| 纳入 | `archive-worktrees` | 归档清理与会话事件 |
-| 纳入 | `runtime-context-reminders` | 上下文快照包装 |
+| 纳入 | `subagent-names`、`subagent-interrupt-default`、`subagent-model-selection-live-setting`、`subagent-initial-task-source`、`list-agents-capacity` | Subagent catalog、工具参数与运行期契约 |
+| 纳入 | `office-kit-package`、`office-operation-tools`、`office-skill-resources`、`office-single-skill` | Office 工具化、配置收敛与单技能 |
+| 纳入 | `web-search-billing`、`web-search-deepseek-model-default` | 计费模式、凭据来源与搜索路由 |
+| 纳入 | `archive-worktrees`、`archive-worktrees-without-sandbox-policy`、`create-worktree-tool-merged`、`working-directory-tool-removed`、`workspace-write-boundary-follows-root` | 归档清理、工作树工具收敛与写入边界 |
+| 纳入 | `runtime-context-reminders`、`system-prompt-integrations` | 上下文快照与系统消息章节累计 |
 | 纳入 | `plugin-update-method` | Bundle 更新语义 |
-| 纳入 | `deepseek-files-timeout` | 文件上传超时策略 |
+| 纳入 | `deepseek-files-timeout`、`deepseek-request-auth`、`deepseek-refusal-code`、`deepseek-file-policy`、`pi-image-resize-defaults` | 上传超时、认证提供方、拒答码与图片上限 |
+| 纳入 | `session-fork-source`、`compaction-summary-preview`、`session-query-inspect-session-removed`、`sdk-prompt-time-zone` | 会话 fork、压缩摘要与冷会话查询 |
+| 纳入 | `ptc-output-limit`、`ptc-mcp-image-values`、`ptc-tool-result-inspection` | PTC/MCP 输入输出 |
+| 纳入（新增能力面） | `cli-account`、`feishu`、`wecom`、`dingtalk`、`notion`、`linear`、`tencent-docs`、`tencent-meeting`、`mcp-account`、`upstream-skills`、`action-card-blocks`、`independent-action-cards` | 连接器插件与账号套件、Action 卡片 |
 | 部分纳入 | `connection-page-peer`、`session-status-package`、`session-append-overloads`、`cua-agents-without-preset`、`ptc-inspect-output` | 仅服务端契约与装配部分 |
-| 不纳入 | Cordis/包导出、Client/Desktop、macOS AX、Python/Node 运行时、Forge、账号、文档技能 | 见 `spec.md` §8.13 |
+| 不纳入 | Cordis/包导出、Client/Desktop、macOS AX、Python/Node 运行时、Forge、账号、文档技能、Node 版本前置 | 见 `spec.md` §8.13 |
 
 **总体策略**：优先收敛跨能力的错误码契约（一次改造覆盖全部工具），再做各能力域的参数/配置演进；所有破坏性改名在 Java 侧以**编译期失败**暴露，不做静默兼容。
 
@@ -372,31 +375,102 @@ HarnessError <|-- OfficeKitError
 - **PTC**：程序输出改为 `inspect(...)` 显式选择；CUA 观察方法与 `read_image` 返回可 `inspect` 的值/图片；不引入 scoped REPL 与 bootstrap v3。
   - 实现：`PtcProgramOutput` 按 inspect 调用顺序收集；字符串直出、`ImageAttachmentRef` 转 `ImageBlock`、其他值对象格式；返回值与末尾表达式不自动进入结果。
 
-## 3.13 分层落位清单
+## 3.13 新增对齐项设计（rc.3 ~ alpha.2）
+
+> 覆盖 `spec.md` §8.14–§8.21。原则同 3.1：只对齐 Java 服务端可承载的契约，不引入 Cordis、Forge、原生 CUA 与 Node/Python REPL 层。
+
+### 3.13.1 会话 fork、压缩摘要与查询
+
+- **fork 父前缀**：`SessionForkService`/`AgentFactory` 创建 fork 时要求显式父前缀；父前缀落盘后再创建共享 fork，避免历史分裂。
+- **压缩摘要**：`CompactionSummaryProjection` 从 `SessionEventLog` 的压缩事件读取，移除独立查询分支。
+- **冷会话查询**：移除 `inspectSession`；以 `SessionHandle`（只读）替代，调用方通过 `sessionQuery.open(sessionId)` 获取。
+- **时区**：`SdkPromptContext` 未设置时区时注入 `ZoneId.systemDefault()`。
+
+### 3.13.2 Subagent 运行期契约
+
+- 初始委派任务落为 `agent-message`（`from=parent`），复用既有消息模型，不新增消息类型。
+- 模型选择每次调用经 `SubagentModelResolver` 读取 `HostSettings`，不缓存到 Session。
+- `ListAgentsTool` 输出 `{capacity:{total,limit}, agents:[...]}`，与 §8.2 名称寻址共用投影。
+
+### 3.13.3 工作树与写入边界
+
+- 删除 `CreateWorktreeTool` 与 `WorkingDirectoryTool` 注册；`EnterWorktreeTool` 内部按“同名存在则进入、否则创建”处理。
+- `WorkspaceWritePolicy` 以 Session 当前工作目录为根；对 `.git` 目录增加显式拒绝分支。
+- `WorktreeArchiveCleaner` 去掉“创建者只读跳过”条件；Git 调用固定走非沙箱适配器。
+
+### 3.13.4 PTC / MCP 输入输出
+
+- `PtcProgramOutput` 增加 `maxRenderBytes`，超限截断并附省略提示，程序执行不受影响。
+- MCP 图片结果统一转 `ImageAttachmentRef`，程序侧暴露为 `Image` 值；禁止 base64 JSON 透传。
+- 未修改的工具对象/数组复用 `ToolResultRenderer` 文本。
+
+### 3.13.5 DeepSeek 认证、拒答与图片
+
+- `DeepSeekAuthProvider` 负责凭据解析与请求签名，路由层不再读取密钥；缺失提供方时启动失败并给出配置指引。
+- 拒答码常量改为 `CONTENT_REFUSED`；保留旧码在 `error-codes.md` 的映射表。
+- `FilePolicy` 解析后随调用传入 `DeepSeekFileStore`；`ImageEncoder` 增加硬上限与 `imageTargetBytes` 软目标。
+
+### 3.13.6 技能、推荐与 Action 卡片
+
+- `OfficeSkill` 合并为单技能，格式指导作为按需读取资源；`ToolOfficeRegistrar` 仅在 `office` 加载后激活。
+- 基础 bundle 增加 `upstream-skills` 行；`skill` 行禁用时该行置于等待态并记录启动警告。
+- 移除推荐 bundle 与 `propose_action` 工具；`action-card` 代码块由 `ActionCardParser` 解析。
+
+### 3.13.7 系统提示与上下文章节
+
+- `SystemMessageAccumulator` 以来源为键累计章节，冲突时按“后写覆盖同来源、不覆盖他来源”合并。
+- 与 `RuntimeContextSnapshot` 共用章节模型，避免两套快照语义。
+
+### 3.13.8 连接器插件与账号套件（评估优先）
+
+Java 侧不复用 Node CLI，按“官方 REST/协议优先、无法替代则不复刻”的原则评估：
+
+| 连接器 | 上游形态 | Java 接入口径 | 本版结论 |
+| --- | --- | --- | --- |
+| Feishu | `lark-cli` + 技能 | 已有飞书接入，补账号注册表与插件页连接面 | 接入（增量） |
+| WeCom | CLI 账号套件 | 企业微信开放平台 REST（应用消息/通讯录） | 评估后接入 |
+| DingTalk | `dws.exe` | 钉钉开放平台 REST | 评估后接入 |
+| Notion | 共享 MCP 管理器 | 以 MCP 客户端接入，复用 OAuth 授权 | 评估后接入 |
+| Linear | 共享 MCP 管理器 | MCP 客户端 + OAuth | 评估后接入 |
+| Tencent Docs | CLI 账号套件 | 腾讯文档开放接口（能力受限） | 评估，默认不接入 |
+| Tencent Meeting | `tmeet` CLI | 腾讯会议 REST（企业自建应用） | 评估，默认不接入 |
+| MCP 账号 | `mcp-account` + OAuth | 通用 MCP 账号注册表与授权流 | 接入（基础能力） |
+
+- **账号套件**：`ConnectorAccountRegistry` + `ConnectorAccountService`，统一连接/断开/刷新与诊断；令牌只存服务端加密缓存。
+- **插件页**：`IConnectorApi` 暴露连接状态、连接入口、断开与错误诊断；前端仅拿状态，不拿令牌。
+- **upstream-skills**：仅作为技能来源元数据记录固定 commit，不引入 Node 下载器。
+
+## 3.14 分层落位清单
 
 | 层 | 包 / 文件 | 职责 |
 | --- | --- | --- |
 | domain | `domain/common/error/HarnessError.java` 及子系统错误类 | 统一错误基类与码表 |
-| domain | `domain/agent/service/subagent/*`、`domain/tool/subagent/*` | 名称索引、catalog v3、工具参数 |
-| domain | `domain/document/office/*`、`domain/tool/office/*` | 三个 Office 工具与 Kit 治理 |
-| domain | `domain/tool/web/*`、`domain/llm/*` | 计费模式、凭据来源、上传超时 |
-| domain | `domain/tool/worktree/*`、`domain/session/*` | 工作树事件、归档清理、阅读态与批量 append |
-| domain | `domain/plugin/*` | Bundle 更新语义 |
-| case | `cases/plugin/*`、`cases/session/*`、`cases/agent/*` | 编排与投影 |
-| api | `api/**` 中受影响的 DTO / 接口 | 字段与参数契约 |
-| infrastructure | `adapter/*` | LibreOffice、HTTP、Git、事件存储实现 |
-| trigger | `trigger/**` | 路由 `auth` 声明与错误映射 |
+| domain | `domain/agent/service/subagent/*`、`domain/tool/subagent/*` | 名称索引、catalog v3、工具参数、运行期模型选择与初始任务来源 |
+| domain | `domain/document/office/*`、`domain/tool/office/*` | 三个 Office 工具、单技能与 Kit 治理 |
+| domain | `domain/tool/web/*`、`domain/llm/*` | 计费模式、凭据来源、上传超时、认证提供方、拒答码与图片上限 |
+| domain | `domain/tool/worktree/*`、`domain/session/*` | 工作树事件、归档清理、写入边界、阅读态、批量 append、fork 父前缀与压缩摘要 |
+| domain | `domain/tool/ptc/*`、`domain/tool/mcp/*` | 输出截断、MCP 图片值、工具结果渲染 |
+| domain | `domain/plugin/*`、`domain/skill/*` | Bundle 更新语义、upstream-skills 行、技能收敛 |
+| domain | `domain/connector/*`、`domain/identity/*` | 连接器账号套件、MCP 账号与 OAuth、品牌与诊断 |
+| case | `cases/plugin/*`、`cases/session/*`、`cases/agent/*`、`cases/connector/*` | 编排与投影、连接器连接/断开 |
+| api | `api/**` 中受影响的 DTO / 接口 | 字段与参数契约、连接器账号 DTO |
+| infrastructure | `adapter/*` | LibreOffice、HTTP、Git、事件存储、连接器 REST 端口与令牌缓存 |
+| trigger | `trigger/**` | 路由 `auth` 声明与错误映射、连接器授权回调 |
 | app | `application.yml` / `harness.yml` | 新增配置项与默认值 |
 
-## 3.14 兼容性、风险与回滚
+## 3.15 兼容性、风险与回滚
 
 | 风险 | 影响 | 缓解 |
 | --- | --- | --- |
 | 错误码改名破坏既有断言/脚本 | 中 | 码表集中管理；在 CHANGELOG 列出旧→新映射 |
 | Subagent 参数改名 | 中 | 编译期暴露；文档与工具 schema 同步；不保留 `agent_id` 兼容 |
 | Office 工具依赖 LibreOffice Kit | 高 | 缺失时返回 `unavailable`，不影响启动；文档标注部署前置 |
-| Worktree 自动清理误删 | 高 | 仅清理干净树、无其他引用、非只读；默认不强制删除；`retainOnArchive` 可全局保留 |
+| Worktree 自动清理误删 | 高 | 仅清理干净树、无其他引用；默认不强制删除；`retainOnArchive` 可全局保留；只读策略不再豁免，需在归档前确认无未提交内容 |
 | WebServer 默认 required | 中 | 上线前逐路由核对 `anonymous` 声明；本地开发使用既有 API Key |
 | 上下文提醒改动前缀 | 低 | 旧快照仅刷新一次，不改写既有前缀 |
+| `list_agents` 返回结构变更 | 中 | 编译期暴露；工具 schema 与快照同步更新 |
+| 移除 `create_worktree`/`working_directory` | 中 | 提示词与工具文档同步；保留 Host 侧目录移动能力 |
+| 连接器令牌与 OAuth | 高 | 令牌只存服务端会话/加密缓存；不落前端、不入日志；按连接器逐个灰度 |
+| 搜索提供方路由切换 | 低 | 配置开关回退；按模型判定，默认行为保持 |
 
-**回滚**：所有能力按配置开关可回退（`dsh.office.enabled`、`dsh.worktree.retain-on-archive`、`dsh.web.search-billing`、`dsh.webserver.auth-default`），回滚不需要数据库变更。
+**回滚**：所有能力按配置开关可回退（`dsh.office.enabled`、`dsh.worktree.retain-on-archive`、`dsh.web.search-billing`、`dsh.webserver.auth-default`、`dsh.connector.<name>.enabled`），回滚不需要数据库变更。

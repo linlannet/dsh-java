@@ -1,11 +1,15 @@
 package net.linlan.dsh.domain.tool.mcp;
 
 import net.linlan.dsh.domain.model.valobj.ContentBlock;
+import net.linlan.dsh.domain.model.valobj.ImageAttachmentRef;
+import net.linlan.dsh.domain.model.valobj.ImageBlock;
 import net.linlan.dsh.domain.model.valobj.TextBlock;
 import net.linlan.dsh.domain.model.entity.ToolDefinition;
 import net.linlan.dsh.domain.model.entity.ToolExecutionResult;
 import net.linlan.dsh.domain.model.entity.ToolRunContext;
 import java.util.ArrayList;
+import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -100,7 +104,15 @@ public class McpToolAdapter implements ToolDefinition {
                     }
 
                     List<ContentBlock> blocks = new ArrayList<>();
+                    List<Object> programContent = new ArrayList<>();
                     for (Map<String, Object> c : result.content()) {
+                        if ("image".equals(c.get("type"))) {
+                            ImageAttachmentRef image = imageAttachment(c);
+                            blocks.add(new ImageBlock(image));
+                            programContent.add(image);
+                            continue;
+                        }
+                        programContent.add(new LinkedHashMap<>(c));
                         if ("text".equals(c.get("type"))) {
                             blocks.add(new TextBlock(String.valueOf(c.get("text"))));
                         }
@@ -110,11 +122,23 @@ public class McpToolAdapter implements ToolDefinition {
                         blocks.add(new TextBlock("[MCP tool returned no text content]"));
                     }
 
-                    return (ToolExecutionResult) ToolExecutionResult.ok(blocks);
+                    Map<String, Object> programValue = Map.of("content", List.copyOf(programContent));
+                    return (ToolExecutionResult) new ToolExecutionResult.Success(
+                            programValue, blocks, null, List.of(), false);
                 })
                 .exceptionally(e -> ToolExecutionResult.fail(
                         "MCP call failed: " + e.getMessage(), "MCP_CALL_ERROR"));
     }
+    private static ImageAttachmentRef imageAttachment(Map<String, Object> block) {
+        Object encoded = block.get("data");
+        if (!(encoded instanceof String data)) {
+            throw new IllegalArgumentException("MCP image block requires base64 data");
+        }
+        String mimeType = block.get("mimeType") instanceof String mime && !mime.isBlank()
+                ? mime : "image/png";
+        return new ImageAttachmentRef(Base64.getDecoder().decode(data), mimeType, 0, 0);
+    }
+
     /**
      * 判断当前状态是否满足条件。
      * 流程：应用领域规则 → 更新领域对象 → 返回结果。

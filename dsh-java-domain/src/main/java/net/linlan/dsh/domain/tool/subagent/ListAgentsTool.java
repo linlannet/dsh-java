@@ -36,7 +36,10 @@ public final class ListAgentsTool {
                 .sorted(Comparator.comparing(InProcessSubagentDriver.AgentInfo::name))
                 .map(ListAgentsTool::row)
                 .toList();
-        return Map.of("agents", agents, "count", agents.size());
+        return Map.of(
+                "capacity", Map.of("total", agents.size(), "limit", driver.capacityLimit()),
+                "agents", agents
+        );
     }
 
     private static Map<String, Object> row(InProcessSubagentDriver.AgentInfo info) {

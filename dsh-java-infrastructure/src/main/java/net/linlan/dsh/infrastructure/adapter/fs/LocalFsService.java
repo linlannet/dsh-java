@@ -1,5 +1,6 @@
 package net.linlan.dsh.infrastructure.adapter.fs;
 
+import net.linlan.dsh.domain.sandbox.service.WorkspaceWritePolicy;
 import net.linlan.dsh.domain.tool.fs.adapter.port.IFsPort;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -200,9 +201,8 @@ public class LocalFsService implements IFsPort {
      */
     private Path resolveForWrite(String path) {
         Path resolved = resolve(path);
-        if (restrictWritesToBase && !resolved.startsWith(baseDir)) {
-            throw new SecurityException(
-                    "[sandbox: file access denied under workspace-write mode] " + resolved);
+        if (restrictWritesToBase) {
+            return new WorkspaceWritePolicy(baseDir).check(resolved);
         }
         return resolved;
     }
@@ -213,16 +213,7 @@ public class LocalFsService implements IFsPort {
      * 当 allowedRoots 非空时，目标路径只需落在任一可写根内即放行。
      */
     public Path resolveForWrite(String path, List<Path> allowedRoots) {
-        Path resolved = resolve(path);
-        boolean allowed = false;
-        if (allowedRoots != null) {
-            allowed = allowedRoots.stream().anyMatch(resolved::startsWith);
-        }
-        if (!allowed) {
-            throw new SecurityException(
-                    "[sandbox: file access denied under workspace-write mode] " + resolved);
-        }
-        return resolved;
+        return new WorkspaceWritePolicy(allowedRoots).check(resolve(path));
     }
 
     /**

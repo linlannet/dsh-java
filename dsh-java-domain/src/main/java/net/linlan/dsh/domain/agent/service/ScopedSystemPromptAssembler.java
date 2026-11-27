@@ -38,6 +38,7 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
     private final Map<String, Function<AssembleContext, String>> variables = new LinkedHashMap<>();
     private final List<Runnable> runtimeContextSuppressors = new ArrayList<>();
     private final RuntimeContextSnapshot runtimeSnapshots = new RuntimeContextSnapshot();
+    private final SystemMessageAccumulator systemMessages = new SystemMessageAccumulator();
 
     private final String harnessIdentity;
     private final String persona;
@@ -105,6 +106,7 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
      */
     public synchronized void removeContext(String name) {
         contexts.remove(name);
+        systemMessages.removeSource(name);
     }
 
     /**
@@ -146,6 +148,11 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
      */
     public RuntimeContextSnapshot runtimeSnapshots() {
         return runtimeSnapshots;
+    }
+
+    /** 接收插件或其他系统消息来源的章节更新。 */
+    public SystemMessageAccumulator systemMessages() {
+        return systemMessages;
     }
 
     // ── Assembly ────────────────────────────────────────────────
@@ -214,11 +221,16 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
 
         // Render
         String system = renderPrompt(assembly);
-        List<String> contextSections = assembly.contexts().stream()
-                .map(c -> interpolate(c, assembly.variables()))
-                .filter(s -> !s.isEmpty())
-                .toList();
-        String reminder = runtimeSnapshots.render(agentId, contextSections).orElse("");
+        if (runtimeSuppressed) {
+            systemMessages.clear();
+        } else {
+            for (AssembledContext context : assembly.contexts()) {
+                String text = interpolate(context, assembly.variables());
+                systemMessages.replace(context.name(), text.isEmpty() ? List.of()
+                        : List.of(new SystemMessageSection(context.name(), text)));
+            }
+        }
+        String reminder = runtimeSnapshots.renderAccumulator(agentId, systemMessages).orElse("");
         if (!reminder.isEmpty()) {
             system = reminder + "\n\n" + system;
         }

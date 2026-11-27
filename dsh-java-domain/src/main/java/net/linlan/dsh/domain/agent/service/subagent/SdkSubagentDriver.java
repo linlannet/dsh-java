@@ -6,10 +6,9 @@ import java.util.Objects;
 
 public final class SdkSubagentDriver {
 
-    public record SubagentSpec(String agentPreset, String cwd, String command, String initialMessage) {
+    public record SubagentSpec(String agentPreset, String command, String initialMessage) {
         public SubagentSpec {
             Objects.requireNonNull(agentPreset, "agentPreset must not be null");
-            Objects.requireNonNull(cwd, "cwd must not be null");
             Objects.requireNonNull(command, "command must not be null");
         }
     }
@@ -22,7 +21,7 @@ public final class SdkSubagentDriver {
 
     public String spawn(SubagentSpec spec) {
         Objects.requireNonNull(spec, "spec must not be null");
-        String id = port.spawn(spec.agentPreset(), spec.cwd(), spec.command());
+        String id = port.spawn(spec.agentPreset(), spec.command());
         if (spec.initialMessage() != null && !spec.initialMessage().isEmpty()) {
             port.send(id, spec.initialMessage());
         }

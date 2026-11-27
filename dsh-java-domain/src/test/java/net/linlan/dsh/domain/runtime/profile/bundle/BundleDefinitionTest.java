@@ -58,6 +58,10 @@ class BundleDefinitionTest {
         assertNotNull(BundleDefinition.BASE);
         assertEquals("base", BundleDefinition.BASE.name());
         assertTrue(BundleDefinition.BASE.plugins().contains("core"));
+        assertTrue(BundleDefinition.BASE.plugins().contains("upstream-skills"));
+        assertEquals("https://github.com/linlannet/dsh-java",
+                BundleDefinition.BASE.config().get("upstream-skills.repository"));
+        assertTrue(BundleDefinition.BASE.config().get("upstream-skills.commit").matches("[0-9a-f]{40}"));
     }
 
     @Test

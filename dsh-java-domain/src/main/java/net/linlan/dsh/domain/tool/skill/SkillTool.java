@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 /**
  * {@code skill} 工具：按名称加载技能指令并注入会话上下文。
@@ -34,6 +35,7 @@ public class SkillTool implements ToolDefinition {
 
     private final ISkillService skillService;
     private final String cwd;
+    private final Consumer<SkillDefinition> skillLoaded;
 
     /**
      * 处理Skill 工具。
@@ -43,8 +45,13 @@ public class SkillTool implements ToolDefinition {
      * @return 方法执行结果。
      */
     public SkillTool(ISkillService skillService, String cwd) {
+        this(skillService, cwd, definition -> { });
+    }
+
+    public SkillTool(ISkillService skillService, String cwd, Consumer<SkillDefinition> skillLoaded) {
         this.skillService = skillService;
         this.cwd = cwd;
+        this.skillLoaded = skillLoaded == null ? definition -> { } : skillLoaded;
     }
 
     @Override public String name() { return NAME; }
@@ -59,6 +66,10 @@ public class SkillTool implements ToolDefinition {
                         "name", Map.of(
                                 "type", "string",
                                 "description", "Skill name in kebab-case, e.g. pdf, find-skills, monorepo-setup."
+                        ),
+                        "resource", Map.of(
+                                "type", "string",
+                                "description", "Optional skill resource to load on demand, such as office docx."
                         )
                 ),
                 "required", List.of("name")
@@ -108,10 +119,25 @@ public class SkillTool implements ToolDefinition {
                     "SKILL_NOT_FOUND"));
         }
         SkillDefinition skill = def.get();
-        String body = "<skill name=\"" + skill.name() + "\" source=\"" + skill.source()
-                + "\" path=\"" + skill.path().orElse("") + "\">\n"
-                + skill.content()
-                + "\n</skill>\nFollow the skill instructions above for the remainder of this task.";
+        String resourceName = argMap.get("resource") == null ? ""
+                : String.valueOf(argMap.get("resource")).trim();
+        String body;
+        if (resourceName.isEmpty()) {
+            body = "<skill name=\"" + skill.name() + "\" source=\"" + skill.source()
+                    + "\" path=\"" + skill.path().orElse("") + "\">\n"
+                    + skill.content()
+                    + "\n</skill>\nFollow the skill instructions above for the remainder of this task.";
+        } else {
+            Optional<String> resource = skillService.getResource(name, resourceName, cwd);
+            if (resource.isEmpty()) {
+                return CompletableFuture.completedFuture(ToolExecutionResult.fail(
+                        "skill resource not found: " + name + "/" + resourceName,
+                        "SKILL_RESOURCE_NOT_FOUND"));
+            }
+            body = "<skill-resource name=\"" + skill.name() + "\" resource=\"" + resourceName + "\">\n"
+                    + resource.get() + "\n</skill-resource>";
+        }
+        skillLoaded.accept(skill);
         List<ContentBlock> content = List.of(new TextBlock(body));
         return CompletableFuture.completedFuture(ToolExecutionResult.ok(content));
     }
