@@ -2010,6 +2010,9 @@ a:hover { text-decoration: underline; }
 .plugin-status-tag.is-idle { background: rgba(103, 158, 254, 0.16); color: var(--dsw-alias-state-business-primary); }
 .connector-heading { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .connector-brand { color: #fff; background: #5570f1; letter-spacing: -.02em; }
+/* 品牌头像内的图标：新设计的线性 SVG，统一尺寸与留白 */
+.connector-brand .icon { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; }
+.connector-brand .icon svg { width: 20px; height: 20px; }
 .connector-brand-feishu { background: #3370ff; }
 .connector-brand-wecom { background: #07c160; }
 .connector-brand-dingtalk { background: #1677ff; }

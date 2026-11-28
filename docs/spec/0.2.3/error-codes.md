@@ -201,7 +201,9 @@
 | `PTC_MCP_IMAGE_INVALID` | MCP 图片块无法转为附件引用 |
 | `PTC_RESULT_RENDER_FAILED` | 工具对象/数组结果渲染失败 |
 
-### 3.22 连接器与账号（`ConnectorError` / `ConnectorAuthError`）
+### 3.22 连接器与账号
+
+**通用契约码（对外）**
 
 | code | 触发场景 |
 | --- | --- |
@@ -210,8 +212,41 @@
 | `CONNECTOR_TOKEN_EXPIRED` | 令牌过期且被动刷新失败 |
 | `CONNECTOR_NETWORK_ERROR` | 连接器上游网络不可达 |
 | `CONNECTOR_UNSUPPORTED` | 该连接器在 Java 侧未接入或能力不支持 |
-| `MCP_OAUTH_REQUIRED` | 需要用户重新授权 MCP 账号 |
-| `MCP_ACCOUNT_NOT_FOUND` | MCP 账号不存在或已登出 |
+| `MCP_OAUTH_REQUIRED` | 需要用户重新授权 MCP 账号（契约预留，本版未实现） |
+| `MCP_ACCOUNT_NOT_FOUND` | MCP 账号不存在或已登出（契约预留，本版未实现） |
+
+**领域状态机码（`ConnectorAccountException.code`）**
+
+| code | 触发场景 | 可重试 |
+| --- | --- | --- |
+| `AUTHORIZATION_CODE_REQUIRED` | OAuth 回调缺少 code | 否 |
+| `AUTHORIZATION_NOT_STARTED` | 未发起连接就收到回调 | 否 |
+| `AUTHORIZATION_EXPIRED` | OAuth state 超过 10 分钟 | 是 |
+| `AUTHORIZATION_STATE_MISMATCH` | state 不匹配 | 否 |
+| `AUTHORIZATION_FAILED` | Provider 用 code 换令牌失败 | 视 cause |
+| `CONNECT_FAILED` | 连接过程异常 | 视 cause |
+| `REFRESH_FAILED` | 刷新过程异常 | 视 cause |
+| `DISCONNECT_FAILED` | 断开过程异常 | 视 cause |
+| `NOT_CONNECTED` | 无本地授予却要求刷新/断开 | 否 |
+| `OAUTH_UNSUPPORTED` | Provider 不支持 OAuth | 否 |
+| `REFRESH_UNSUPPORTED` | Provider 不支持被动刷新 | 否 |
+| `TOKEN_CACHE_UNAVAILABLE` | 密文缓存解密或读取失败 | 否 |
+| `TOKEN_NOT_FOUND` | 缓存中无对应授予 | 否 |
+| `EMPTY_PROVIDER_RESULT` | Provider 返回空结果 | 否 |
+
+**Provider 取号码**
+
+| code | 触发场景 |
+| --- | --- |
+| `FEISHU_CREDENTIALS_REQUIRED` | 飞书 `appId/appSecret` 未配置 |
+| `FEISHU_TOKEN_FETCH_FAILED` | 飞书取号网络/响应解码失败（网络与 5xx 可重试） |
+| `FEISHU_TOKEN_REJECTED` | 飞书返回非零 code 或缺少 tenant_access_token（不可重试） |
+| `WECOM_CREDENTIALS_REQUIRED` | 企业微信 `corpId/corpSecret` 未配置 |
+| `WECOM_TOKEN_FETCH_FAILED` | 企业微信取号网络/响应解码失败（网络与 5xx 可重试） |
+| `WECOM_TOKEN_REJECTED` | 企业微信返回非零 errcode 或缺少 access_token |
+| `DINGTALK_CREDENTIALS_REQUIRED` | 钉钉 `appKey/appSecret` 未配置 |
+| `DINGTALK_TOKEN_FETCH_FAILED` | 钉钉取号网络/响应解码失败（网络与 5xx 可重试） |
+| `DINGTALK_TOKEN_REJECTED` | 钉钉返回非零 code 或缺少 accessToken（4xx 不可重试、5xx/429 可重试） |
 
 ## 4. 旧 → 新映射
 

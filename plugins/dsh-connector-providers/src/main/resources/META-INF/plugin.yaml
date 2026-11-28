@@ -1,0 +1,6 @@
+id: dsh-connector-providers
+name: DSH Connector Providers
+version: 1.0.0
+entry: net.linlan.dsh.plugin.connectors.ConnectorProvidersPlugin
+minDshVersion: 0.2.3
+description: 渠道连接器账号提供方（飞书 / 企业微信 / 钉钉，服务端取号），令牌仅在服务端

@@ -54,10 +54,12 @@ public final class ConnectorAssessmentCatalog {
     private ConnectorAssessmentCatalog() {
     }
 
+    /** 全部评估条目（不可变）。 */
     public static List<ConnectorAssessment> all() {
         return ASSESSMENTS;
     }
 
+    /** 按 connectorId 查找评估条目。 */
     public static Optional<ConnectorAssessment> find(String connectorId) {
         return ASSESSMENTS.stream().filter(item -> item.connectorId().equals(connectorId)).findFirst();
     }

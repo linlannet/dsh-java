@@ -1,8 +1,11 @@
 package net.linlan.dsh.domain.connector;
 
-/** 各连接器插件实现的服务端账号端口；凭据来源与 OAuth 客户端配置均留在服务端。 */
-public interface IConnectorAccountPort {
+import net.linlan.dsh.domain.spi.ConnectorAccountProvider;
 
+/** 各连接器插件实现的服务端账号端口；凭据来源与 OAuth 客户端配置均留在服务端。 */
+public interface IConnectorAccountPort extends ConnectorAccountProvider {
+
+    @Override
     String connectorId();
 
     /** 发起连接或再次授权；连接中的账号也允许调用。 */

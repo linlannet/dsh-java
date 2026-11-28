@@ -304,6 +304,17 @@ function icon(name, className) {
     close: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='m6.5 6.5 11 11M17.5 6.5l-11 11' stroke='currentColor' stroke-width='1.7' stroke-linecap='round'/></svg>",
     filter: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M4.5 6h15M7.5 12h9M10.5 18h3' stroke='currentColor' stroke-width='1.7' stroke-linecap='round'/></svg>",
     chat: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M4.5 7a2.5 2.5 0 0 1 2.5-2.5h10A2.5 2.5 0 0 1 19.5 7v7a2.5 2.5 0 0 1-2.5 2.5H9l-4.5 3.5V7Z' stroke='currentColor' stroke-width='1.6' stroke-linejoin='round'/><path d='M9 10.5h.01M12 10.5h.01M15 10.5h.01' stroke='currentColor' stroke-width='2' stroke-linecap='round'/></svg>",
+    // 扩展 → 连接器菜单图标：两个咬合的节点 + 链路，区别于 plugin 的单插头
+    connector: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><circle cx='6.5' cy='7.5' r='2.5' stroke='currentColor' stroke-width='1.6'/><circle cx='17.5' cy='16.5' r='2.5' stroke='currentColor' stroke-width='1.6'/><path d='M8.8 8.8 15.2 15.2M6.5 10v3.5a2 2 0 0 0 2 2h6.8' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>",
+    // 8 个连接器品牌图标：统一 24x24 线性几何，currentColor 描边
+    connectorFeishu: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M8.5 5.5c-2.5 0-4.5 2-4.5 4.5 0 2.2 1.6 4 3.7 4.4l-1.2 3.6 3.6-2.1c.5.1 1 .1 1.4.1 2.5 0 4.5-2 4.5-4.5S13 5.5 10.5 5.5H8.5Z' stroke='currentColor' stroke-width='1.5' stroke-linejoin='round'/><path d='M16 13.5c2.2.2 3.9 2 3.9 4.2 0 1.1-.4 2.1-1.1 2.8l.6 1.8-1.9-1.1c-.4.1-.8.2-1.2.2-2.3 0-4.1-1.8-4.1-4s1.8-3.9 4.1-3.9h-1.3Z' stroke='currentColor' stroke-width='1.4' stroke-linejoin='round' opacity='.75'/></svg>",
+    connectorWecom: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M8.8 5.5c-3 0-5.3 2.1-5.3 4.8 0 1.5.7 2.8 1.9 3.7L4.8 17l2.9-1.4c.7.2 1.4.3 2.2.3h.7' stroke='currentColor' stroke-width='1.5' stroke-linejoin='round'/><path d='M15.2 8.5c3 0 5.3 2.1 5.3 4.8 0 1.5-.7 2.8-1.9 3.7l.6 3-2.9-1.4c-.5.1-1 .2-1.6.2-3 0-5.3-2.1-5.3-4.8s2.3-5.5 5.8-5.5Z' stroke='currentColor' stroke-width='1.5' stroke-linejoin='round'/><path d='M9.5 10.2h.01M14.5 12.8h.01' stroke='currentColor' stroke-width='2' stroke-linecap='round'/></svg>",
+    connectorDingtalk: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M5 14.5c2.5-4.5 5.2-7 8.2-8.5-.8 2-1.2 3.8-1.2 5.4 3.8-2.2 6.4-2.6 7.5-2.2-3 2.4-5.3 4.9-6.8 7.5 3.5-.5 5.6.2 6.3 1.1-2.8 1.5-6.4 2-10.5 1.1C5.6 18 4.3 16.5 5 14.5Z' stroke='currentColor' stroke-width='1.5' stroke-linejoin='round'/></svg>",
+    connectorNotion: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><rect x='5' y='4' width='14' height='16' rx='2' stroke='currentColor' stroke-width='1.5'/><path d='M9 8.5v7M9 8.5l5.5 6M14 9.5v6.5' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>",
+    connectorLinear: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><circle cx='12' cy='12' r='8' stroke='currentColor' stroke-width='1.5'/><path d='M6.8 16.3 16.3 6.8M8.5 19.2 19.2 8.5M5 12.8 12.8 5' stroke='currentColor' stroke-width='1.3' stroke-linecap='round' opacity='.75'/></svg>",
+    connectorTencentDocs: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><path d='M7 3.5h6.5L18 8v12.5H7a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 7 3.5Z' stroke='currentColor' stroke-width='1.5' stroke-linejoin='round'/><path d='M13 3.8V8h4.5M8.5 12h7M8.5 15.5h7' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>",
+    connectorTencentMeeting: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><rect x='3.5' y='6.5' width='12' height='11' rx='2.5' stroke='currentColor' stroke-width='1.5'/><path d='M15.5 10.5 20 8v8l-4.5-2.5v-3Z' stroke='currentColor' stroke-width='1.5' stroke-linejoin='round'/><path d='M8 11.2 9.7 12 8 12.8V11.2Z' stroke='currentColor' stroke-width='1.2' stroke-linejoin='round'/></svg>",
+    connectorGeneric: "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'><circle cx='12' cy='12' r='4' stroke='currentColor' stroke-width='1.5'/><path d='M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2' stroke='currentColor' stroke-width='1.4' stroke-linecap='round'/></svg>",
   };
   return el('span', { class: 'icon' + (className ? ' ' + className : ''), html: icons[name] || '' });
 }
@@ -709,7 +720,7 @@ function renderSidebar() {
   const brand = el('div', { class: 'brand', title: 'DSH Java Console' });
   brand.appendChild(icon('brand', 'brand-mark'));
   const brandCopy = el('div', { class: 'brand-copy' });
-  const brandTitle = el('div', { class: 'brand-title' }, 'DSH');
+  const brandTitle = el('div', { class: 'brand-title' }, 'HARNESS');
   brandTitle.appendChild(el('span', { class: 'brand-version' }, 'v0.2.3'));
   brandCopy.appendChild(brandTitle);
   brandCopy.appendChild(el('div', { class: 'brand-subtitle' }, 'Java Console'));
@@ -3545,6 +3556,7 @@ function renderSettingsPage() {
       { id: 'mcp', label: 'MCP 服务', desc: '连接外部 MCP server，远端工具以 mcp__服务名__工具名 注册', icon: 'server' },
       { id: 'cli', label: 'CLI 子智能体', desc: '配置外部 CLI 命令（claude、codex）供 subagent 工具调度', icon: 'terminal' },
       { id: 'plugins', label: '插件', desc: '安装、启停与参数配置', icon: 'plugin', countKey: 'plugins' },
+      { id: 'connectors', label: '连接器', desc: '飞书、企业微信等账号连接与状态诊断', icon: 'connector' },
     ] },
     { label: '系统', items: [
       { id: 'account', label: 'EMIS登录', desc: '企业身份（linlan-emis OIDC）登录状态与登录入口', icon: 'user' },
@@ -3591,6 +3603,7 @@ function renderSettingsPage() {
   switch (state.activeSettingsTab) {
     case 'models': renderModelSettings(body, null); break;
     case 'plugins': renderPluginSettings(body, null); break;
+    case 'connectors': renderConnectorSettings(body, null); break;
     case 'digital-humans': renderDigitalHumanSettings(body, null); break;
     case 'feishu-bots': renderFeishuBotsSettings(body, null); break;
     case 'skills': renderSkillsSettings(body, null); break;
@@ -3670,29 +3683,26 @@ function renderAccountSettings(body, footer) {
       el('p', { class: 'settings-panel-desc' },
         '服务端配置 DSH_EMIS_OIDC_*（client-id/secret 只走环境变量）；前端仅保存“是否显示登录入口”。'))));
 
-  const enabledChk = el('input', { type: 'checkbox' });
-  enabledChk.checked = !!cfg.enabled;
-  const enabledRow = el('div', { class: 'form-group form-group-inline' });
-  enabledRow.appendChild(enabledChk);
-  enabledRow.appendChild(el('label', { class: 'form-label-inline', onclick: function() { enabledChk.checked = !enabledChk.checked; } },
-    '开启登录入口（开启后首页底部显示账号入口：未登录可点此登录，已登录显示当前人员信息；关闭则完全隐藏）'));
-  panel.appendChild(enabledRow);
-
   const msgEl = el('div', { class: 'acct-msg' });
   function showMsg(text, kind) {
     msgEl.textContent = text;
     msgEl.className = 'acct-msg' + (kind ? ' ' + kind : '');
   }
 
+  const enabledChk = el('input', { type: 'checkbox' });
+  enabledChk.checked = !!cfg.enabled;
+  // 与 desktop 一致：勾选即保存，无需再点「保存设置」；回主界面时侧边栏按最新配置渲染
+  enabledChk.addEventListener('change', function() {
+    persistAuthConfig({ enabled: enabledChk.checked });
+    showMsg(enabledChk.checked ? '登录入口已开启，底部账号入口将显示' : '登录入口已关闭，底部账号入口已隐藏', 'ok');
+  });
+  const enabledRow = el('div', { class: 'form-group form-group-inline' });
+  enabledRow.appendChild(enabledChk);
+  enabledRow.appendChild(el('label', { class: 'form-label-inline', onclick: function() { enabledChk.click(); } },
+    '开启登录入口（开启后首页底部显示账号入口：未登录可点此登录，已登录显示当前人员信息；关闭则完全隐藏）'));
+  panel.appendChild(enabledRow);
+
   const actions = el('div', { class: 'acct-actions' });
-  actions.appendChild(el('button', {
-    class: 'btn btn-secondary',
-    onclick: function() {
-      persistAuthConfig({ enabled: enabledChk.checked });
-      showMsg('登录入口配置已保存', 'ok');
-      setTimeout(function() { render(); }, 400);
-    }
-  }, '保存设置'));
   actions.appendChild(el('button', {
     class: 'btn btn-primary',
     onclick: function() { persistAuthConfig({ enabled: enabledChk.checked }); window.location.href = emisLoginUrl(); }
@@ -4527,7 +4537,6 @@ function renderPluginSettings(body, footer) {
   }
   body.appendChild(summary);
 
-  renderConnectorSettings(body);
   renderPluginInstall(body);
 
   const listPanel = el('section', { class: 'settings-panel' });
@@ -4556,7 +4565,6 @@ function renderPluginSettings(body, footer) {
   body.appendChild(listPanel);
   const selected = list.find(function(plugin) { return plugin.pluginId === state.selectedPluginId; });
   if (selected) body.appendChild(renderPluginConfigEditor(selected));
-  loadConnectorData();
 }
 
 function connectorLocale() {
@@ -4583,7 +4591,7 @@ async function loadConnectorData() {
   } finally {
     state.connectorLoading = false;
     state.connectorLoaded = true;
-    if (state.activeMainTab === 'settings' && state.activeSettingsTab === 'plugins') render();
+    if (state.activeMainTab === 'settings' && state.activeSettingsTab === 'connectors') render();
   }
 }
 
@@ -4601,6 +4609,7 @@ function connectorStatusLabel(status) {
 
 function renderConnectorSettings(body) {
   const panel = el('section', { class: 'settings-panel connector-settings-panel' });
+  if (!state.connectorLoaded && !state.connectorLoading) loadConnectorData();
   const refreshBtn = el('button', { class: 'btn btn-secondary btn-sm' },
     state.connectorLoading ? connectorCopy('加载中…', 'Loading…') : connectorCopy('刷新', 'Refresh'));
   refreshBtn.disabled = Boolean(state.connectorLoading);
@@ -4645,14 +4654,15 @@ function renderConnectorCard(assessment) {
     || (assessment.featurePreviews || {})['en-US'] || [];
   const card = el('article', { class: 'plugin-card connector-card' });
   const brandKey = String(assessment.brandIcon || assessment.connectorId).replace(/[^a-z0-9-]/gi, '');
-  const initials = {
-    feishu: 'Fe', wecom: 'We', dingtalk: 'Di', notion: 'No', linear: 'Li',
-    'tencent-docs': 'TD', 'tencent-meeting': 'TM'
-  }[assessment.connectorId] || String(assessment.displayName || '?').slice(0, 2);
+  const iconName = {
+    feishu: 'connectorFeishu', wecom: 'connectorWecom', dingtalk: 'connectorDingtalk',
+    notion: 'connectorNotion', linear: 'connectorLinear',
+    'tencent-docs': 'connectorTencentDocs', 'tencent-meeting': 'connectorTencentMeeting'
+  }[assessment.connectorId] || 'connectorGeneric';
   const heading = el('div', { class: 'settings-card-top' },
     el('div', { class: 'connector-heading' },
       el('div', { class: 'plugin-avatar connector-brand connector-brand-' + brandKey,
-        'data-brand-icon': assessment.brandIcon || assessment.connectorId }, initials),
+        'data-brand-icon': assessment.brandIcon || assessment.connectorId }, icon(iconName)),
       el('div', { class: 'plugin-meta' },
         el('div', { class: 'plugin-name' }, names[locale] || assessment.displayName),
         el('div', { class: 'plugin-sub' }, assessment.connectorId + ' · ' + assessment.upstreamForm))),
@@ -4717,7 +4727,7 @@ async function runConnectorAction(connectorId, action) {
     showToast(connectorCopy('连接器操作失败：', 'Connector operation failed: ') + error.message);
   } finally {
     state.connectorBusy = null;
-    if (state.activeMainTab === 'settings' && state.activeSettingsTab === 'plugins') render();
+    if (state.activeMainTab === 'settings' && state.activeSettingsTab === 'connectors') render();
   }
 }
 

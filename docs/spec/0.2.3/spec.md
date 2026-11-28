@@ -645,17 +645,48 @@ C --> MP : Response<...>
 
 对应升级项：`cli-account 套件`、`feishu`、`wecom`、`dingtalk`、`notion`、`linear`、`tencent-docs`、`tencent-meeting`、`mcp-account`、`upstream-skills`（参考源 0.2.3 新增能力，非兼容性升级指南）。
 
-### **8.21.1 Business Rules**
+### **8.21.1 实现状态**
 
-1. **统一账号套件**：CLI 类连接器共享账号注册表、命令运行器与操作集合；插件 CLI 以运行期上下文给出的绝对路径执行；Windows 下路径上下文按 PowerShell 语法书写。
-2. **连接器接入面**：每个连接器提供插件页连接入口、品牌图标、功能预览与多语言文案；登录失败须给出分类诊断。
-3. **MCP 账号与 OAuth**：新增 MCP 账号注册表，支持 OAuth 授权、被动刷新、显式重新授权与登出；连接中仍可发起再次授权。
-4. **upstream-skills**：从固定 GitHub commit 下载连接器上游技能，按 profile 独立缓存并替换旧版本。
-5. **Java 接入口径**：先评估 `wecom`/`dingtalk`/`notion`/`linear`/`tencent-docs`/`tencent-meeting` 与 Java 侧能力映射，再按现有 `dsh-emis-plugin`／飞书插件模式接入，不引入 Node CLI 运行时；无法复用官方 CLI 的连接器以 REST 端口实现。
-   a. Acceptance criteria: [连接器评估表] → [逐项给出“接入/不接入/替代实现”结论]
-   b. Acceptance criteria: [已接入连接器] → [插件页可完成连接/断开，令牌不落前端]
+P0 已落地：通用账号契约、评估目录、三个服务端取号 Provider（feishu/wecom/dingtalk）、插件注册桥、AES-GCM 令牌缓存与控制台页面。
 
-> 连接器为 0.2.3 新增能力面（对上游无破坏性升级指南），本版纳入对齐范围但按插件分期落地；评估结论记录于 `design.md` 3.13.8 与 `tasks.md` 11.20。
+| 连接器 | 结论 | 本版状态 |
+| --- | --- | --- |
+| Feishu | 接入（复用现有 REST 接入） | 已实现 Provider |
+| WeCom | 替代实现（企业微信开放平台 REST） | 已实现 Provider |
+| DingTalk | 替代实现（钉钉开放平台 REST） | 已实现 Provider |
+| Notion | 替代实现（MCP 账号 + OAuth） | 待接入 |
+| Linear | 替代实现（MCP 账号 + OAuth） | 待接入 |
+| Tencent Docs | 不接入（能力受限，待企业接口授权） | 仅评估 |
+| Tencent Meeting | 不接入（需企业自建应用） | 仅评估 |
+| MCP 账号 | 通用账号注册表 + OAuth | 未在本版实现（契约预留） |
+
+### **8.21.2 Business Rules**
+
+1. **账号契约**：`IConnectorApi` 只交换评估、状态、诊断与 OAuth 回调参数；DTO 不含 accessToken/refreshToken/授权码。
+2. **端点**：`GET /api/harness/connectors/assessments`、`GET /accounts`、`GET /accounts/{id}`、`POST /accounts/{id}/connect|disconnect|refresh`、`GET /accounts/{id}/oauth/callback`（显式匿名）；除回调外默认鉴权。
+3. **状态机**：`DISCONNECTED`/`AUTHORIZATION_REQUIRED`/`CONNECTED`/`EXPIRED`/`ERROR`；诊断统一 `code/message/retryable`，message 不得携带令牌或第三方原始响应体。
+4. **Provider**：飞书以 `app_id/app_secret` 换 `tenant_access_token`；企业微信以 `corpid/corpsecret` 换 `access_token`；钉钉以 `appKey/appSecret` 走 `/v1.0/oauth2/accessToken`；三者均为服务端取号，无浏览器 OAuth。
+5. **注册桥**：`ConnectorAccountProvider`（types 标记接口，仅 `connectorId()`）→ `IConnectorAccountPort`（domain 行为端口）→ `PluginContext.registerConnectorAccount`；`ConnectorAccountRegistry.unregister` 幂等，插件停止/热重载时移除 Provider 并清状态。
+6. **令牌缓存**：`EncryptedConnectorTokenCache` 以 AES-GCM 在进程内保存随机 IV + 密文，AAD 绑定 `connectorId`；密钥来自 `harness.connectors.token-encryption-key` 或 `DSH_CONNECTOR_TOKEN_KEY`，缺省使用随机会话密钥；令牌不落 DTO、日志与前端。
+7. **OAuth 状态**：`state` 10 分钟 TTL、一次性消费；`connect` 返回 `AUTHORIZATION_REQUIRED` 且带 `authorizationUrl` 时才允许跳转；服务端取号 Provider 直接返回 `CONNECTED`。
+8. **被动刷新**：读取状态时若本地授予已过期则调用 Provider 刷新；刷新失败进入 `ERROR` 并给出可重试诊断，不伪报已连接。
+9. **评估目录**：7 项结论代码化（`ConnectorAssessmentCatalog`），提供 `zh-CN`/`en-US` 名称与功能预览；未注册 Provider 时页面显示“提供方未注册”，按钮禁用。
+10. **配置**：`feishu.appId/appSecret/tokenEndpoint`、`wecom.corpId/corpSecret/tokenEndpoint`、`dingtalk.appKey/appSecret/tokenEndpoint`；插件配置缺失时回退 `DSH_FEISHU_*`/`DSH_WECOM_*`/`DSH_DINGTALK_*` 环境变量。
+11. **插件 preset**：`harness.yml` 注册 `dsh-connector-providers`（`JAVA_NATIVE`、`auto-start: true`）；根 `pom.xml` 纳入模块。
+12. **upstream-skills**：仅记录固定 commit 元数据，不引入下载器。
+
+### **8.21.3 Acceptance Criteria**
+
+1. [已配置飞书/企微/钉钉凭据] → [连接后状态 `CONNECTED`，诊断为空]
+2. [缺少凭据] → [`*_CREDENTIALS_REQUIRED`，不发起外部请求]
+3. [上游拒绝或网络失败] → [`*_TOKEN_REJECTED`/`*_TOKEN_FETCH_FAILED`，可重试标记正确]
+4. [读取过期授予] → [被动刷新或进入 `EXPIRED`/`ERROR`]
+5. [断开] → [本地密文缓存清理，状态 `DISCONNECTED`]
+6. [OAuth 连接器回调] → [校验 state/code 后一次性消费，重复回调失败]
+7. [插件停止/热重载] → [Provider 注销且状态清理，页面回到“提供方未注册”]
+8. [检查 DTO/日志] → [不出现 accessToken/refreshToken/授权码]
+
+> 实现细节见 `design.md` §3.13.8，任务与测试见 `tasks.md` §11.20，错误码见 `error-codes.md` §3.22。
 
 ---
 
@@ -688,7 +719,7 @@ C --> MP : Response<...>
 | 23 | DeepSeek 认证/拒答/文件策略 | §8.18 | 认证提供方、`CONTENT_REFUSED`、上传策略与图片上限 |
 | 24 | 技能、推荐与 Action 卡片 | §8.19 | Office 单技能、upstream-skills 行、推荐 bundle 退役、action-card 块 |
 | 25 | 系统提示与上下文章节 | §8.20 | 章节累计与来源通知合并 |
-| 26 | 连接器插件与账号套件 | §8.21 | CLI 账号套件、MCP OAuth、连接器分期接入评估 |
+| 26 | 连接器插件与账号套件 | §8.21 | 账号契约/状态机/加密缓存、feishu/wecom/dingtalk Provider、插件注册桥 |
 
 > **参考源对齐基线**：v0.2.3 对应参考源 tag `dsh-v0.2.3-alpha.2`；§8.1–§8.12 覆盖至 `v0.2.2-rc.2`，§8.13–§8.21 覆盖 `v0.2.2-rc.3`~`v0.2.3-alpha.2`。参考源 0.2.3 另有大量新增包（会话 SQLite 持久化、Forge/GitLab、CUA Windows、Timeline、desktop-publisher 等）因无 Java 对应体系未纳入，见 §8.13。
 >

@@ -9,6 +9,7 @@ import net.linlan.dsh.domain.agent.service.ScopedSystemPromptAssembler;
 import net.linlan.dsh.domain.agent.service.ScopedSystemPromptAssembler;
 import net.linlan.dsh.domain.agent.service.SystemPromptAssembler;
 import net.linlan.dsh.domain.tool.adapter.ToolRegistry;
+import net.linlan.dsh.domain.connector.ConnectorAccountRegistry;
 import net.linlan.dsh.infrastructure.config.HarnessExtensionsProperties;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -47,6 +49,7 @@ public class JavaPluginRuntimeManager {
     private final PluginConfigStore configStore;
     private final SystemPromptAssembler promptAssembler;
     private final ScopedSystemPromptAssembler scopedPromptAssembler;
+    private final ObjectProvider<ConnectorAccountRegistry> connectorAccountRegistryProvider;
     private final Path installRoot;
     private final PluginHotReloader hotReloader;
 
@@ -65,6 +68,7 @@ public class JavaPluginRuntimeManager {
             PluginConfigStore configStore,
             SystemPromptAssembler promptAssembler,
             ScopedSystemPromptAssembler scopedPromptAssembler,
+            ObjectProvider<ConnectorAccountRegistry> connectorAccountRegistryProvider,
             PluginHotReloader hotReloader,
             HarnessExtensionsProperties extensions
     ) {
@@ -75,6 +79,7 @@ public class JavaPluginRuntimeManager {
         this.configStore = configStore;
         this.promptAssembler = promptAssembler;
         this.scopedPromptAssembler = scopedPromptAssembler;
+        this.connectorAccountRegistryProvider = connectorAccountRegistryProvider;
         this.hotReloader = hotReloader;
         this.installRoot = Path.of(extensions.getPlugins().getInstallRoot()).toAbsolutePath().normalize();
     }
@@ -107,7 +112,8 @@ public class JavaPluginRuntimeManager {
         }
 
         SpringPluginContext context = new SpringPluginContext(
-                pluginId, toolRegistry, eventBus, hookRegistry, configStore, scopedPromptAssembler);
+                pluginId, toolRegistry, eventBus, hookRegistry, configStore, scopedPromptAssembler,
+                connectorAccountRegistryProvider.getIfAvailable());
         JavaPluginLoader.LoadedPlugin loaded = null;
         try {
             loaded = loader.load(jarPath);

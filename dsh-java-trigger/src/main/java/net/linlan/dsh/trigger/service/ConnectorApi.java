@@ -20,36 +20,43 @@ public class ConnectorApi implements IConnectorApi {
     }
 
     @Override
+    /** 评估目录。 */
     public Response<List<ConnectorAssessmentDTO>> listAssessments() {
         return execute(accountCase::listAssessments);
     }
 
     @Override
+    /** 账号状态列表。 */
     public Response<List<ConnectorAccountStatusDTO>> listAccounts() {
         return execute(accountCase::listAccounts);
     }
 
     @Override
+    /** 单账号状态。 */
     public Response<ConnectorAccountStatusDTO> getAccount(String connectorId) {
         return execute(() -> accountCase.getAccount(connectorId));
     }
 
     @Override
+    /** 连接或再次授权。 */
     public Response<ConnectorAccountStatusDTO> connect(String connectorId) {
         return execute(() -> accountCase.connect(connectorId));
     }
 
     @Override
+    /** OAuth 回调换令牌。 */
     public Response<ConnectorAccountStatusDTO> completeAuthorization(String connectorId, String code, String state) {
         return execute(() -> accountCase.completeAuthorization(connectorId, code, state));
     }
 
     @Override
+    /** 断开并清理本地缓存。 */
     public Response<ConnectorAccountStatusDTO> disconnect(String connectorId) {
         return execute(() -> accountCase.disconnect(connectorId));
     }
 
     @Override
+    /** 刷新令牌。 */
     public Response<ConnectorAccountStatusDTO> refresh(String connectorId) {
         return execute(() -> accountCase.refresh(connectorId));
     }

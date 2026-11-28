@@ -2,7 +2,7 @@
 
 > 版本：`v0.2.3` | 主线：移动端接入（移动设备访问开关 + 设备配对重构回归 + 微信小程序登录） | 基线：v0.2.2
 >
-> 本方案将 `spec.md` 的 §5.1–§5.7 能力领域、§8 参考源平台能力对齐与 §6 数据约束转化为分层落位、接口清单与实现细节。**不新增 Maven 模块、不新增第三方依赖、不新增数据库表。**
+> 本方案将 `spec.md` 的 §5.1–§5.7 能力领域、§8 参考源平台能力对齐与 §6 数据约束转化为分层落位、接口清单与实现细节。 **不新增 Maven 模块、不新增第三方依赖、不新增数据库表。**
 
 ---
 
@@ -427,18 +427,66 @@ Java 侧不复用 Node CLI，按“官方 REST/协议优先、无法替代则不
 
 | 连接器 | 上游形态 | Java 接入口径 | 本版结论 |
 | --- | --- | --- | --- |
-| Feishu | `lark-cli` + 技能 | 已有飞书接入，补账号注册表与插件页连接面 | 接入（增量） |
-| WeCom | CLI 账号套件 | 企业微信开放平台 REST（应用消息/通讯录） | 评估后接入 |
-| DingTalk | `dws.exe` | 钉钉开放平台 REST | 评估后接入 |
-| Notion | 共享 MCP 管理器 | 以 MCP 客户端接入，复用 OAuth 授权 | 评估后接入 |
-| Linear | 共享 MCP 管理器 | MCP 客户端 + OAuth | 评估后接入 |
-| Tencent Docs | CLI 账号套件 | 腾讯文档开放接口（能力受限） | 评估，默认不接入 |
-| Tencent Meeting | `tmeet` CLI | 腾讯会议 REST（企业自建应用） | 评估，默认不接入 |
-| MCP 账号 | `mcp-account` + OAuth | 通用 MCP 账号注册表与授权流 | 接入（基础能力） |
+| Feishu | `lark-cli` + 技能 | 复用现有飞书 REST 接入，补账号注册表与插件页连接面 | 已实现 Provider |
+| WeCom | CLI 账号套件 | 企业微信开放平台 REST（应用消息/通讯录） | 已实现 Provider（替代实现） |
+| DingTalk | `dws.exe` | 钉钉开放平台 REST（`/v1.0/oauth2/accessToken`） | 已实现 Provider（替代实现） |
+| Notion | 共享 MCP 管理器 | 以 MCP 客户端接入，复用 OAuth 授权 | 待接入 |
+| Linear | 共享 MCP 管理器 | MCP 客户端 + OAuth | 待接入 |
+| Tencent Docs | CLI 账号套件 | 腾讯文档开放接口（能力受限） | 不接入（仅评估） |
+| Tencent Meeting | `tmeet` CLI | 腾讯会议 REST（企业自建应用） | 不接入（仅评估） |
+| MCP 账号 | `mcp-account` + OAuth | 通用 MCP 账号注册表与授权流 | 未在本版实现（契约预留） |
 
 - **账号套件**：`ConnectorAccountRegistry` + `ConnectorAccountService`，统一连接/断开/刷新与诊断；令牌只存服务端加密缓存。
 - **插件页**：`IConnectorApi` 暴露连接状态、连接入口、断开与错误诊断；前端仅拿状态，不拿令牌。
 - **upstream-skills**：仅作为技能来源元数据记录固定 commit，不引入 Node 下载器。
+
+### 3.13.8.1 实现落位
+
+| 层 | 文件 | 职责 |
+| --- | --- | --- |
+| api | `IConnectorApi`、`ConnectorAssessmentDTO`、`ConnectorAccountStatusDTO`、`ConnectorDiagnosticDTO` | 只交换状态/诊断/授权参数，不含令牌 |
+| domain | `ConnectorAccountRegistry`、`ConnectorAccountService`、`ConnectorAccountState`、`ConnectorAccountStatus`、`ConnectorAssessmentCatalog`、`IConnectorAccountPort`、`IConnectorTokenCache`、`ConnectorConnection`、`ConnectorTokenGrant`、`ConnectorDiagnostic`、`ConnectorAccountException` | 注册表、状态机、评估目录与领域端口 |
+| types | `ConnectorAccountProvider`、`PluginContext.registerConnectorAccount` | 跨层标记 SPI，避免 types→domain 循环依赖 |
+| case | `IConnectorAccountCase`、`ConnectorAccountFactory`、`ConnectorAccountCaseImpl` | 用例编排与 DTO 映射 |
+| trigger | `ConnectorController`、`ConnectorApi` | 7 个端点；OAuth 回调显式匿名，其余默认鉴权 |
+| infrastructure | `EncryptedConnectorTokenCache`、`ConnectorBeanConfig`、`SpringPluginContext`、`JavaPluginRuntimeManager` | AES-GCM 缓存、装配、插件注册/热重载回收 |
+| plugins | `dsh-connector-providers`（`ConnectorProvidersPlugin` + 飞书/企微/钉钉 Provider + Config + `plugin.yaml`） | 服务端取号 Provider |
+| app | `harness.yml` preset、`static/app.js` 连接器卡片 | `auto-start` 注册与控制台入口 |
+
+**注册桥流程**：
+
+```text
+插件 configure
+  → context.registerConnectorAccount(provider)
+  → 校验 provider instanceof IConnectorAccountPort
+  → ConnectorAccountRegistry.register（重复 connectorId 拒绝）
+  → 返回 AutoCloseable（加入 registrations）
+插件停止/热重载
+  → registrations 逆序 close
+  → ConnectorAccountRegistry.unregister（幂等，移除 provider + 清状态）
+```
+
+**令牌与状态**：
+
+1. `ConnectorAccountService.connect` 对服务端取号 Provider 直接返回 `authorized(grant)`；对 OAuth Provider 返回 `authorizationRequired(url, state)` 并保存 10 分钟待授权状态。
+2. `completeAuthorization` 校验 `state` 一次性、`code` 非空；失败返回 `AUTHORIZATION_*` 诊断。
+3. `status` 读取本地授予，过期时被动刷新；刷新失败进入 `ERROR`。
+4. `EncryptedConnectorTokenCache` 使用 `AES/GCM/NoPadding`、12 字节随机 IV、128 位 tag、AAD=`connectorId`，Map 只保存随机 IV 与密文。
+5. 密钥：`harness.connectors.token-encryption-key` 或 `DSH_CONNECTOR_TOKEN_KEY`；缺省随机密钥，故进程重启后令牌不可恢复。
+
+**Provider 取号**：
+
+| Provider | 凭据 | 端点 | 失败码 |
+| --- | --- | --- | --- |
+| Feishu | `appId/appSecret` | `open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal` | `FEISHU_CREDENTIALS_REQUIRED`、`FEISHU_TOKEN_FETCH_FAILED`、`FEISHU_TOKEN_REJECTED` |
+| WeCom | `corpId/corpSecret` | `qyapi.weixin.qq.com/cgi-bin/gettoken` | `WECOM_CREDENTIALS_REQUIRED`、`WECOM_TOKEN_FETCH_FAILED`、`WECOM_TOKEN_REJECTED` |
+| DingTalk | `appKey/appSecret` | `api.dingtalk.com/v1.0/oauth2/accessToken` | `DINGTALK_CREDENTIALS_REQUIRED`、`DINGTALK_TOKEN_FETCH_FAILED`、`DINGTALK_TOKEN_REJECTED` |
+
+三者均使用 JDK `HttpClient` 与既有 Jackson，不新增第三方 HTTP 依赖；无 refresh_token，到期以应用凭据重新取号。
+
+**测试**：`FeishuAccountProviderTest`、`WeComAccountProviderTest`、`DingTalkAccountProviderTest`、`ConnectorAccountRegistryTest`、`ConnectorAccountServiceTest`、`ConnectorApiTest`、`SpringPluginContextTest`（注册与回收）。
+
+**非目标**：Notion/Linear Provider、MCP 账号注册表、数据库持久化、多实例共享缓存。
 
 ## 3.14 分层落位清单
 

@@ -22,7 +22,7 @@
 | --- | --- |
 | dsh-java | A self-contained AI Agent Harness on Java 17 + Spring Boot: ReAct, tools, approvals, plugins (Java/Node/MCP), event sourcing, web console. |
 | dsh-java-plugins | Java native plugins for dsh-java: MySQL, OceanBase, Dameng and Mall, with plugin development contract and reference implementations. |
-| dsh-desktop | DSH Java desktop client built with Tauri 2 + React 19: bundled agent runtime, digital-human collaboration and A2A protocol. |
+| dsh-desktop | DSH Desktop client built with Tauri 2 + React 19: bundled agent runtime, digital-human collaboration and A2A protocol. |
 | dsh-mobile | DSH Java multi-platform shell: Android/iOS (Tauri 2 Mobile), HarmonyOS (ArkWeb) and WeChat mini-program share one React H5 artifact. |
 | dsh-java-release | Ready-to-run release bundle for DSH Java 0.2.3: artifacts + four database plugins + built-in skills, start with one command. |
 

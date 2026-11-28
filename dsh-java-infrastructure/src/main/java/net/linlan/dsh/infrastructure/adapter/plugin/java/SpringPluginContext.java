@@ -11,6 +11,9 @@ import net.linlan.dsh.domain.agent.service.ScopedSystemPromptAssembler;
 import net.linlan.dsh.domain.tool.adapter.ToolRegistry;
 import net.linlan.dsh.domain.tool.plugin.IPluginToolBridge;
 import net.linlan.dsh.domain.tool.plugin.PluginToolDefinition;
+import net.linlan.dsh.domain.connector.ConnectorAccountRegistry;
+import net.linlan.dsh.domain.connector.IConnectorAccountPort;
+import net.linlan.dsh.domain.spi.ConnectorAccountProvider;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -30,21 +33,31 @@ final class SpringPluginContext implements PluginContext, AutoCloseable {
     private final InProcessPluginHookRegistry hookRegistry;
     private final PluginConfigStore configStore;
     private final ScopedSystemPromptAssembler promptAssembler;
+    private final ConnectorAccountRegistry connectorAccountRegistry;
     private final List<AutoCloseable> registrations = new ArrayList<>();
+
+    SpringPluginContext(String pluginId, ToolRegistry toolRegistry, PluginEventBus eventBus,
+                        InProcessPluginHookRegistry hookRegistry, PluginConfigStore configStore,
+                        ScopedSystemPromptAssembler promptAssembler) {
+        this(pluginId, toolRegistry, eventBus, hookRegistry, configStore, promptAssembler, null);
+    }
 
     /**
      * 创建插件上下文。
      * <p>五个宿主服务都不允许为空；上下文创建后才会交给插件 configure。
+     * {@code connectorAccountRegistry} 可为空（不支持连接器注册的上下文）。
      */
     SpringPluginContext(String pluginId, ToolRegistry toolRegistry, PluginEventBus eventBus,
                         InProcessPluginHookRegistry hookRegistry, PluginConfigStore configStore,
-                        ScopedSystemPromptAssembler promptAssembler) {
+                        ScopedSystemPromptAssembler promptAssembler,
+                        ConnectorAccountRegistry connectorAccountRegistry) {
         this.pluginId = Objects.requireNonNull(pluginId, "pluginId");
         this.toolRegistry = Objects.requireNonNull(toolRegistry, "toolRegistry");
         this.eventBus = Objects.requireNonNull(eventBus, "eventBus");
         this.hookRegistry = Objects.requireNonNull(hookRegistry, "hookRegistry");
         this.configStore = Objects.requireNonNull(configStore, "configStore");
         this.promptAssembler = Objects.requireNonNull(promptAssembler, "promptAssembler");
+        this.connectorAccountRegistry = connectorAccountRegistry;
     }
 
     @Override
@@ -72,6 +85,28 @@ final class SpringPluginContext implements PluginContext, AutoCloseable {
         AutoCloseable registration = new PluginToolRegistration(qualifiedName, disposer::run);
         registrations.add(registration);
         return registration;
+    }
+
+    /**
+     * 注册插件贡献的连接器账号提供方。
+     * <p>提供方必须实现 {@link IConnectorAccountPort}（通过 types 侧标记 {@link ConnectorAccountProvider}
+     * 传入以避免循环依赖）；注册后进宿主连接器目录，插件停止/热重载时自动注销并清理状态。
+     */
+    @Override
+    public AutoCloseable registerConnectorAccount(ConnectorAccountProvider provider) {
+        Objects.requireNonNull(provider, "provider");
+        if (connectorAccountRegistry == null) {
+            throw new UnsupportedOperationException("connector account registration is not available in this PluginContext");
+        }
+        if (!(provider instanceof IConnectorAccountPort port)) {
+            throw new IllegalArgumentException(
+                    "provider must implement IConnectorAccountPort: " + provider.getClass().getName());
+        }
+        connectorAccountRegistry.register(port);
+        String connectorId = port.connectorId();
+        AutoCloseable disposer = () -> connectorAccountRegistry.unregister(connectorId);
+        registrations.add(disposer);
+        return disposer;
     }
 
     /**

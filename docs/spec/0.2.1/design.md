@@ -2,7 +2,7 @@
 
 > 版本：`v0.2.1` | 基线：v0.2.0 | 架构：DDD 六边形架构（Maven 多模块 / Spring Boot 3.5.16 / Java 17）
 >
-> 本文档将 `spec.md` 中 **28 个功能领域**的 EARS 需求转化为技术实现方案。其中 **§5.1–§5.12（12 个领域）已落地**（domain 56 新增类、infrastructure 12 新增类、45 新增测试，全量 617 测试通过），描述**已采用**的架构与接口设计；**§5.13–§5.28（16 个领域）已落地**（对齐原版 0.2.1-alpha.3，6 个核心扩展 + 10 个实验性扩展），描述**已采用**的增量设计方案。扩展领域部分复用已有基础实现（`GitHubWebhookHandler`/`OfficeSkill`/`BadgeSkill`/`ModuleLevelHmrService`/`RemotePluginInventory`/`ITypertRemoteRegistry` 等），在对应章节标注复用关系。
+> 本文档将 `spec.md` 中 **28 个功能领域**的 EARS 需求转化为技术实现方案。其中 **§5.1–§5.12（12 个领域）已落地**（domain 56 新增类、infrastructure 12 新增类、45 新增测试，全量 617 测试通过），描述 **已采用**的架构与接口设计； **§5.13–§5.28（16 个领域）已落地**（对齐原版 0.2.1-alpha.3，6 个核心扩展 + 10 个实验性扩展），描述 **已采用**的增量设计方案。扩展领域部分复用已有基础实现（`GitHubWebhookHandler`/`OfficeSkill`/`BadgeSkill`/`ModuleLevelHmrService`/`RemotePluginInventory`/`ITypertRemoteRegistry` 等），在对应章节标注复用关系。
 
 ---
 

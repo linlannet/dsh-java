@@ -11,6 +11,8 @@ import net.linlan.dsh.domain.spi.PluginHook;
 import net.linlan.dsh.domain.spi.PluginHookResult;
 import net.linlan.dsh.domain.spi.PluginConfigStore;
 import net.linlan.dsh.domain.agent.service.ScopedSystemPromptAssembler;
+import net.linlan.dsh.domain.connector.ConnectorAccountRegistry;
+import net.linlan.dsh.domain.connector.IConnectorAccountPort;
 import net.linlan.dsh.domain.tool.adapter.ToolRegistry;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
@@ -134,6 +137,64 @@ class SpringPluginContextTest {
         assertEquals(net.linlan.dsh.domain.hooks.model.valobj.HookOutput.HookDecision.BLOCK,
                 outputs.get(0).decision().orElse(null));
         assertEquals("no", outputs.get(0).reason().orElse(null));
+    }
+
+    /**
+     * 插件贡献的连接器账号提供方注册进宿主目录，上下文关闭时自动回收（热重载安全）。
+     */
+    @Test
+    void registersConnectorAccountAndUnregistersOnClose() throws Exception {
+        ConnectorAccountRegistry registry = new ConnectorAccountRegistry();
+        SpringPluginContext context = connectorContext(registry);
+        IConnectorAccountPort port = new IConnectorAccountPort() {
+            @Override public String connectorId() { return "feishu"; }
+            @Override public net.linlan.dsh.domain.connector.ConnectorConnection connect() {
+                throw new AssertionError("connect must not be invoked during registration");
+            }
+        };
+
+        AutoCloseable handle = context.registerConnectorAccount(port);
+
+        assertEquals(List.of("feishu"), registry.connectorIds());
+
+        // 显式关闭句柄 → 目录中消失
+        handle.close();
+        assertTrue(registry.find("feishu").isEmpty());
+
+        // 再次注册后，关闭整个上下文也应逆序回收
+        context.registerConnectorAccount(port);
+        assertEquals(List.of("feishu"), registry.connectorIds());
+        context.close();
+        assertTrue(registry.connectorIds().isEmpty());
+    }
+
+    /**
+     * 传入的提供方若不是 IConnectorAccountPort（仅实现 types 侧标记），宿主必须拒绝，避免污染目录。
+     */
+    @Test
+    void rejectsProviderThatIsNotConnectorPort() {
+        ConnectorAccountRegistry registry = new ConnectorAccountRegistry();
+        SpringPluginContext context = connectorContext(registry);
+
+        assertThrows(IllegalArgumentException.class, () -> context.registerConnectorAccount(() -> "wecom"));
+        assertTrue(registry.connectorIds().isEmpty());
+    }
+
+    /**
+     * 未注入连接器注册中心的上下文不支持注册，明确抛 UnsupportedOperationException。
+     */
+    @Test
+    void unsupportedWhenRegistryAbsent() {
+        SpringPluginContext context = createContext(new RecordingToolRegistry());
+
+        assertThrows(UnsupportedOperationException.class,
+                () -> context.registerConnectorAccount(() -> "feishu"));
+    }
+
+    private SpringPluginContext connectorContext(ConnectorAccountRegistry registry) {
+        return new SpringPluginContext("demo", new RecordingToolRegistry(),
+                new InProcessPluginEventBus(), new InProcessPluginHookRegistry(),
+                new InMemoryPluginConfigStore(), new ScopedSystemPromptAssembler(), registry);
     }
 
     /**

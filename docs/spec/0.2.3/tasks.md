@@ -274,11 +274,17 @@
 - [x] 章节按来源累计合并，不覆盖他来源；验收：多来源合并用例
 - [x] 识别各来源通知并与 `runtime-context` 快照协同；验收：快照与章节一致
 
-### 11.20 连接器插件与账号套件（评估优先）
-- [x] 输出连接器评估表（wecom/dingtalk/notion/linear/tencent-docs/tencent-meeting）；验收：逐项“接入/不接入/替代实现”结论 —— 见 design §3.13.8
-- [x] 新增连接器账号注册表与统一连接/断开/刷新服务；验收：状态与诊断用例
-- [x] MCP 账号支持 OAuth 授权、被动刷新、再次授权与登出；验收：授权流与过期刷新用例
-- [x] 已评估连接器按插件模式接入（REST 优先，不引入 Node CLI）；验收：插件页可连接/断开，令牌不落前端
-- [x] 品牌图标、功能预览与多语言文案；验收：插件页展示项齐全
+### 11.20 连接器插件与账号套件
+- [x] 通用账号契约 `IConnectorApi` + `ConnectorAssessmentDTO`/`ConnectorAccountStatusDTO`/`ConnectorDiagnosticDTO`；验收：DTO 不含 accessToken/refreshToken/授权码
+- [x] 领域注册表与状态机 `ConnectorAccountRegistry`/`ConnectorAccountService`/`ConnectorAccountState`/`ConnectorAccountException`；验收：`ConnectorAccountRegistryTest`、`ConnectorAccountServiceTest`
+- [x] 评估目录 `ConnectorAssessmentCatalog`（7 项结论 + `zh-CN`/`en-US` 预览）；验收：评估接口返回完整
+- [x] 用例与端点 `ConnectorAccountCaseImpl`/`ConnectorController`（assessments、accounts、get、connect、callback、disconnect、refresh）；验收：`ConnectorApiTest`
+- [x] AES-GCM 令牌缓存 `EncryptedConnectorTokenCache` 与 `ConnectorBeanConfig` 装配；验收：`EncryptedConnectorTokenCacheTest`
+- [x] 插件注册桥：`ConnectorAccountProvider`（types）、`PluginContext.registerConnectorAccount`、`SpringPluginContext` 逆序回收、`JavaPluginRuntimeManager` 注入；验收：`SpringPluginContextTest` 注册与回收
+- [x] `plugins/dsh-connector-providers` Provider 插件：飞书/企业微信/钉钉服务端取号；验收：`FeishuAccountProviderTest`、`WeComAccountProviderTest`、`DingTalkAccountProviderTest`
+- [x] 控制台连接器卡片（品牌、功能预览、连接/断开/刷新、诊断、系统浏览器 OAuth）；验收：`node --check app.js`
+- [x] `harness.yml` preset（`auto-start`）与根 `pom.xml` 模块注册；验收：插件装配可启动
 - [x] `upstream-skills` 固定 commit 元数据记录；验收：不引入下载运行器
-- [x] 补充单测、文档与 CHANGELOG；验收：`mvn test` 通过
+- [ ] Notion / Linear Provider（MCP 账号 + OAuth）；状态：待接入
+- [ ] MCP 账号注册表；状态：未在本版实现（契约预留）
+- [x] 同步 `spec.md` §8.21、`design.md` §3.13.8、`error-codes.md` §3.22、`smoke.md`、release notes 与 CHANGELOG；验收：文档与实际代码一致

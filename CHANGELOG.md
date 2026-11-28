@@ -48,6 +48,7 @@
   - **plugins/dsh-connector-providers**：真实渠道 Provider 插件（P0）：实现 `IConnectorAccountPort` 注册飞书 / 企业微信 / 钉钉（`connectorId=feishu/wecom/dingtalk`），均为服务端取号——飞书 `app_id/app_secret` 换 `tenant_access_token`、企业微信 `corpid/corpsecret` 换 `access_token`、钉钉 `appKey/appSecret` 换 `accessToken`（新版 `/v1.0/oauth2/accessToken`）；统一用 JDK `HttpClient`、不引第三方 HTTP 依赖，令牌仅以 AES-GCM 缓存在服务端进程内、不进 DTO/日志；缺凭据分别抛 `FEISHU/WECOM/DINGTALK_CREDENTIALS_REQUIRED`，取号失败抛 `*_TOKEN_FETCH_FAILED`/`*_TOKEN_REJECTED`；入口类 `ConnectorProvidersPlugin` 统一注册，已在根 `pom.xml` 与 `harness.yml` preset 注册（`auto-start`），Notion/Linear（交互式 OAuth）可按同模板接入
   - **文档与 AI 可发现性**：新增 `AGENTS.md`、`llms.txt`、`docs/md/ai-discoverability.md` 与 [docs/spec/0.2.3/error-codes.md](docs/spec/0.2.3/error-codes.md)（通用码、17 个子系统码表、旧→新映射）
 - **更新**：
+  - **dsh-java-app**：EMIS「开启登录入口」勾选改为即时保存并提示，移除「保存设置」按钮（与 desktop 行为一致）
   - 全模块 pom 版本 `0.2.2` → `0.2.3`
   - `ApiKeyAuthInterceptor` 重新接入设备级 Bearer Token 校验（`devt_` 前缀，吊销后立即 401）
   - 工具目录收敛：移除 `create_worktree`、`working_directory` 与子代理 `cwd` 参数，统一由 `enter_worktree` 创建/进入并切换当前目录
@@ -62,6 +63,7 @@
   - 插件安装新增 `expectedPluginId`/`expectedVersion` 校验与 `unexpected-package` 错误码
   - 插件→连接器注册桥：`dsh-java-types` 新增标记 SPI `ConnectorAccountProvider`（仅 `connectorId()`，避免 types→domain 循环依赖），`PluginContext` 新增 `registerConnectorAccount` 默认方法；`IConnectorAccountPort` 继承该标记接口，`ConnectorAccountRegistry` 新增幂等 `unregister`（移除 provider 并清状态）；`SpringPluginContext` 实现注册并在插件停止/热重载时逆序回收，`JavaPluginRuntimeManager` 注入 registry；`harness.yml` 新增 `dsh-connector-providers` preset
   - Web 控制台（`app.js`/`app.css`）适配移动访问开关与设备管理面板；连接器页仅使用服务端返回的状态与诊断
+  - Web 控制台连接器从插件页拆出为「扩展 → 连接器」独立菜单，8 个连接器品牌头像改为重新设计的 SVG 线性图标（飞书/企业微信/钉钉/Notion/Linear/腾讯文档/腾讯会议 + 通用回退）
 - **破坏性变更**：
   - 未声明 `@RouteAuth` 的路由默认要求认证（可用 `harness.webserver.auth-default=anonymous` 回滚）
   - Shell/FS 参数错误统一为 `INVALID_ARGS`
@@ -93,6 +95,14 @@
   - `tasks.md`：新增并完成 11.13–11.20 任务组
   - `error-codes.md`：新增 3.18–3.22 码表（DeepSeek、会话、Subagent、PTC/MCP、连接器）与 5 条旧→新映射
   - 版本联动：Java `0.2.3` 对应参考源 tag `dsh-v0.2.3-alpha.2`；后续 Java 版本按主.次.修订对齐，不带 `alpha`/`rc` 后缀
+
+  **连接器文档与注释（2026-11-28）**
+  - `spec.md` §8.21 由“分期规划”更新为“P0 已实现”：账号契约、7 个端点、状态机、AES-GCM 令牌缓存、插件注册桥、飞书/企微/钉钉 Provider、评估目录、配置与 preset
+  - `design.md` §3.13.8 补实现落位（api/domain/types/case/trigger/infra/plugins/app）、注册桥流程、Provider 取号端点与失败码；评估表结论改为“已实现/待接入/不接入”
+  - `tasks.md` §11.20 更新为实际交付清单；Notion/Linear Provider 与 MCP 账号注册表列为待办
+  - `error-codes.md` §3.22 补 14 个领域状态机码与 9 个 Provider 取号码，并标注可重试口径
+  - `smoke.md` 新增 2026-11-28 连接器增量单测记录（Provider/domain/trigger，全部通过）；release notes 更新提供方限制与验证结论
+  - 为 `ConnectorController`、`ConnectorApi`、`ConnectorAccountCaseImpl`、`ConnectorAccountRegistry`、三个 Provider `Config` 与 `ConnectorAssessmentCatalog` 补充 JavaDoc
 
 ## 版本号：0.2.2
 - 更新日期：2026-11-02

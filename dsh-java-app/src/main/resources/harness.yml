@@ -117,6 +117,13 @@ harness:
           source-path: ./plugins/sample-tools-plugin-1.0.0.jar
           entrypoint: sample-tools-plugin-1.0.0.jar
           auto-start: true
+        - plugin-id: dsh-connector-providers
+          display-name: DSH Connector Providers
+          plugin-version: 1.0.0
+          runtime-type: JAVA_NATIVE
+          source-path: ./plugins/dsh-connector-providers-1.0.0.jar
+          entrypoint: dsh-connector-providers-1.0.0.jar
+          auto-start: true
 
 # 飞书（Feishu / Lark）Bot 接入
 dsh:

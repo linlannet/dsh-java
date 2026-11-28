@@ -26,6 +26,19 @@ public interface PluginContext {
     AutoCloseable registerTool(ToolDefinition tool);
 
     /**
+     * 注册一个连接器账号提供方，使其出现在宿主连接器目录并可被连接/断开/刷新。
+     * <p>{@code provider} 必须是 {@code net.linlan.dsh.domain.connector.IConnectorAccountPort}
+     * （本接口仅声明位于 types 的最小标记 {@link ConnectorAccountProvider}，避免循环依赖）；
+     * 非该端口类型会被宿主拒绝。返回的关闭器由宿主持有，插件停止/热重载时自动从目录移除。
+     *
+     * @param provider 实现完整连接器端口的提供方
+     * @return 注销该提供方的关闭器
+     */
+    default AutoCloseable registerConnectorAccount(ConnectorAccountProvider provider) {
+        throw new UnsupportedOperationException("registerConnectorAccount is not supported by this PluginContext");
+    }
+
+    /**
      * 注册必须在关闭插件 ClassLoader 前释放的资源。
      * <p>典型场景包括数据库连接、定时器和文件监听器。
      */

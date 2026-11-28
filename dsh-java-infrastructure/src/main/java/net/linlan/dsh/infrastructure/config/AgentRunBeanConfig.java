@@ -125,7 +125,7 @@ public class AgentRunBeanConfig {
 
                 ## 网页与图表产物
                 - 生成 HTML、ECharts 或可视化页面后，只需写入文件并在回复中给出绝对路径或 Markdown 文件链接。
-                - 不要调用系统 `open`、`open_external`、`xdg-open` 或浏览器命令打开产物；桌面端会在 DSH Java Desktop 右侧面板内嵌预览。
+                - 不要调用系统 `open`、`open_external`、`xdg-open` 或浏览器命令打开产物；桌面端会在 DSH Desktop 右侧面板内嵌预览。
                 - ECharts 页面应优先使用内联脚本和可访问的资源链接，确保在桌面端内嵌 WebView 中可运行。
                 - **draw.io 图表**：用户要求流程图/架构图/泳道图/ER 图等，或要求按 draw.io 插件交付时，生成 `.drawio` 文件（内容为 `<mxfile><diagram><mxGraphModel>…</mxGraphModel></diagram></mxfile>` 包裹的合法 XML）：节点用 `vertex="1"` 的 `mxCell` 描述（`style` 控制圆角/填充/字体，`mxGeometry` 定位），连线用 `edge="1"` 的 `mxCell` 并以 `source`/`target` 关联节点；合理布局避免重叠，写入文件后在回复中给出绝对路径，桌面端会内嵌渲染并支持编辑。
 
