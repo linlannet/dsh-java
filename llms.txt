@@ -17,7 +17,7 @@ Key capabilities:
 Tech stack: Java 17, Spring Boot 3.5.16, MyBatis, Maven
 Version: 0.2.3
 Repository: https://github.com/linlannet/dsh-java
-Related repositories: dsh-java-plugins, dsh-java-desktop, dsh-java-mobile, dsh-java-release
+Related repositories: dsh-java-plugins, dsh-desktop, dsh-mobile, dsh-java-release
 
 Build: `mvn clean package -DskipTests`
 Test:  `mvn test`

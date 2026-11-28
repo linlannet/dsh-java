@@ -45,6 +45,7 @@
     - `application.yml` 新增 `dsh.miniapp.wechat.appid/secret`（`DSH_MINIAPP_WECHAT_APPID`/`DSH_MINIAPP_WECHAT_SECRET` 注入）、`dsh.emis.oidc.*`（client-secret 仅环境变量）与 `harness.auth.*`
     - 静态控制台新增连接器设置卡片（品牌、`zh-CN`/`en-US` 文案、功能预览、连接/断开/OAuth 跳转/诊断）；「个人登录」改为企业账号 SSO
   - **plugins/dsh-emis-plugin**：linlan-emis 企业身份鉴权插件（P0）：RS256 JWT + JWKS 本地验签，提供 `whoami`/`scope_check` 工具；拒绝 HS256，JWKS 不可达 fail-closed，不记录 token；已在根 `pom.xml` 注册模块
+  - **plugins/dsh-connector-providers**：真实渠道 Provider 插件（P0）：实现 `IConnectorAccountPort` 注册飞书 / 企业微信 / 钉钉（`connectorId=feishu/wecom/dingtalk`），均为服务端取号——飞书 `app_id/app_secret` 换 `tenant_access_token`、企业微信 `corpid/corpsecret` 换 `access_token`、钉钉 `appKey/appSecret` 换 `accessToken`（新版 `/v1.0/oauth2/accessToken`）；统一用 JDK `HttpClient`、不引第三方 HTTP 依赖，令牌仅以 AES-GCM 缓存在服务端进程内、不进 DTO/日志；缺凭据分别抛 `FEISHU/WECOM/DINGTALK_CREDENTIALS_REQUIRED`，取号失败抛 `*_TOKEN_FETCH_FAILED`/`*_TOKEN_REJECTED`；入口类 `ConnectorProvidersPlugin` 统一注册，已在根 `pom.xml` 与 `harness.yml` preset 注册（`auto-start`），Notion/Linear（交互式 OAuth）可按同模板接入
   - **文档与 AI 可发现性**：新增 `AGENTS.md`、`llms.txt`、`docs/md/ai-discoverability.md` 与 [docs/spec/0.2.3/error-codes.md](docs/spec/0.2.3/error-codes.md)（通用码、17 个子系统码表、旧→新映射）
 - **更新**：
   - 全模块 pom 版本 `0.2.2` → `0.2.3`
@@ -59,6 +60,7 @@
   - 会话状态新增 `completionUnread`/`completionFailed`，`turn/end` 自动更新完成位置；`ISessionEventLogService.append` 新增事件数组重载（委托 `appendBatch`），单事件签名保持兼容
   - SDK prompt 未设置时区时上报 `ZoneId.systemDefault()`
   - 插件安装新增 `expectedPluginId`/`expectedVersion` 校验与 `unexpected-package` 错误码
+  - 插件→连接器注册桥：`dsh-java-types` 新增标记 SPI `ConnectorAccountProvider`（仅 `connectorId()`，避免 types→domain 循环依赖），`PluginContext` 新增 `registerConnectorAccount` 默认方法；`IConnectorAccountPort` 继承该标记接口，`ConnectorAccountRegistry` 新增幂等 `unregister`（移除 provider 并清状态）；`SpringPluginContext` 实现注册并在插件停止/热重载时逆序回收，`JavaPluginRuntimeManager` 注入 registry；`harness.yml` 新增 `dsh-connector-providers` preset
   - Web 控制台（`app.js`/`app.css`）适配移动访问开关与设备管理面板；连接器页仅使用服务端返回的状态与诊断
 - **破坏性变更**：
   - 未声明 `@RouteAuth` 的路由默认要求认证（可用 `harness.webserver.auth-default=anonymous` 回滚）

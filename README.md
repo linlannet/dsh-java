@@ -2,7 +2,7 @@
 
 > **TL;DR** · Java 17 + Spring Boot 的**可独立运行 Agent Harness**：ReAct 循环、真实工具、审批治理、Java/Node/MCP 插件、事件溯源、零构建 Web 控制台。
 > **Keywords**: Agent Harness, ReAct, AI Agent, MCP, Plugin, Spring Boot, Java, LLM
-> **相关仓库**: [dsh-java-plugins](https://github.com/linlannet/dsh-java-plugins) · [dsh-java-desktop](https://github.com/linlannet/dsh-java-desktop) · [dsh-java-mobile](https://github.com/linlannet/dsh-java-mobile) · [dsh-java-release](https://github.com/linlannet/dsh-java-release)
+> **相关仓库**: [dsh-java-plugins](https://github.com/linlannet/dsh-java-plugins) · [dsh-desktop](https://github.com/linlannet/dsh-desktop) · [dsh-mobile](https://github.com/linlannet/dsh-mobile) · [dsh-java-release](https://github.com/linlannet/dsh-java-release)
 > **AI 入口**: [llms.txt](./llms.txt) · [AGENTS.md](./AGENTS.md)
 
 

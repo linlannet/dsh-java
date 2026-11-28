@@ -9,8 +9,8 @@
 | --- | --- | --- | --- | --- |
 | dsh-java | ✅ | ✅ | ✅ | — |
 | dsh-java-plugins | ✅ | ✅ | ✅ | — |
-| dsh-java-desktop | ✅ | ✅ | ✅ | ✅ |
-| dsh-java-mobile | ✅ | ✅ | ✅ | ✅（含 miniapp） |
+| dsh-desktop | ✅ | ✅ | ✅ | ✅ |
+| dsh-mobile | ✅ | ✅ | ✅ | ✅（含 miniapp） |
 | dsh-java-release | ✅ | ✅ | ✅ | — |
 
 `llms.txt`：面向 LLM 的项目摘要（定位、能力、技术栈、命令、目录、文档链接）。
@@ -22,8 +22,8 @@
 | --- | --- |
 | dsh-java | A self-contained AI Agent Harness on Java 17 + Spring Boot: ReAct, tools, approvals, plugins (Java/Node/MCP), event sourcing, web console. |
 | dsh-java-plugins | Java native plugins for dsh-java: MySQL, OceanBase, Dameng and Mall, with plugin development contract and reference implementations. |
-| dsh-java-desktop | DSH Java desktop client built with Tauri 2 + React 19: bundled agent runtime, digital-human collaboration and A2A protocol. |
-| dsh-java-mobile | DSH Java multi-platform shell: Android/iOS (Tauri 2 Mobile), HarmonyOS (ArkWeb) and WeChat mini-program share one React H5 artifact. |
+| dsh-desktop | DSH Java desktop client built with Tauri 2 + React 19: bundled agent runtime, digital-human collaboration and A2A protocol. |
+| dsh-mobile | DSH Java multi-platform shell: Android/iOS (Tauri 2 Mobile), HarmonyOS (ArkWeb) and WeChat mini-program share one React H5 artifact. |
 | dsh-java-release | Ready-to-run release bundle for DSH Java 0.2.3: artifacts + four database plugins + built-in skills, start with one command. |
 
 ## Topics（各仓库统一粘贴）
@@ -50,8 +50,8 @@ taro
 按仓库裁剪：
 - dsh-java：`agent`、`agent-harness`、`react-loop`、`ai-agent`、`llm`、`mcp`、`spring-boot`、`java`、`plugin`
 - dsh-java-plugins：`plugin`、`java`、`spring-boot`、`mysql`、`oceanbase`、`dameng`
-- dsh-java-desktop：`tauri`、`react`、`desktop`、`ai-agent`、`digital-human`、`a2a`
-- dsh-java-mobile：`tauri`、`mobile`、`harmonyos`、`arkweb`、`wechat-miniapp`、`taro`
+- dsh-desktop：`tauri`、`react`、`desktop`、`ai-agent`、`digital-human`、`a2a`
+- dsh-mobile：`tauri`、`mobile`、`harmonyos`、`arkweb`、`wechat-miniapp`、`taro`
 - dsh-java-release：`release`、`agent-harness`、`spring-boot`、`mysql`、`plugin`、`skills`
 
 ## 仍需在 GitHub 后台完成

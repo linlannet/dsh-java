@@ -3530,7 +3530,7 @@ body, .app, .sidebar, .main-area, .main, .messages, .composer, .modal, .toast {
 
 .question-option { font-size: 12px; }
 
-/* ═══ 侧边栏重设计（对齐 dsh-java-desktop 主界面） ═══ */
+/* ═══ 侧边栏重设计（对齐 dsh-desktop 主界面） ═══ */
 .sidebar-expand-section {
   display: flex;
   flex-direction: column;
@@ -4082,7 +4082,7 @@ body, .app, .sidebar, .main-area, .main, .messages, .composer, .modal, .toast {
 .pairing-box a { color: var(--dsw-alias-button-info-fill); word-break: break-all; }
 .pairing-error { color: #e5484d; }
 
-/* ── 设置页视觉对齐 dsh-java-desktop ───────────────────────────── */
+/* ── 设置页视觉对齐 dsh-desktop ───────────────────────────── */
 .settings-app {
   display: grid;
   grid-template-columns: 290px minmax(0, 1fr);

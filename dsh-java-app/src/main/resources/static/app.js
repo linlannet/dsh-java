@@ -164,7 +164,7 @@ const state = {
   sidebarSessionLimit: 10,
   hasMoreSessions: true,
   loadingMoreSessions: false,
-  // 侧边栏（对齐 dsh-java-desktop）：列表模式 / 搜索 / 筛选 / 置顶 / 自定义标题 / 本地隐藏
+  // 侧边栏（对齐 dsh-desktop）：列表模式 / 搜索 / 筛选 / 置顶 / 自定义标题 / 本地隐藏
   sidebarListMode: localStorage.getItem('dshSidebarListMode') || 'all',
   sidebarSearchOpen: false,
   sidebarSearchText: '',
@@ -472,7 +472,7 @@ function renderLayout() {
   return app;
 }
 
-// ── 侧边栏（对齐 dsh-java-desktop 主界面）──
+// ── 侧边栏（对齐 dsh-desktop 主界面）──
 function persistSidebarPref(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) { /* ignore */ }
 }
@@ -710,7 +710,7 @@ function renderSidebar() {
   brand.appendChild(icon('brand', 'brand-mark'));
   const brandCopy = el('div', { class: 'brand-copy' });
   const brandTitle = el('div', { class: 'brand-title' }, 'DSH');
-  brandTitle.appendChild(el('span', { class: 'brand-version' }, 'v0.2.2'));
+  brandTitle.appendChild(el('span', { class: 'brand-version' }, 'v0.2.3'));
   brandCopy.appendChild(brandTitle);
   brandCopy.appendChild(el('div', { class: 'brand-subtitle' }, 'Java Console'));
   brand.appendChild(brandCopy);
